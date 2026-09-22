@@ -16,7 +16,7 @@ Every number scores Jev's own ruling. The official cuberule.com override is not 
 - **Canon agreement:** 100.0% (45/45)
 - **Abuse false positives:** 0 declined at is_abusive >= 0.85. Highest: slippery nipple shot (0.19).
 - **Jev's eyes** (food items): null on 31.4% of 140. When not null, they agree with Jev's ruling 91.7% (88/96) and match the label 92.7% (89/96).
-- **Wet flag** (labelled items): 100.0% (16/16)
+- **Wet flag** (labelled items): 100.0% (17/17)
 - **Honorary category** (labelled not-food items): 71.4% (5/7)
 - **Tokens:** 9434 input and 553 output per call on average, 9442 input at most.
 - **Latency:** p50 205 ms, p95 308 ms, max 536 ms. 0 calls needed a retry.

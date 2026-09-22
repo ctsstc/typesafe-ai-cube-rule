@@ -244,7 +244,8 @@
     "item": "lucky charms",
     "expected": "nachos",
     "source": "cuberule",
-    "note": "Site example (a bowl in milk): cereal pieces distributed through the bowl."
+    "note": "Site example (a bowl in milk): cereal pieces distributed through the bowl. Wet because the site pictures it sitting in milk, the same logic as its wet nachos caption for ramen.",
+    "wet": true
   },
   {
     "item": "salad with croutons",
