@@ -1,6 +1,7 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
-import pkg from "./package.json" with { type: "json" };
+// Releases bump the root package.json only (see CLAUDE.md).
+import pkg from "../../package.json" with { type: "json" };
 import { fontPreload } from "./plugins/fontPreload.ts";
 import { mockApi } from "./plugins/mockApi.ts";
 import { siteMeta } from "./plugins/siteMeta.ts";
