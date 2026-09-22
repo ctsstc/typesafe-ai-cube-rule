@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "cube-rule-oracle",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-09-22",
+  // Uncomment after `wrangler kv namespace create CLASSIFICATIONS` (see docs/deploy.md).
+  // Local dev binds it anyway through `--kv CLASSIFICATIONS` in scripts/pages-dev.sh.
+  // "kv_namespaces": [{ "binding": "CLASSIFICATIONS", "id": "<namespace id>" }],
+  "dev": { "port": 8788 }
+}
