@@ -22,7 +22,7 @@ A labelled food set and a harness that asks Jev every question in `@cube/core` f
 
 The runner reads `TYPESAFE_API_KEY` from the root `.env`, sends `buildCubeRequest(item)` through `TypeSafeClient` 4 items at a time with the SDK's default retries, and records each call's answers, token usage, wall-clock latency and attempt count. Every answer is appended to `raw.jsonl` as it lands, so an interrupted run resumes where it stopped.
 
-A pass over the set costs about $0.06: roughly 9,260 input tokens per call at $0.042 per million (question set 3).
+A pass over the set costs about $0.06: roughly 9,430 input tokens per call at $0.042 per million (question set 4).
 
 > [!IMPORTANT]
 > The cache is keyed by `QUESTION_SET_VERSION` and a SHA-256 fingerprint of the full request. If a question changes without a version bump, the runner refuses to reuse the old answers. Bump the version (the core fingerprint test asks for that too) and run `pnpm eval` to get a new `results/v<version>/` folder next to the old one.
@@ -161,3 +161,44 @@ Effects on tune and canon:
 - Near misses that remain: sub roll sliced all the way through (sandwich 0.52, taco 0.47), moon pie (sandwich 0.60, calzone 0.36) and wonton soup (calzone 0.71, accepted).
 
 Labels did not change, so the v2 numbers above stand as scored. `exampleKey` now strips parentheticals before `normalizeItem` truncates to 60 characters; no v2 example was long enough for that to matter.
+
+## Question set 4
+
+[`eval/results/v4/report.md`](../eval/results/v4/report.md), same 156 items, `jev-1.13.0`, 2026-09-22. Kept: tune went up by two items, holdout held, and no ruling at confidence 0.8 or higher was wrong.
+
+| Metric | v3 | v4 |
+|---|---|---|
+| Tune accuracy | 95.5% (64/67) | 98.5% (66/67) |
+| Tune family | 100% | 100% |
+| Tune, not in prompt | 94.3% (50/53) | 98.1% (52/53) |
+| Holdout accuracy | 95.5% (42/44) | 95.5% (42/44) |
+| Holdout family | 97.7% | 97.7% |
+| Canon agreement | 100% (45/45) | 100% (45/45) |
+| Input kind | 100% | 100% |
+| Unanimous rulings correct (tune, canon) | 43/43, 43/43 | 45/45, 42/42 |
+| Majority rulings correct (tune) | 12/15 | 12/13 |
+| Eyes null, agree | 30.0%, 90.8% | 31.4%, 91.7% |
+| Input tokens per call | 9,260 | 9,434 |
+| Cost per pass | $0.061 | $0.062 |
+
+The idea behind this round: a food word named in an option's `not_for`, or in a site gloss, pulls items that share the word toward the category in the parenthesis, even from inside the wrong option. In v3 the sushi option said "folded shut like a burrito ... (calzone)", the quiche option said "a whole double-crust pie (calzone)", and the sandwich option said "a sub roll left hinged (taco)". Each one sat next to a tune failure or near miss that shared the word. What changed, all in the `category` question:
+
+- **Contrasts without food words.** The sushi, quiche and sandwich `not_for` state the condition (ends folded in or crimped shut, a top crust sealing in the filling, joined by a hinge or fold) and drop burrito, pastry, whole pie and sub roll.
+- **A category-only `includes` key** holds positive boundary cases: filling piped in through a small hole (calzone), a filled log cut into pieces (sushi), a single-crust pie served whole (quiche), a bun cut into two halves (sandwich). It is not in `starch_position`, because `honorary_category` reuses that text.
+- **Calzone `not_for`** now covers every place it took wrong mass: cut logs (sushi), whole single-crust pies (quiche), solid blocks with no filling (toast) and non-starch coatings (sandwich).
+- **Glosses.** "pie (whole, double-crust like apple or cherry: ...)", "sub sandwich (uncut, top and bottom still joined by a hinge of bread)", "pizza (served flat)" and "maki roll (any size, both ends open)".
+- **`how_to_judge`** covers `not_for` contrasts as well as examples.
+
+Effects on tune and canon:
+
+- Fixed: whole pumpkin pie (calzone 0.75 became quiche 0.85) and sushi burrito (calzone 0.62 became sushi 0.50, a coin flip against calzone 0.49).
+- Still wrong: sausage roll, but calzone fell from 0.82 to 0.74 and its confidence from 0.79 to 0.70. Its all-walls reading is still 0.68, so Jev pictures sealed ends.
+- Wider margins: baked potato (toast 0.56 to 0.76), swiss roll (sushi 0.74 to 0.83), folded new york pizza slice (taco 0.72 to 0.82) and wonton soup (calzone 0.71 to 0.83, accepted).
+- Unchanged near misses: sub roll sliced all the way through (sandwich 0.50, taco 0.47) and moon pie (sandwich 0.60, calzone 0.36). Eclair held at calzone 0.76 without the pastry clause.
+- Small losses: canon slice of pie fell from taco 0.85 to 0.81, which moves it from unanimous to majority, and stromboli from calzone 0.97 to 0.89 (sushi is also accepted).
+- The "depends how it's served" chip is unchanged: pizza, pie and chicken pot pie.
+
+> [!WARNING]
+> Several `includes` and `not_for` phrases describe tune items in structural words: a jelly doughnut, a whole potato in its skin, a single-crust pie served whole, a bun cut into two halves. Leak detection scans only `examples` arrays, so "Not in prompt" does not see them. Holdout, which held at 42/44, is the fair check for this round.
+
+Label change: plain "pie" now accepts toast as well, since the site rules a pumpkin pie slice bent toast. Jev said calzone for it in v2 and v3, so both were rescored offline with their own question sets and only the accepted-label cell in each report changed.

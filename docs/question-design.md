@@ -36,7 +36,7 @@ The SPA bundle never sees the SDK or the rubric text. `@cube/core` is marked `"s
 |---|---|---|
 | `is_abusive` | Noul | Declines to rule on slurs, harassment, hate and explicit sexual text |
 | `input_kind` | Choice: food, not_food, nonsense | Which card renders: ruling, honorary or "cannot rule" |
-| `category` | Choice, 9 options with `starch_position`, `examples`, `not_for` | The ruling: cube, name, headline adverb, odds, dissent, family fallback |
+| `category` | Choice, 9 options with `starch_position`, `examples`, `not_for`, and `includes` on four of them | The ruling: cube, name, headline adverb, odds, dissent, family fallback |
 | `honorary_category` | Choice, 9 options, explicit "treat the shell as starch" premise | The "Honorary Calzone" card for things that are not food |
 | `starch` | Choice, 10 options including `none` and `other_starch` | Face colour, starch label, rice clause |
 | `is_wet` | Noul | The "Wet" title prefix (Wet Salad, Wet Nachos) |
@@ -55,6 +55,8 @@ Design choices worth keeping:
 - **One condition per Noul.** `is_wet` asks only about a pool of liquid, and `starch_block` only asks whether the item is one solid piece of starch.
 - **Cake leads with "a starch layer in the middle, between fillings"** instead of asking Jev to count layers.
 - **Site examples carry their structure** inside the `category` question only, such as "burrito (both ends folded shut)". Jev copies the ruling of an example that shares a word with `item`, so the structure has to sit in the example string. `CATEGORIES` keeps the site's wording, and the gloss keeps the site name before the parenthesis so eval leak detection still finds it.
+- **Contrasts name conditions, not foods.** A food named inside an option's `not_for` pulls items that share the word toward the category in its parenthesis, even from the wrong option. "Ends folded in or crimped shut (calzone)" works where "folded shut like a burrito (calzone)" dragged sushi burrito to calzone.
+- **Boundary cases go in `includes`,** a category-only key, never in `starch_position`: `honorary_category` reuses `starch_position`, so food-specific text there leaks into the not-food path.
 - **Commands are nonsense.** `input_kind` treats an attempt to control the app's answer as nonsense even when it names a food, while a question about what kind of food something is stays food.
 - **No-match outcomes exist everywhere:** `input_kind` is a separate presence judgment, Salad is the catch-all food category, `starch` has `none` and `other_starch`, and the honorary question sends things with no solid form to Salad.
 
@@ -104,7 +106,7 @@ All values are untuned guesses until the eval set has run.
 
 ## Known risks
 
-- **Name bias.** Jev reads literally, and in evals the pull came from example strings that share a word with `item` more than from option keys. Sushi burrito still goes calzone through "burrito", and whole pumpkin pie through "pie (whole)". Name traps make this visible. If glossing examples stops helping, try neutral option keys and map them back in code.
+- **Name bias.** Jev reads literally, and in evals the pull came from example strings that share a word with `item` more than from option keys. Question set 4 fixed whole pumpkin pie and sushi burrito by taking the shared words out of the contrasts, but sushi burrito is still a coin flip (sushi 0.50, calzone 0.49) and sausage roll still reads calzone. Name traps make this visible. If glossing examples stops helping, try neutral option keys and map them back in code.
 - **Cost of the eyes.** The 8 geometry Nouls roughly double the tokens, because each repeats the structural starch definition. To drop them, delete the Nouls, `readEyes` and the `eyes` and `muffinClause` fields, then bump the version.
 - **Eyes limits.** They cannot express two adjacent walls or a corner, contradictory face answers give `null` or a wrong reading, and cheesecake or an uncut sub may disagree with the ruling. Frame a disagreement as "Jev's eyes vs Jev's gut", not as a correction.
 - **Honorary path.** "Treat the shell as starch" is an indirection, which the Jev jaggedness page lists as a weak spot. Expect noisier answers there.
