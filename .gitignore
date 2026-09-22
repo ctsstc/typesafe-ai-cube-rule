@@ -9,12 +9,9 @@ coverage/
 .env.*
 !.env.example
 
-.terraform/
-*.tfstate
-*.tfstate.*
-*.tfplan
-.terraform.lock.hcl.bak
-infra/.build/
+.dev.vars
+.dev.vars.*
+.wrangler/
 
 *.log
 .vite/
