@@ -277,6 +277,12 @@
   scroll-margin-top: var(--space-4);
 }
 
+@media (min-width: 900px) {
+  .ruling-slot {
+    width: min(100% - 2 * var(--gutter), var(--wide-max));
+  }
+}
+
 .ruling-slot:empty {
   display: none;
 }

@@ -227,86 +227,93 @@ export function RulingCard({ state, onRetry, onEdit, onCubeAnother }: RulingCard
       data-status={state.status}
       data-kind={result?.kind}
       data-reveal={revealing || undefined}
+      data-layout={showStage ? "split" : undefined}
     >
-      <p className="eyebrow">
-        Ruling
-        {simulated && <span className="pill pill--warn">Simulated</span>}
-      </p>
-      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="ruling__heading">
-        {result?.kind === "declined" ? (
-          <span className="ruling__verdict ruling__verdict--solo">Jev declines to cube that.</span>
-        ) : result ? (
-          <>
-            <span className="ruling__food">{sentenceCase(result.item)}</span>
-            <span className="visually-hidden">:</span>{" "}
-            <span className="ruling__verdict">{verdictLine(result)}</span>
-          </>
-        ) : (
-          <span className="ruling__food">{heading}</span>
-        )}
-      </h2>
-
-      {showStage && (
-        <div className="ruling__stage">
-          <Cube3D {...cube} phase={phase} />
-          {stamp && <Stamp stamp={stamp} simulated={simulated} />}
-        </div>
-      )}
-
-      {state.status === "loading" && (
-        <>
-          <p className="ruling__status" aria-hidden="true">
-            {line}
-          </p>
-          <p className="ruling__slow" data-visible={slow || undefined}>
-            {slow ? STILL_THINKING : " "}
-          </p>
-          <SkeletonOdds />
-        </>
-      )}
-
-      {state.status === "error" && (
-        <ErrorPanel error={state.error} onRetry={onRetry} onEdit={onEdit} />
-      )}
-
-      {result?.kind === "declined" && (
-        <div className="declined">
-          <span className="declined__box">
-            <BoxIcon />
-          </span>
-          <p>Try a food. Any food.</p>
-          <button type="button" className="button button--primary" onClick={onCubeAnother}>
-            <PencilIcon />
-            Cube another
-          </button>
-        </div>
-      )}
-
-      {result && result.kind !== "declined" && (
-        <>
-          {result.kind === "food" && <FoodDetails result={result} />}
-          {result.kind === "honorary" && <HonoraryDetails result={result} />}
-          {result.kind === "nonsense" && (
-            <p className="ruling__confidence">
-              Jev can't find a food, or anything else, in that. Try a dish, a snack, or a drink.
-            </p>
-          )}
-          {result.kind === "nonsense" ? (
-            <div className="share">
-              <div className="share__buttons">
-                <button type="button" className="button button--primary" onClick={onCubeAnother}>
-                  <PencilIcon />
-                  Cube another
-                </button>
-              </div>
-            </div>
+      <div className="ruling__lead">
+        <p className="eyebrow">
+          Ruling
+          {simulated && <span className="pill pill--warn">Simulated</span>}
+        </p>
+        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="ruling__heading">
+          {result?.kind === "declined" ? (
+            <span className="ruling__verdict ruling__verdict--solo">
+              Jev declines to cube that.
+            </span>
+          ) : result ? (
+            <>
+              <span className="ruling__food">{sentenceCase(result.item)}</span>
+              <span className="visually-hidden">:</span>{" "}
+              <span className="ruling__verdict">{verdictLine(result)}</span>
+            </>
           ) : (
-            <ShareBar item={result.item} text={shareText(result)} onCubeAnother={onCubeAnother} />
+            <span className="ruling__food">{heading}</span>
           )}
-        </>
-      )}
+        </h2>
 
-      {state.status === "done" && <NerdStats result={state.result} meta={state.meta} />}
+        {showStage && (
+          <div className="ruling__stage">
+            <Cube3D {...cube} phase={phase} />
+            {stamp && <Stamp stamp={stamp} simulated={simulated} />}
+          </div>
+        )}
+      </div>
+
+      <div className="ruling__body">
+        {state.status === "loading" && (
+          <>
+            <p className="ruling__status" aria-hidden="true">
+              {line}
+            </p>
+            <p className="ruling__slow" data-visible={slow || undefined}>
+              {slow ? STILL_THINKING : " "}
+            </p>
+            <SkeletonOdds />
+          </>
+        )}
+
+        {state.status === "error" && (
+          <ErrorPanel error={state.error} onRetry={onRetry} onEdit={onEdit} />
+        )}
+
+        {result?.kind === "declined" && (
+          <div className="declined">
+            <span className="declined__box">
+              <BoxIcon />
+            </span>
+            <p>Try a food. Any food.</p>
+            <button type="button" className="button button--primary" onClick={onCubeAnother}>
+              <PencilIcon />
+              Cube another
+            </button>
+          </div>
+        )}
+
+        {result && result.kind !== "declined" && (
+          <>
+            {result.kind === "food" && <FoodDetails result={result} />}
+            {result.kind === "honorary" && <HonoraryDetails result={result} />}
+            {result.kind === "nonsense" && (
+              <p className="ruling__confidence">
+                Jev can't find a food, or anything else, in that. Try a dish, a snack, or a drink.
+              </p>
+            )}
+            {result.kind === "nonsense" ? (
+              <div className="share">
+                <div className="share__buttons">
+                  <button type="button" className="button button--primary" onClick={onCubeAnother}>
+                    <PencilIcon />
+                    Cube another
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <ShareBar item={result.item} text={shareText(result)} onCubeAnother={onCubeAnother} />
+            )}
+          </>
+        )}
+
+        {state.status === "done" && <NerdStats result={state.result} meta={state.meta} />}
+      </div>
     </article>
   );
 }
