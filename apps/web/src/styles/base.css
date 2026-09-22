@@ -1,0 +1,273 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-top: var(--space-4);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--bg);
+  background-image:
+    radial-gradient(
+      circle at 12% -10%,
+      color-mix(in srgb, var(--crumb) 28%, transparent),
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at 100% 0%,
+      color-mix(in srgb, var(--filling) 7%, transparent),
+      transparent 38%
+    );
+  background-repeat: no-repeat;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+a {
+  color: var(--accent);
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+}
+
+a:hover {
+  color: var(--accent-hover);
+  text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 100;
+  padding: var(--space-3) var(--space-4);
+  font-weight: 700;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-radius: var(--radius-s);
+  translate: 0 -200%;
+}
+
+.skip-link:focus {
+  translate: 0 0;
+  color: var(--accent-ink);
+}
+
+.container {
+  width: min(100% - 2 * var(--gutter), var(--content-max));
+  margin-inline: auto;
+}
+
+.container--wide {
+  width: min(100% - 2 * var(--gutter), var(--wide-max));
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--step--1);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.pill {
+  padding: 1px 8px;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  border-radius: var(--radius-pill);
+}
+
+.pill--warn {
+  color: var(--warn-text);
+  background: var(--warn-bg);
+}
+
+/* Buttons */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  min-width: var(--tap);
+  padding: 0 var(--space-4);
+  font-weight: 650;
+  line-height: 1.1;
+  text-decoration: none;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast),
+    border-color var(--dur-fast),
+    translate 80ms;
+}
+
+.button svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.button:active:not(:disabled) {
+  translate: 0 1px;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.button--primary {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.button--primary:hover:not(:disabled) {
+  color: var(--accent-ink);
+  background: var(--accent-hover);
+}
+
+.button--secondary {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--control);
+}
+
+.button--secondary:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.button--ghost {
+  color: var(--accent);
+  background: transparent;
+}
+
+.button--ghost:hover:not(:disabled) {
+  color: var(--accent-hover);
+  background: var(--surface-2);
+}
+
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  color: var(--text);
+  background: transparent;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: var(--surface-2);
+  border-color: var(--control);
+}
+
+/* Food links: real links that look like chips */
+.food-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap);
+  padding: 0 var(--space-4);
+  color: var(--text);
+  white-space: nowrap;
+  text-decoration: none;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  transition:
+    background-color var(--dur-fast),
+    border-color var(--dur-fast);
+}
+
+.food-chip:hover {
+  color: var(--text);
+  text-decoration: none;
+  background: var(--surface-2);
+  border-color: var(--control);
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: max(var(--space-5), env(safe-area-inset-bottom));
+  z-index: 50;
+  padding: var(--space-3) var(--space-5);
+  font-weight: 600;
+  color: var(--bg);
+  background: var(--text);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-card);
+  translate: -50% 0;
+  animation: toast-in 200ms var(--ease-out) both;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    translate: -50% 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must win over every rule */
+    scroll-behavior: auto !important;
+  }
+
+  .toast {
+    animation: none;
+  }
+}
