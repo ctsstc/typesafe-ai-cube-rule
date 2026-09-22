@@ -30,9 +30,9 @@ type WaitUntil = (promise: Promise<unknown>) => void;
 const TYPESAFE_BASE_URL = "https://api.typesafe.ai";
 const JEV_ATTEMPT_TIMEOUT_MS = 8_000;
 // Must stay under the SPA's CLIENT_TIMEOUT_MS (10s) so the browser sees our 504, not its own abort.
-export const JEV_DEADLINE_MS = 9_000;
+const JEV_DEADLINE_MS = 9_000;
 const DEFAULT_RETRY_AFTER_S = 10;
-export const LIVE_CALLS_PER_MINUTE = 20;
+const LIVE_CALLS_PER_MINUTE = 20;
 
 const JEV_RETRY = {
   maxRetries: 1,
@@ -165,7 +165,7 @@ function upstreamFailure(error: unknown): Response {
   return errorResponse(code);
 }
 
-export function classifyError(error: unknown): ClassifyErrorCode {
+function classifyError(error: unknown): ClassifyErrorCode {
   if (error instanceof RateLimitError) return "rate_limited";
   if (error instanceof APITimeoutError || error instanceof APIUserAbortError) return "timeout";
   if (error instanceof APIError) {
