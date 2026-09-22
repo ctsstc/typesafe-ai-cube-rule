@@ -15,6 +15,11 @@ A fun web app built on [cuberule.com](https://cuberule.com/): type any food and 
 - Pages, not Workers: the share URL is a subdomain of a domain whose DNS lives at Porkbun. Pages accepts an external CNAME (`sub.domain -> <project>.pages.dev`); Workers custom domains require the zone's nameservers to be on Cloudflare.
 - Add the custom domain in the Pages project before creating the Porkbun CNAME, or Cloudflare returns 522.
 
+## Commands
+
+- `pnpm dev` runs Vite (5173) and the Pages Function (8788). `pnpm preview:pages` serves the production build with the Function and `_headers`. `pnpm eval` runs the Jev eval (see `docs/eval.md`).
+- Deploy with `pnpm deploy:pages`. Bare `pnpm deploy` is pnpm's own built-in command and does not run the script.
+
 ## Git workflow
 
 - Commit whenever a coherent unit of progress lands: a feature, a fix, a refactor, docs, infra. Do not batch a whole session into one commit, and do not commit broken builds.
