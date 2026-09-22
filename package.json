@@ -19,7 +19,7 @@
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "eval": "pnpm --filter @cube/eval start",
-    "deploy": "bash scripts/deploy.sh"
+    "deploy:pages": "bash scripts/deploy.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",

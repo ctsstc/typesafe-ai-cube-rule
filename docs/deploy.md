@@ -57,7 +57,7 @@ Local runs also bind a local KV namespace (`--kv CLASSIFICATIONS`) and a local C
 ## Deploying
 
 ```sh
-pnpm deploy
+pnpm deploy:pages
 ```
 
 `scripts/deploy.sh` refuses to run unless all of these hold:
@@ -72,7 +72,7 @@ It then builds the SPA and runs `wrangler pages deploy dist --project-name cube-
 > [!IMPORTANT]
 > Deploy from `apps/web`, never with `wrangler pages deploy apps/web/dist` from the repo root. Wrangler looks for `functions/` and `wrangler.jsonc` in its working directory. From the root it would upload the SPA without the API.
 
-The build bakes absolute `og:url` and `og:image` URLs into `index.html` from `SITE_URL`. It defaults to `https://cube-rule-oracle.pages.dev`. Once the custom domain is live, change the default in `scripts/deploy.sh`, or run `SITE_URL=https://oracle.example.com pnpm deploy`.
+The build bakes absolute `og:url` and `og:image` URLs into `index.html` from `SITE_URL`. It defaults to `https://cube-rule-oracle.pages.dev`. Once the custom domain is live, change the default in `scripts/deploy.sh`, or run `SITE_URL=https://oracle.example.com pnpm deploy:pages`.
 
 Tail production logs with `pnpm exec wrangler pages deployment tail --project-name cube-rule-oracle`.
 
@@ -105,7 +105,7 @@ The share URL is a subdomain of a domain whose DNS stays at Porkbun. Pages accep
 
 Every production deployment is a rollback target. In **Workers & Pages > cube-rule-oracle > Deployments**, open the menu on an earlier deployment and choose **Rollback to this deployment**. The switch is instant and needs no build.
 
-To roll forward again, deploy a fixed commit with `pnpm deploy`, or roll back to the newer deployment in the same list.
+To roll forward again, deploy a fixed commit with `pnpm deploy:pages`, or roll back to the newer deployment in the same list.
 
 ## Caching
 

@@ -34,7 +34,10 @@ node -e '
 ' "$ACCOUNT_ID" <<<"$whoami_json" || fail "wrangler is not logged in to account $ACCOUNT_ID."
 
 # Without the secret the Function serves mock rulings in production.
-wrangler pages secret list --project-name "$PROJECT" 2>/dev/null | grep -q "TYPESAFE_API_KEY" ||
+# Captured first: with pipefail, grep -q closing the pipe early could fail the check spuriously.
+secrets="$(wrangler pages secret list --project-name "$PROJECT" 2>/dev/null)" ||
+  fail "could not list Pages secrets for $PROJECT; does the project exist?"
+grep -q "TYPESAFE_API_KEY" <<<"$secrets" ||
   fail "Pages secret TYPESAFE_API_KEY is missing; see docs/deploy.md."
 
 pnpm check
