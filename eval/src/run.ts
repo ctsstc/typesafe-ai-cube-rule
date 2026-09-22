@@ -2,7 +2,14 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { fileURLToPath } from "node:url";
 import { buildCubeRequest, CUBE_MODEL, QUESTION_SET_VERSION } from "@cube/core";
 import { TypeSafeClient } from "@typesafe-ai/sdk";
-import { parseRaw, type RawRecord, requestFingerprint, resultsDir, serializeRaw } from "./cache";
+import {
+  parseRaw,
+  type RawRecord,
+  requestFingerprint,
+  resultsDir,
+  serializeRaw,
+  staleRecords,
+} from "./cache";
 import { type LabelledItem, loadDataset } from "./dataset";
 import { describeFailure, renderReport } from "./report";
 import { scoreItem, summarize } from "./score";
@@ -79,9 +86,7 @@ async function main(): Promise<void> {
   const cache = existsSync(rawPath)
     ? parseRaw(readFileSync(rawPath, "utf8"))
     : new Map<string, RawRecord>();
-  const stale = [...cache.values()].filter(
-    (r) => r.fingerprint !== fingerprint || r.version !== QUESTION_SET_VERSION,
-  );
+  const stale = staleRecords(cache.values(), fingerprint, QUESTION_SET_VERSION);
   if (stale.length > 0 && !flags.has("--fresh")) {
     throw new Error(
       `${stale.length} cached answers in ${fileURLToPath(dir)} came from a different request. The questions or model changed without a QUESTION_SET_VERSION bump. Bump the version, or rerun with --fresh to replace them.`,

@@ -1,6 +1,13 @@
 import { mockCubeResponse, QUESTION_SET_VERSION } from "@cube/core";
 import { describe, expect, it } from "vitest";
-import { parseRaw, type RawRecord, requestFingerprint, resultsDir, serializeRaw } from "./cache";
+import {
+  parseRaw,
+  type RawRecord,
+  requestFingerprint,
+  resultsDir,
+  serializeRaw,
+  staleRecords,
+} from "./cache";
 
 const record = (item: string, latencyMs = 100): RawRecord => ({
   item,
@@ -31,6 +38,18 @@ describe("raw cache", () => {
   it("rejects lines that are not raw records", () => {
     expect(() => parseRaw('{"item":"taco"}\n')).toThrow(/line 1/);
     expect(() => parseRaw("not json\n")).toThrow();
+  });
+
+  it("flags answers from another request or version as stale", () => {
+    const current = record("taco");
+    const edited = { ...record("burrito"), fingerprint: "old" };
+    const older = { ...record("nachos"), version: "0" };
+    const stale = staleRecords(
+      [current, edited, older],
+      requestFingerprint(),
+      QUESTION_SET_VERSION,
+    );
+    expect(stale.map((r) => r.item)).toEqual(["burrito", "nachos"]);
   });
 
   it("fingerprints the request deterministically and versions the results folder", () => {

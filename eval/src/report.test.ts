@@ -110,7 +110,8 @@ describe("renderReport", () => {
   });
 
   it("uses no em or en dashes", () => {
-    expect(report).not.toMatch(/[–—]/);
+    const dashes = [0x2013, 0x2014].map((code) => String.fromCodePoint(code));
+    expect(dashes.filter((dash) => report.includes(dash))).toEqual([]);
   });
 });
 

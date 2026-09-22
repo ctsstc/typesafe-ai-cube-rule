@@ -50,6 +50,14 @@ export function parseRaw(text: string): Map<string, RawRecord> {
   return records;
 }
 
+export function staleRecords(
+  records: Iterable<RawRecord>,
+  fingerprint: string,
+  version: string,
+): RawRecord[] {
+  return [...records].filter((r) => r.fingerprint !== fingerprint || r.version !== version);
+}
+
 export function serializeRaw(records: Iterable<RawRecord>): string {
   const sorted = [...records].sort((a, b) => (a.item < b.item ? -1 : a.item > b.item ? 1 : 0));
   return sorted.map((record) => `${JSON.stringify(record)}\n`).join("");
