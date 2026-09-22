@@ -10,7 +10,7 @@ import {
 
 // Bump QUESTION_SET_VERSION whenever a question or CUBE_MODEL changes: it is part of the cache key.
 export const CUBE_MODEL = "jev-1.13.0";
-export const QUESTION_SET_VERSION = "1";
+export const QUESTION_SET_VERSION = "2";
 
 // Untuned starting points. Calibrate against the official rulings plus held-out foods before trusting them.
 export const THRESHOLDS = {
@@ -23,6 +23,7 @@ export const THRESHOLDS = {
   dependsOnServing: 0.6,
   yes: 0.7,
   no: 0.3,
+  abusive: 0.85,
 } as const;
 
 export type CubeState = { item: string };
@@ -194,6 +195,47 @@ export const DEBATE_LEVELS = [
   "A famous, long-running feud, like whether a hot dog is a sandwich or whether cereal is soup",
 ] as const;
 
+const ABUSIVE_TEXT = {
+  question:
+    "Is `item` abusive text rather than the name of a food, dish, drink, object, or harmless joke?",
+  abusive_means:
+    "A slur, harassment of a person or group, hateful content, or explicit sexual content.",
+  context:
+    "`item` was typed by a stranger into a public food identification app, and every result can be shared by link.",
+  how_to_judge: [
+    "Judge what the whole phrase means, not whether one word in it could be rude on its own.",
+    "Traditional and regional dishes keep their real names, even when a word in the name is rude in another sense.",
+    "Mild innuendo and silly jokes with no target are harmless. Explicit sexual content is not.",
+  ],
+};
+
+const ABUSIVE_OUTCOMES: Record<"true" | "false", Outcome> = {
+  true: {
+    what: "A slur, an insult or threat aimed at a person or group, hateful content, or explicit sexual content",
+    examples: [
+      "a racial, ethnic, religious, or homophobic slur",
+      "an insult aimed at a named person, like jake from homeroom is a loser",
+      "a threat to hurt someone",
+      "the name or slogan of a hate group",
+      "an explicit sexual act",
+    ],
+  },
+  false: {
+    what: "A food, dish, drink, brand, object, place, animal, idea, gibberish, or harmless joke, even when one of its words is rude in another sense",
+    examples: [
+      "spotted dick",
+      "faggot (the British meatball)",
+      "hot dog",
+      "sloppy joe",
+      "cock-a-leekie soup",
+      "toad in the hole",
+      "my ex's meatloaf",
+      "sleeping bag",
+      "asdfgh",
+    ],
+  },
+};
+
 const byCategory = <V extends EntryType>(make: (id: CategoryId) => V): Record<CategoryId, V> =>
   Object.fromEntries(CATEGORY_IDS.map((id) => [id, make(id)])) as Record<CategoryId, V>;
 
@@ -210,6 +252,7 @@ const starchNoul = (question: string, yes: Outcome, no: Outcome) =>
 
 export function buildCubeQuestions() {
   return {
+    is_abusive: noul(ABUSIVE_TEXT, ABUSIVE_OUTCOMES),
     input_kind: choice(
       {
         question: "What kind of thing does `item` name?",

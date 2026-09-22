@@ -12,6 +12,7 @@ import { findOfficialRuling } from "./official";
 import { type CubeResponse, DEBATE_LEVELS } from "./questions";
 
 // Keyless development only: deterministic answers shaped like a live response, never real rulings.
+export const MOCK_DECLINE_TRIGGER = "slur";
 const MOCK_NONSENSE = /[bcdfghjklmnpqrstvwxz]{5,}/;
 const MOCK_NOT_FOOD =
   /\b(humans?|person|cat|car|moon|brick|stapler|chair|phone|sleeping bag|canoe|house|shoe|book)s?\b/;
@@ -87,6 +88,7 @@ export function mockCubeResponse(item: string): CubeResponse {
   return {
     model: "mock",
     answers: {
+      is_abusive: mockNoul(item.split(/\W+/).includes(MOCK_DECLINE_TRIGGER)),
       input_kind: mockChoice(INPUT_KIND_IDS, kind, 0),
       category: mockChoice(CATEGORY_IDS, category, seed, sibling),
       honorary_category: mockChoice(CATEGORY_IDS, category, seed, sibling),

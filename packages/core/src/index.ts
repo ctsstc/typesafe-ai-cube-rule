@@ -25,7 +25,7 @@ export {
   parseClassifyQuery,
   precheckItem,
 } from "./input";
-export { mockCubeResponse } from "./mock";
+export { MOCK_DECLINE_TRIGGER, mockCubeResponse } from "./mock";
 export { findOfficialRuling, OFFICIAL_RULINGS, type OfficialRuling } from "./official";
 export {
   buildCubeQuestions,
@@ -46,6 +46,7 @@ export {
   type CubeRuling,
   DEBATE_LABELS,
   type DebateLevel,
+  type DeclinedResult,
   describeCategory,
   type FamilyFallback,
   type FoodResult,

@@ -98,7 +98,12 @@ export interface NonsenseResult extends ResultBase {
   readonly kind: "nonsense";
 }
 
-export type CubeResult = FoodResult | HonoraryResult | NonsenseResult;
+// `item` is the text Jev flagged as abusive: never render it or put it in a share card.
+export interface DeclinedResult extends ResultBase {
+  readonly kind: "declined";
+}
+
+export type CubeResult = FoodResult | HonoraryResult | NonsenseResult | DeclinedResult;
 
 const prob = (value: number | undefined, fallback = 0): number =>
   typeof value === "number" && Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
@@ -225,6 +230,8 @@ export function readEyes(a: CubeAnswers, category: CategoryId): JevEyes {
 }
 
 export function toCubeResult(item: string, { answers, model }: CubeResponse): CubeResult {
+  if (prob(answers.is_abusive.noul) >= THRESHOLDS.abusive) return { kind: "declined", item, model };
+
   const official = findOfficialRuling(item);
   const kind: InputKindId = official
     ? official.honorary

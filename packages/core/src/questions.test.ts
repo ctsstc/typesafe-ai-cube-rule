@@ -13,6 +13,7 @@ import { toCubeResult } from "./result";
 // One entry per QUESTION_SET_VERSION. Never edit a recorded hash: bump the version and add a line.
 const REQUEST_FINGERPRINTS: Readonly<Record<string, string>> = {
   "1": "6ba7b6e0c52da7bf68379c83ef94ba33b88bd6b4c4b4ecdebf1a8de2cb9f6dda",
+  "2": "8510ae891b2cc7ebcf5cd58d4f590f73c05afd2a82de3cd5d472a53e1475e620",
 };
 
 const sha256 = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -79,6 +80,7 @@ describe("TypeSafeClient round trip with a fake fetch", () => {
     expect(sent.model).toBe(CUBE_MODEL);
     expect(sent.state).toEqual({ item: "hot dog" });
     expect(Object.entries(sent.questions ?? {}).map(([id, q]) => `${id}:${q.type}`)).toEqual([
+      "is_abusive:noul",
       "input_kind:choice",
       "category:choice",
       "honorary_category:choice",
