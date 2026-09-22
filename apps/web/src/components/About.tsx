@@ -60,8 +60,8 @@ export function About() {
               name, and only the name, to TypeSafe's API.
             </li>
             <li>
-              Each ruling is stored by food name in Cloudflare, so the next person who asks gets
-              the same answer instantly and Jev isn't asked twice. Who asked is not stored.
+              Each ruling is stored by food name in Cloudflare, so the next person who asks gets the
+              same answer instantly and Jev isn't asked twice. Who asked is not stored.
             </li>
             <li>
               Your IP address is held in memory for a minute or so to slow down floods of requests.

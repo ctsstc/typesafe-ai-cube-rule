@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+  <title>Cube Rule Oracle</title>
   <rect width="180" height="180" fill="#fbf6ec"/>
   <g transform="translate(26 22) scale(4)">
     <path d="M16 3 28.5 9.5 16 16 3.5 9.5Z" fill="#8a7560" fill-opacity="0.08" stroke="#8a7560" stroke-width="1" stroke-dasharray="2 1.6" stroke-linejoin="round"/>
