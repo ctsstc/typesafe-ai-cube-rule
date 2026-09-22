@@ -1,6 +1,12 @@
 import { mockCubeResponse } from "@cube/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CLIENT_TIMEOUT_MS, classify, clearClassifyCache, parseRetryAfter, RulingError } from "./api";
+import {
+  CLIENT_TIMEOUT_MS,
+  classify,
+  clearClassifyCache,
+  parseRetryAfter,
+  RulingError,
+} from "./api";
 
 const json = (body: unknown, init: ResponseInit = {}) =>
   new Response(JSON.stringify(body), {
@@ -20,7 +26,10 @@ describe("classify", () => {
 
   it("calls only the canonical same-origin URL and caches the answer", async () => {
     const fetchMock = vi.fn(async () =>
-      json({ ...mockCubeResponse("hot dog"), mock: true }, { headers: { "cf-cache-status": "HIT" } }),
+      json(
+        { ...mockCubeResponse("hot dog"), mock: true },
+        { headers: { "cf-cache-status": "HIT" } },
+      ),
     );
     vi.stubGlobal("fetch", fetchMock);
     const first = await classify("hot dog");

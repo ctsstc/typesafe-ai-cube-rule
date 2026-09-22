@@ -1,6 +1,6 @@
-import { CATEGORIES, CATEGORY_IDS, findOfficialRuling, type FoodResult } from "@cube/core";
+import { CATEGORIES, CATEGORY_IDS, type FoodResult, findOfficialRuling } from "@cube/core";
 import { describe, expect, it } from "vitest";
-import { result, scenarios } from "../test/fixtures";
+import { type result, scenarios } from "../test/fixtures";
 import {
   bandOf,
   confidenceLine,
