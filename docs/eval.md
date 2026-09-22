@@ -22,7 +22,7 @@ A labelled food set and a harness that asks Jev every question in `@cube/core` f
 
 The runner reads `TYPESAFE_API_KEY` from the root `.env`, sends `buildCubeRequest(item)` through `TypeSafeClient` 4 items at a time with the SDK's default retries, and records each call's answers, token usage, wall-clock latency and attempt count. Every answer is appended to `raw.jsonl` as it lands, so an interrupted run resumes where it stopped.
 
-A pass over the set costs about $0.06: roughly 9,430 input tokens per call at $0.042 per million (question set 4).
+A pass over the set costs about $0.06: roughly 9,570 input tokens per call at $0.042 per million (question set 5).
 
 > [!IMPORTANT]
 > The cache is keyed by `QUESTION_SET_VERSION` and a SHA-256 fingerprint of the full request. If a question changes without a version bump, the runner refuses to reuse the old answers. Bump the version (the core fingerprint test asks for that too) and run `pnpm eval` to get a new `results/v<version>/` folder next to the old one.
@@ -202,3 +202,45 @@ Effects on tune and canon:
 > Several `includes` and `not_for` phrases describe tune items in structural words: a jelly doughnut, a whole potato in its skin, a single-crust pie served whole, a bun cut into two halves. Leak detection scans only `examples` arrays, so "Not in prompt" does not see them. Holdout, which held at 42/44, is the fair check for this round.
 
 Label change: plain "pie" now accepts toast as well, since the site rules a pumpkin pie slice bent toast. Jev said calzone for it in v2 and v3, so both were rescored offline with their own question sets and only the accepted-label cell in each report changed.
+
+## Question set 5
+
+[`eval/results/v5/report.md`](../eval/results/v5/report.md), same 156 items, `jev-1.13.0`, 2026-09-22. Kept: tune and holdout held, and tune calibration improved. Every tune ruling at confidence 0.8 or higher was right, and the one wrong ruling lost confidence.
+
+| Metric | v4 | v5 |
+|---|---|---|
+| Tune accuracy | 98.5% (66/67) | 98.5% (66/67) |
+| Tune family | 100% | 100% |
+| Holdout accuracy | 95.5% (42/44) | 95.5% (42/44) |
+| Holdout family | 97.7% | 97.7% |
+| Canon agreement | 100% (45/45) | 100% (45/45) |
+| Input kind | 100% | 100% |
+| Unanimous rulings correct (tune, canon) | 45/45, 42/42 | 47/47, 43/43 |
+| Majority rulings correct (tune) | 12/13 | 10/11 |
+| Tune food log loss, Brier | 0.106, 0.028 | 0.094, 0.022 |
+| Eyes null, agree | 31.4%, 91.7% | 30.7%, 90.7% |
+| Input tokens per call | 9,434 | 9,568 |
+| Cost per pass | $0.062 | $0.063 |
+
+Log loss and Brier score the summed probability Jev gave the accepted labels on the 58 tune food items. The idea behind this round: every example that shares a word with a near miss (roll, pastry, sausage) should carry the structure that decides its category. What changed:
+
+- **Glosses on shared-word examples.** "pigs in a blanket (pastry wrapped around a sausage, which shows at both ends)", "egg roll (ends folded in before rolling, so the filling is hidden)", "lobster roll (a split-top bun hinged along the bottom)" and "maki roll (rice and seaweed rolled into a tube of any size, both ends open)".
+- **A boundary case moved to the right option.** The non-starch coating sentence left `calzone.not_for` and became part of `sandwich.includes`, which also says the bread is cut all the way through with no hinge. In v4 the same contrast in the wrong option had not moved moon pie at all.
+- **Seams and hollow pastry.** `sushi.includes` says a cut log's ends stay open even when its seam is pressed shut. `calzone.includes` names a hollow pastry or doughnut filled through a small hole instead of a jelly doughnut.
+- **Form words.** `SERVED_FORM` lists sliced and cut, as `varies_by_serving.fixed_form` already did.
+- **Outside the category question.** The quiche honorary examples gain "a sock (open at one end only)", the honorary `how_to_judge` treats a shape open at one end as quiche on its side, and the `input_kind` not_food example "a canoe", which is a holdout item, became "a bicycle".
+
+Effects on tune and canon:
+
+- Still wrong: sausage roll, but calzone fell from 0.74 to 0.62 and sushi rose from 0.26 to 0.38. Its all-walls reading is 0.70, so the eyes still picture sealed ends.
+- Wider margins: moon pie (sandwich 0.60 to 0.72), eclair (calzone 0.76 to 0.84), baked potato (toast 0.76 to 0.83), sub roll sliced all the way through (sandwich 0.50 to 0.57), sushi burrito (sushi 0.50 to 0.55) and poke bowl (nachos 0.50 to 0.54). Canon slice of pie is back to unanimous.
+- Losses: sloppy joe fell from sandwich 0.95 to 0.76 with taco at 0.24, which looks like the new "bun ... hinged" wording under taco pulling bun foods. Spotted dick fell from toast 0.76 to 0.72.
+- Honorary: sleeping bag is still calzone (0.53), though quiche rose from under 0.03 to 0.23. A cardboard box flipped from calzone to quiche (0.47 against 0.42). That risk was flagged before the run, and the flip is arguable, since an open box is quiche. The honorary total held at 5/7.
+- "Not in prompt" on holdout now counts 36 items instead of 35, because a canoe left the prompt.
+
+> [!WARNING]
+> `sandwich.includes`, `sushi.includes` and `calzone.includes` still describe tune items in structural words (a bun cut all the way through, a log with a pressed seam, a hollow pastry filled through a hole). "Not in prompt" does not see them, so holdout remains the fair check.
+
+Label change: lucky charms (canon) now carries `wet: true`, since the site pictures it in a bowl of milk. Jev read it wet in every version (0.70 to 0.71), so the v2, v3 and v4 reports were rescored offline with their own question sets and only the wet cell changed, from 16/16 to 17/17.
+
+Deferred to an offline threshold round with no version bump, because each one changes display rather than rulings and several need changes outside `questions.ts`: `majority` 0.5, `rice` 0.4, `dependsOnServing` 0.5, a lower `abusive` bar (only after the set has abusive positives) and separate yes and no bars for the interior Nouls.
