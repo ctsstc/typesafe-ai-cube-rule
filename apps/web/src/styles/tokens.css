@@ -1,4 +1,4 @@
-/* Every color is light-dark(light, dark) so the two themes cannot drift. contrast.test.ts reads this file. */
+/* contrast.test.ts only checks light-dark(#rrggbb, #rrggbb) pairs. Tokens in any other form go untested. */
 :root {
   color-scheme: light dark;
 

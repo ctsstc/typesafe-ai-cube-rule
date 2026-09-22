@@ -264,9 +264,7 @@ export function RulingCard({ state, onRetry, onEdit, onCubeAnother }: RulingCard
             <p className="ruling__status" aria-hidden="true">
               {line}
             </p>
-            <p className="ruling__slow" data-visible={slow || undefined}>
-              {slow ? STILL_THINKING : " "}
-            </p>
+            <p className="ruling__slow">{slow ? STILL_THINKING : " "}</p>
             <SkeletonOdds />
           </>
         )}

@@ -19,7 +19,6 @@ export const HERO_ANGLES: Readonly<Record<CategoryId, Angle>> = {
   nachos: { rx: -22, ry: -38 },
 };
 
-// Bake order during the reveal: base first, then sides, ends, and the lid last.
 export const BAKE_ORDER: Readonly<Record<CubeFace, number>> = {
   bottom: 0,
   left: 1,

@@ -118,7 +118,6 @@ input {
   background: var(--warn-bg);
 }
 
-/* Buttons */
 .button {
   display: inline-flex;
   align-items: center;
@@ -203,7 +202,6 @@ input {
   border-color: var(--control);
 }
 
-/* Food links: real links that look like chips */
 .food-chip {
   display: inline-flex;
   align-items: center;
@@ -228,7 +226,6 @@ input {
   border-color: var(--control);
 }
 
-/* Toast */
 .toast {
   position: fixed;
   left: 50%;

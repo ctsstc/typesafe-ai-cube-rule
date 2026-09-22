@@ -1,7 +1,7 @@
 import { CATEGORIES, type CategoryId, CUBE_FACES } from "@cube/core";
 import { type CSSProperties, useLayoutEffect, useRef } from "react";
 import { useReducedMotion } from "../hooks/useReducedMotion";
-import { type Angle, BAKE_ORDER, describeCube, HERO_ANGLES, WIREFRAME_ANGLE } from "../lib/cube";
+import { BAKE_ORDER, describeCube, HERO_ANGLES, WIREFRAME_ANGLE } from "../lib/cube";
 import "./Cube3D.css";
 
 export type CubePhase = "loading" | "reveal" | "static";
@@ -10,11 +10,9 @@ interface Cube3DProps {
   readonly category: CategoryId | null;
   readonly phase?: CubePhase;
   readonly size?: string;
-  readonly angle?: Angle;
   readonly starchColor?: string | null;
   readonly muted?: boolean;
   readonly decorative?: boolean;
-  readonly label?: string;
   readonly className?: string;
 }
 
@@ -45,18 +43,16 @@ export function Cube3D({
   category,
   phase = "static",
   size,
-  angle,
   starchColor,
   muted = false,
   decorative = false,
-  label,
   className,
 }: Cube3DProps) {
   const cubeRef = useRef<HTMLDivElement>(null);
   const spin = useRef<Animation | null>(null);
   const lastSpinAngle = useRef<number | null>(null);
   const reduced = useReducedMotion();
-  const resting = angle ?? (category ? HERO_ANGLES[category] : WIREFRAME_ANGLE);
+  const resting = category ? HERO_ANGLES[category] : WIREFRAME_ANGLE;
   const geometry = category ? CATEGORIES[category].geometry : null;
   const layout = phase === "loading" ? null : geometry;
 
@@ -102,7 +98,7 @@ export function Cube3D({
 
   const a11y = decorative
     ? { "aria-hidden": true as const }
-    : { role: "img", "aria-label": label ?? describeCube(phase === "loading" ? null : category) };
+    : { role: "img", "aria-label": describeCube(phase === "loading" ? null : category) };
 
   return (
     <div

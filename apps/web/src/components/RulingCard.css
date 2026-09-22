@@ -127,7 +127,6 @@
   gap: var(--space-3);
 }
 
-/* Stamp */
 .stamp {
   position: absolute;
   right: max(4%, var(--space-3));
@@ -207,7 +206,6 @@
   animation: slam 280ms var(--ease-out) 750ms both;
 }
 
-/* Probabilities */
 .odds {
   display: flex;
   flex-direction: column;
@@ -342,7 +340,6 @@
   }
 }
 
-/* Official canon */
 .official {
   margin: 0;
 }
@@ -367,7 +364,6 @@
   color: var(--accent);
 }
 
-/* Detail tags */
 .tags {
   display: flex;
   flex-wrap: wrap;
@@ -404,7 +400,6 @@
   font-size: var(--step--1);
 }
 
-/* Declined */
 .declined {
   display: grid;
   justify-items: center;
@@ -426,7 +421,6 @@
   stroke-width: 1.1;
 }
 
-/* Error panel */
 .error-panel {
   display: grid;
   justify-items: center;
@@ -455,7 +449,6 @@
   color: var(--text-muted);
 }
 
-/* Share */
 .share {
   display: grid;
   gap: var(--space-3);
@@ -486,7 +479,6 @@
   border-radius: var(--radius-s);
 }
 
-/* Nerd stats */
 .nerd summary {
   display: flex;
   align-items: center;
@@ -539,7 +531,6 @@
   white-space: pre;
 }
 
-/* Reveal choreography: cube settles, stamp slams, bars grow, details rise. */
 .ruling[data-reveal] .ruling__verdict {
   animation: rise 240ms var(--ease-out) 700ms both;
 }

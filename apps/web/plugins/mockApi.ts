@@ -40,7 +40,6 @@ const ERRORS: Record<string, ClassifyErrorCode> = {
 
 const DELAYS: Record<string, number> = { "mock slow": 5000, "mock timeout": 12000 };
 
-// Keyless local development only: `CUBE_MOCK_API=1 vite` answers /api/classify without wrangler.
 export function mockApi(): Plugin {
   return {
     name: "cube:mock-api",

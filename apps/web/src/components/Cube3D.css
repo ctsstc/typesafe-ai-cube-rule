@@ -149,7 +149,6 @@
   opacity: 0.6;
 }
 
-/* Loading: a dashed wireframe with a gentle pulse. */
 .cube-stage[data-phase="loading"] .out,
 .cube-stage[data-phase="loading"] .in {
   background: transparent;
@@ -166,7 +165,6 @@
   }
 }
 
-/* Reveal: faces bake in, then each category gets its own flourish. */
 .cube-stage[data-phase="reveal"] .is-starch .out,
 .cube-stage[data-phase="reveal"] .is-starch .in,
 .cube-stage[data-phase="reveal"] .chip {

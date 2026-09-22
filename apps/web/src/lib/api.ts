@@ -96,7 +96,6 @@ async function request(item: string): Promise<Classified> {
 const inflight = new Map<string, Promise<Classified>>();
 const settled = new Map<string, Classified>();
 
-// One request per food per session: chips, prefetch, and back/forward never refetch.
 export function classify(item: string): Promise<Classified> {
   const cached = inflight.get(item);
   if (cached) return cached;
