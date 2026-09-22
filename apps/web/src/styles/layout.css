@@ -359,6 +359,7 @@
   grid-template-columns: auto 1fr;
   gap: var(--space-3);
   align-items: start;
+  align-content: start;
   padding: var(--space-3);
   background: var(--surface);
   border: 1px solid var(--border);
