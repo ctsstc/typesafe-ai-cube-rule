@@ -298,7 +298,7 @@ Headline only while tuning: 95.5% (42/44), family 97.7% (43/44). Open the detail
 | pizza roll | tune | calzone | calzone | 0.99 | unanimous | calzone | 9259 | 210 | yes |
 | onigiri | holdout | calzone (or toast) | calzone | 0.90 | unanimous | null | 9260 | 172 | yes |
 | quesadilla | holdout | taco (or sandwich) | taco | 0.84 | unanimous | taco | 9260 | 172 | yes |
-| pie | tune | calzone (or quiche, taco) | calzone | 0.95 | unanimous | null | 9258 | 196 | yes |
+| pie | tune | calzone (or quiche, taco, toast) | calzone | 0.95 | unanimous | null | 9258 | 196 | yes |
 | hot pocket | tune | calzone | calzone | 1.00 | unanimous | calzone | 9259 | 230 | yes |
 | stromboli | tune | calzone (or sushi) | calzone | 0.97 | unanimous | calzone | 9260 | 214 | yes |
 | tamale | holdout | calzone | calzone | 0.99 | unanimous | calzone | 9259 | 163 | yes |

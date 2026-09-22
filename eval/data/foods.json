@@ -704,9 +704,9 @@
   {
     "item": "pie",
     "expected": "calzone",
-    "accept": ["quiche", "taco"],
+    "accept": ["quiche", "taco", "toast"],
     "source": "consensus",
-    "note": "The site rules a whole pie a calzone and a slice a taco on its side. Single-crust pies are quiche."
+    "note": "The site rules a whole pie a calzone, a slice a taco on its side and a pumpkin pie slice bent toast. Whole single-crust pies are quiche."
   },
   {
     "item": "hot pocket",
