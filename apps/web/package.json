@@ -5,12 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:mock": "CUBE_MOCK_API=1 vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json && tsc -p tsconfig.node.json",
+    "og": "sh scripts/render-og.sh"
   },
   "dependencies": {
     "@cube/core": "workspace:*",
+    "@fontsource-variable/fraunces": "^5.3.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
@@ -22,6 +25,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
+    "axe-core": "^4.13.0",
     "jsdom": "^30.1.1",
     "vite": "^8.3.0",
     "wrangler": "^4.136.3"
