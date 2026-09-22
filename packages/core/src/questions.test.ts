@@ -40,6 +40,7 @@ describe("buildCubeRequest", () => {
     expect(request.state).toEqual({ item: "hot dog" });
   });
 
+  // The limits are in tokens. Characters always outnumber tokens, so this is a conservative proxy.
   it("stays well inside the API size budgets", () => {
     const request = buildCubeRequest("x".repeat(60));
     const longest = Math.max(
