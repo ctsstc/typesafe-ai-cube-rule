@@ -1,0 +1,71 @@
+import { type CubeResult, precheckItem, toCubeResult } from "@cube/core";
+import { useCallback, useRef, useState } from "react";
+import { type Classified, cachedClassified, classify, RulingError } from "../lib/api";
+
+// "typed" rulings move focus to the result. "link" rulings come from a URL someone else wrote,
+// so they neither steal focus nor echo the food until Jev has cleared it.
+export type Origin = "typed" | "link" | "history";
+
+interface Base {
+  readonly id: number;
+  readonly item: string;
+  readonly origin: Origin;
+}
+
+export type OracleState =
+  | { readonly status: "idle" }
+  | (Base & { readonly status: "loading" })
+  | (Base & {
+      readonly status: "done";
+      readonly result: CubeResult;
+      readonly meta: Classified | null;
+    })
+  | (Base & { readonly status: "error"; readonly error: RulingError });
+
+export type ActiveState = Exclude<OracleState, { status: "idle" }>;
+
+export function useOracle() {
+  const [state, setState] = useState<OracleState>({ status: "idle" });
+  const nextId = useRef(0);
+  const currentId = useRef(0);
+
+  const rule = useCallback((item: string, origin: Origin) => {
+    const id = ++nextId.current;
+    currentId.current = id;
+    const base = { id, item, origin };
+    const nonsense = precheckItem(item);
+    if (nonsense) {
+      setState({ ...base, status: "done", result: nonsense, meta: null });
+      return;
+    }
+    const cached = cachedClassified(item);
+    if (cached) {
+      setState({
+        ...base,
+        status: "done",
+        result: toCubeResult(item, cached.response),
+        meta: cached,
+      });
+      return;
+    }
+    setState({ ...base, status: "loading" });
+    classify(item).then(
+      (meta) => {
+        if (currentId.current !== id) return;
+        setState({ ...base, status: "done", result: toCubeResult(item, meta.response), meta });
+      },
+      (error: unknown) => {
+        if (currentId.current !== id) return;
+        const failure = error instanceof RulingError ? error : new RulingError("internal");
+        setState({ ...base, status: "error", error: failure });
+      },
+    );
+  }, []);
+
+  const reset = useCallback(() => {
+    currentId.current = ++nextId.current;
+    setState({ status: "idle" });
+  }, []);
+
+  return { state, rule, reset };
+}
