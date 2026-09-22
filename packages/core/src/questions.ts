@@ -10,7 +10,7 @@ import {
 
 // Bump QUESTION_SET_VERSION whenever a question or CUBE_MODEL changes: it is part of the cache key.
 export const CUBE_MODEL = "jev-1.13.0";
-export const QUESTION_SET_VERSION = "3";
+export const QUESTION_SET_VERSION = "4";
 
 // Untuned starting points. Calibrate against the official rulings plus held-out foods before trusting them.
 export const THRESHOLDS = {
@@ -43,7 +43,8 @@ const SERVED_FORM =
 const READ_AS_FOOD =
   "If `item` is misspelled, slang, a brand name, or mentions a food inside a question or phrase, judge the food it most likely means.";
 
-type Rubric = { starch_position: string; examples: string[]; not_for: string };
+// Food boundary cases go in `includes`: honorary_category reuses starch_position.
+type Rubric = { starch_position: string; includes?: string; examples: string[]; not_for: string };
 type Outcome = { what: string; examples: string[] };
 
 const RUBRIC: Record<CategoryId, Rubric> = {
@@ -64,9 +65,10 @@ const RUBRIC: Record<CategoryId, Rubric> = {
   sandwich: {
     starch_position:
       "Starch on the top and bottom faces as two separate pieces, with all four sides open.",
+    includes: "A bun cut into two separate halves, top and bottom.",
     examples: ["sandwich", "hamburger", "ice cream sandwich"],
     not_for:
-      "A third starch layer in the middle, between fillings, like a Big Mac or a club sandwich (cake). Top and bottom still joined along one edge, like a hot dog bun, a sub roll left hinged along one side, or a folded quesadilla (taco).",
+      "A third starch layer in the middle, between fillings, like a Big Mac or a club sandwich (cake). Top and bottom still joined along one edge by a hinge or fold, like a hot dog bun or a folded quesadilla (taco).",
   },
   taco: {
     starch_position:
@@ -78,23 +80,27 @@ const RUBRIC: Record<CategoryId, Rubric> = {
   sushi: {
     starch_position:
       "Starch wrapped around the filling like a tube, covering the top, bottom, and both sides, with both ends open so the filling shows at each end.",
-    examples: ["maki roll", "cannoli", "chicken wrap"],
+    includes: "A filled log cut into pieces: each cut end is open and shows the filling.",
+    examples: ["maki roll (any size, both ends open)", "cannoli", "chicken wrap"],
     not_for:
-      "Both ends closed so the filling is hidden, whether folded shut like a burrito or a hollow pastry filled through a small hole (calzone). An open top, like a hot dog (taco). A mound of rice with a topping and no wrap, like nigiri (toast).",
+      "Both ends closed so the filling is hidden, such as ends folded in or crimped shut (calzone). An open top, like a hot dog (taco). A mound of rice with a topping and no wrap, like nigiri (toast).",
   },
   quiche: {
     starch_position:
       "Starch on the bottom and all four sides like an edible bowl or open box, with only the top open.",
+    includes: "A single-crust pie served whole, with a bottom crust and rim but no top crust.",
     examples: ["quiche", "fruit tart", "ice cream cone"],
     not_for:
-      "A starch lid sealing the top, like a whole double-crust pie (calzone). A flat base without walls, like regular pizza (toast). A bowl that is not made of starch, like the bowl of a burrito bowl or poke bowl: judge only the food inside it.",
+      "A top crust sealing in the filling, as on a double-crust pie (calzone). A flat base without walls, like regular pizza (toast). A bowl that is not made of starch, like the bowl of a burrito bowl or poke bowl: judge only the food inside it.",
   },
   calzone: {
     starch_position:
       "Starch sealing the filling on all six faces, with no open side or end, so the filling is hidden.",
+    includes:
+      "Filling piped in through a small hole, like a jelly doughnut, still counts as sealed.",
     examples: ["calzone", "ravioli", "empanada", "egg roll"],
     not_for:
-      "Open ends where the filling shows, like a falafel wrap, an enchilada, or pigs in a blanket (sushi). An open top with no top crust, like a cheesecake or a whole key lime pie (quiche). A dish only named after a sealed food, like a burrito bowl, which has no wrapper: judge its own structure.",
+      "Open ends where the filling shows, like a falafel wrap, an enchilada, pigs in a blanket, or a filled log cut into pieces (sushi). An open top with no top crust, like a cheesecake or a whole single-crust pie such as key lime (quiche). One solid piece of starch with no separate filling, like a muffin or a whole potato in its skin (toast). Top and bottom starch layers whose sides are closed only by a coating that is not starch, like chocolate (sandwich). A food only named after a sealed food, like a burrito bowl: judge its own structure, not its name.",
   },
   cake: {
     starch_position:
@@ -116,14 +122,16 @@ const RUBRIC: Record<CategoryId, Rubric> = {
 const SITE_EXAMPLE_GLOSS: Readonly<Record<string, string>> = {
   "pumpkin pie slice (bent toast)":
     "pumpkin pie slice (bent toast: one bottom crust curving up at the outer rim, no top crust)",
-  "sub sandwich (uncut)": "sub sandwich (uncut, the roll still hinged along one side)",
+  "sub sandwich (uncut)": "sub sandwich (uncut, top and bottom still joined by a hinge of bread)",
   "slice of pie (taco on its side)":
     "slice of pie (taco on its side: a double-crust slice, its top and bottom crusts joined at the outer rim)",
   "pigs in a blanket": "pigs in a blanket (the sausage shows at both ends)",
   "key lime pie": "key lime pie (one bottom crust with a rim, open top)",
   burrito: "burrito (both ends folded shut)",
   "corn dog": "corn dog (batter covers both ends)",
-  "pie (whole)": "pie (whole, with a top crust sealing in the filling)",
+  "pie (whole)":
+    "pie (whole, double-crust like apple or cherry: its top crust seals in the filling)",
+  pizza: "pizza (served flat)",
 };
 
 function glossedSiteExamples(id: CategoryId): string[] {
@@ -297,16 +305,21 @@ export function buildCubeQuestions() {
         how_to_judge: [
           SERVED_FORM,
           "Match where the structural starch of `item` sits against each option's starch_position.",
-          "Use the examples to see where starch sits, not to match words: `item` can share a word with an example from another category.",
+          "Use the examples and not_for contrasts to see where starch sits, not to match words: `item` can share a word with a food named under another option.",
           "Orientation does not matter. The same shape turned on its side keeps its category.",
           "Category names label starch positions, not food types. A food called a sandwich, cake, pie, roll, burrito, or taco can belong to any category.",
           READ_AS_FOOD,
         ],
       },
-      byCategory((id) => ({
-        ...RUBRIC[id],
-        examples: [...glossedSiteExamples(id), ...RUBRIC[id].examples],
-      })),
+      byCategory((id) => {
+        const { starch_position, includes, examples, not_for } = RUBRIC[id];
+        return {
+          starch_position,
+          ...(includes === undefined ? {} : { includes }),
+          examples: [...glossedSiteExamples(id), ...examples],
+          not_for,
+        };
+      }),
     ),
     honorary_category: choice(
       {

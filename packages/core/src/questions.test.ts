@@ -15,6 +15,7 @@ const REQUEST_FINGERPRINTS: Readonly<Record<string, string>> = {
   "1": "6ba7b6e0c52da7bf68379c83ef94ba33b88bd6b4c4b4ecdebf1a8de2cb9f6dda",
   "2": "8510ae891b2cc7ebcf5cd58d4f590f73c05afd2a82de3cd5d472a53e1475e620",
   "3": "c42d0e7e0f00d3c24b07a10d2583f583e42a5cc6eb9c6efa1baeda1675dde90b",
+  "4": "14fed537b0b04ec38f84e94ad339b4850c91966fd7d63137fd7578d39a5ff118",
 };
 
 const sha256 = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
