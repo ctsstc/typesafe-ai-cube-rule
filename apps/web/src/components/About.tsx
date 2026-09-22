@@ -56,11 +56,16 @@ export function About() {
           <ul>
             <li>
               The food name you type goes from your browser to this site's server, which runs on
-              Cloudflare Pages, and from there to TypeSafe's API. Nothing else about you is sent.
+              Cloudflare Pages. If nobody has asked about that food before, the server sends the
+              name, and only the name, to TypeSafe's API.
             </li>
             <li>
-              Rulings are cached by food name, so everyone who asks about the same food gets the
-              same ruling and Jev isn't asked twice.
+              Each ruling is stored by food name in Cloudflare, so the next person who asks gets
+              the same answer instantly and Jev isn't asked twice. Who asked is not stored.
+            </li>
+            <li>
+              Your IP address is held in memory for a minute or so to slow down floods of requests.
+              Our code doesn't log it or what you typed.
             </li>
             <li>No accounts, no cookies, and no analytics scripts.</li>
             <li>Your theme choice stays in your browser's local storage.</li>

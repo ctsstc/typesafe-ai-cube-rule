@@ -34,7 +34,7 @@ const STATUS_CODES: Record<number, ClassifyErrorCode> = {
   504: "timeout",
 };
 
-const CACHE_HEADERS = ["x-cache", "cf-cache-status", "x-cube-cache"];
+const CACHE_HEADERS = ["x-cube-cache", "cf-cache-status", "x-cache"];
 
 export function parseRetryAfter(value: string | null, now = Date.now()): number | null {
   if (!value) return null;

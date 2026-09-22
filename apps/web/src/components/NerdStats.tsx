@@ -19,9 +19,16 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+const CACHE_LABELS: Record<string, string> = {
+  MISS: "miss (asked Jev)",
+  HIT: "hit (edge cache)",
+  KV: "hit (stored ruling)",
+};
+
 function cacheLabel(meta: Classified): string {
-  if (meta.fromBrowserCache) return "browser cache";
-  return meta.cache ?? "not reported";
+  if (meta.fromBrowserCache) return "hit (browser cache)";
+  if (!meta.cache) return "not reported";
+  return CACHE_LABELS[meta.cache.toUpperCase()] ?? meta.cache;
 }
 
 export function NerdStats({ result, meta }: NerdStatsProps) {
