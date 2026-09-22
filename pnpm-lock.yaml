@@ -45,6 +45,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^5.20260922.1
         version: 5.20260922.1
+      '@fontsource/fraunces':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@testing-library/jest-dom':
         specifier: ^7.0.1
         version: 7.0.1(@testing-library/dom@10.4.2)(vitest@5.0.1(@types/node@24.13.6)(jsdom@30.1.1)(vite@8.3.0(@types/node@24.13.6)(esbuild@0.28.2)(tsx@4.23.15)))
@@ -589,6 +592,9 @@ packages:
 
   '@fontsource-variable/fraunces@5.3.0':
     resolution: {integrity: sha512-9BYGySn4AHEJdgp9Z28tQ3X+laJMEOITXkQarZXeloWQZDq5oOvXJ3kDA8c7MGIfpogIaZfjrQBqmda8POOCKA==}
+
+  '@fontsource/fraunces@5.3.0':
+    resolution: {integrity: sha512-LEHTOBiZufQzAvnAe2rZ8ZknbDS28Q9kzwb0L+gZJEmjLGr8hhZ/5NuHXwDuHBWhVXYoiGGXmrb0H6Ko/RrHTg==}
 
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
@@ -1964,6 +1970,8 @@ snapshots:
   '@exodus/bytes@1.16.0': {}
 
   '@fontsource-variable/fraunces@5.3.0': {}
+
+  '@fontsource/fraunces@5.3.0': {}
 
   '@img/colour@1.1.0': {}
 
