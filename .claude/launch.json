@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pages-preview",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["preview:pages"],
+      "port": 8788
+    },
+    {
+      "name": "dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "port": 5173
+    }
+  ]
+}
