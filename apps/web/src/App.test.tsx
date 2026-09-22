@@ -1,3 +1,4 @@
+import { classifyUrl } from "@cube/core";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import axe from "axe-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,7 +38,7 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: "Hot dog: Officially a taco." }),
     ).toBeVisible();
-    expect(fetchMock).toHaveBeenCalledWith("/api/classify?food=hot+dog&v=2", expect.anything());
+    expect(fetchMock).toHaveBeenCalledWith(classifyUrl("hot dog"), expect.anything());
     expect(input()).toHaveValue("hot dog");
     expect(document.title).toBe("Hot dog: officially a taco | Cube Rule Oracle");
   });

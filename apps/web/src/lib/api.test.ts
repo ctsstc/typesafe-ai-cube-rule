@@ -1,4 +1,4 @@
-import { mockCubeResponse } from "@cube/core";
+import { classifyUrl, mockCubeResponse } from "@cube/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CLIENT_TIMEOUT_MS,
@@ -35,7 +35,7 @@ describe("classify", () => {
     const first = await classify("hot dog");
     const second = await classify("hot dog");
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/classify?food=hot+dog&v=2");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(classifyUrl("hot dog"));
     expect(first.cache).toBe("HIT");
     expect(first.response.mock).toBe(true);
     expect(second).toBe(first);
