@@ -4,3 +4,4 @@ packages:
   - eval
 onlyBuiltDependencies:
   - esbuild
+  - workerd
