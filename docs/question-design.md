@@ -45,7 +45,7 @@ The SPA bundle never sees the SDK or the rubric text. `@cube/core` is marked `"s
 | `starch_middle_layer` | Noul | Jev's eyes: cake layers |
 | `starch_loose_pieces` | Noul | Jev's eyes: nachos core |
 | `starch_block` | Noul | Jev's eyes: the muffin clause |
-| `varies_by_serving` | Noul | "It depends how it's served" chip |
+| `varies_by_serving` | Noul. A form word in `item` (slice, whole, folded, uncut) means no | "It depends how it's served" chip |
 | `debate_heat` | Score, 4 situational levels | Share label: Settled, Mild, Spicy, Friendship-ending |
 
 Design choices worth keeping:
@@ -54,6 +54,8 @@ Design choices worth keeping:
 - **Every question is self-contained.** Question ids are not sent to the model, so each question that says "structural starch" carries its definition.
 - **One condition per Noul.** `is_wet` asks only about a pool of liquid, and `starch_block` only asks whether the item is one solid piece of starch.
 - **Cake leads with "a starch layer in the middle, between fillings"** instead of asking Jev to count layers.
+- **Site examples carry their structure** inside the `category` question only, such as "burrito (both ends folded shut)". Jev copies the ruling of an example that shares a word with `item`, so the structure has to sit in the example string. `CATEGORIES` keeps the site's wording, and the gloss keeps the site name before the parenthesis so eval leak detection still finds it.
+- **Commands are nonsense.** `input_kind` treats an attempt to control the app's answer as nonsense even when it names a food, while a question about what kind of food something is stays food.
 - **No-match outcomes exist everywhere:** `input_kind` is a separate presence judgment, Salad is the catch-all food category, `starch` has `none` and `other_starch`, and the honorary question sends things with no solid form to Salad.
 
 ## Abuse guard
@@ -102,7 +104,7 @@ All values are untuned guesses until the eval set has run.
 
 ## Known risks
 
-- **Name bias.** Option keys are food words and Jev reads literally. Watch ice cream sandwich, sushi burrito, taco salad, pancake and cupcake. Name traps make this visible. If evals show bias, switch to neutral option keys and map them back in code.
+- **Name bias.** Jev reads literally, and in evals the pull came from example strings that share a word with `item` more than from option keys. Sushi burrito still goes calzone through "burrito", and whole pumpkin pie through "pie (whole)". Name traps make this visible. If glossing examples stops helping, try neutral option keys and map them back in code.
 - **Cost of the eyes.** The 8 geometry Nouls roughly double the tokens, because each repeats the structural starch definition. To drop them, delete the Nouls, `readEyes` and the `eyes` and `muffinClause` fields, then bump the version.
 - **Eyes limits.** They cannot express two adjacent walls or a corner, contradictory face answers give `null` or a wrong reading, and cheesecake or an uncut sub may disagree with the ruling. Frame a disagreement as "Jev's eyes vs Jev's gut", not as a correction.
 - **Honorary path.** "Treat the shell as starch" is an indirection, which the Jev jaggedness page lists as a weak spot. Expect noisier answers there.
