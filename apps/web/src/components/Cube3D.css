@@ -1,0 +1,327 @@
+.cube-stage {
+  --cube: clamp(140px, 44vw, 220px);
+  --half: calc(var(--cube) / 2);
+  --crust-width: max(2px, calc(var(--cube) / 48));
+  --crumb-face: var(--crumb);
+  --crumb-face-inner: var(--crumb-inner);
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: calc(var(--cube) * 1.75);
+  height: calc(var(--cube) * 1.65);
+  perspective: calc(var(--cube) * 4.2);
+  perspective-origin: 50% 40%;
+}
+
+.cube-stage[data-tinted] {
+  --crumb-face: color-mix(in oklab, var(--starch) 28%, var(--crumb));
+  --crumb-face-inner: color-mix(in oklab, var(--crumb-face) 78%, var(--crust));
+}
+
+.cube-wrap,
+.cube,
+.face,
+.slab,
+.skin {
+  transform-style: preserve-3d;
+}
+
+.cube-wrap {
+  width: var(--cube);
+  height: var(--cube);
+}
+
+.cube {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform: rotateX(var(--rx)) rotateY(calc(var(--ry) + var(--ry-turn, 0deg)));
+  transition: transform 300ms var(--ease-out);
+}
+
+.face,
+.slab,
+.skin {
+  position: absolute;
+  inset: 0;
+}
+
+.face--front {
+  --shade: 0.03;
+  transform: translateZ(var(--half));
+}
+.face--back {
+  --shade: 0.1;
+  transform: rotateY(180deg) translateZ(var(--half));
+}
+.face--left {
+  --shade: 0.07;
+  transform: rotateY(-90deg) translateZ(var(--half));
+}
+.face--right {
+  --shade: 0.12;
+  transform: rotateY(90deg) translateZ(var(--half));
+}
+.face--top {
+  --shade: 0;
+  transform: rotateX(90deg) translateZ(var(--half));
+}
+.face--bottom {
+  --shade: 0.15;
+  transform: rotateX(-90deg) translateZ(var(--half));
+}
+.slab {
+  transform: rotateX(90deg);
+  inset: 3%;
+}
+
+.out,
+.in {
+  position: absolute;
+  inset: 0;
+  display: block;
+  backface-visibility: hidden;
+  border-radius: 3px;
+}
+
+.in {
+  transform: rotateY(180deg);
+}
+
+.is-starch .out,
+.is-starch .in,
+.chip {
+  background-color: var(--crumb-face);
+  background-image:
+    linear-gradient(rgb(40 20 0 / var(--shade, 0.05)), rgb(40 20 0 / var(--shade, 0.05))),
+    radial-gradient(circle at 30% 40%, var(--crumb-speck) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 70% 25%, var(--crumb-speck) 0 0.8px, transparent 1.4px),
+    radial-gradient(
+      circle at 55% 75%,
+      color-mix(in srgb, var(--crumb-speck) 70%, transparent) 0 1.1px,
+      transparent 1.8px
+    );
+  background-size:
+    auto,
+    11px 11px,
+    14px 14px,
+    17px 17px;
+}
+
+.is-starch .out {
+  box-shadow:
+    inset 0 0 0 var(--crust-width) var(--crust),
+    inset 0 0 0 calc(var(--crust-width) * 2.2) color-mix(in srgb, var(--crust) 35%, transparent),
+    inset 0 0 calc(var(--cube) / 7) color-mix(in srgb, var(--crust) 30%, transparent);
+}
+
+.is-starch .in {
+  background-color: var(--crumb-face-inner);
+  box-shadow:
+    inset 0 0 0 var(--crust-width) color-mix(in srgb, var(--crust) 70%, transparent),
+    inset 0 0 calc(var(--cube) / 8) rgb(0 0 0 / 0.22);
+}
+
+.is-open .out,
+.is-open .in {
+  background: var(--open-face);
+  border-radius: 1px;
+  outline: 1.5px dashed var(--control);
+  outline-offset: -1.5px;
+}
+
+.is-open .in {
+  background: var(--open-face-inner);
+}
+
+.chip {
+  position: absolute;
+  left: calc(50% - var(--cube) * 0.16);
+  top: calc(50% - var(--cube) * 0.14);
+  width: calc(var(--cube) * 0.32);
+  height: calc(var(--cube) * 0.28);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  box-shadow: inset 0 calc(var(--cube) * -0.02) 0 var(--crust);
+}
+
+.cube-stage[data-muted] .skin,
+.cube-stage[data-muted] .chip {
+  opacity: 0.6;
+}
+
+/* Loading: a dashed wireframe with a gentle pulse. */
+.cube-stage[data-phase="loading"] .out,
+.cube-stage[data-phase="loading"] .in {
+  background: transparent;
+  outline: 1.5px dashed var(--control);
+  animation: wire-pulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes wire-pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.5;
+  }
+}
+
+/* Reveal: faces bake in, then each category gets its own flourish. */
+.cube-stage[data-phase="reveal"] .is-starch .out,
+.cube-stage[data-phase="reveal"] .is-starch .in,
+.cube-stage[data-phase="reveal"] .chip {
+  animation: bake 220ms var(--ease-out) both;
+  animation-delay: calc(250ms + var(--order, 0) * 70ms);
+}
+
+.cube-stage[data-phase="reveal"] .is-starch > .skin {
+  animation: bake-scale 220ms var(--ease-out) both;
+  animation-delay: calc(250ms + var(--order, 0) * 70ms);
+}
+
+@keyframes bake {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes bake-scale {
+  from {
+    scale: 0.92;
+  }
+}
+
+.cube-stage[data-phase="reveal"][data-category="toast"] .face--bottom > .skin {
+  animation: rise-into-place 320ms var(--ease-out) 250ms both;
+}
+
+@keyframes rise-into-place {
+  from {
+    translate: 0 0 calc(var(--cube) * 0.12);
+  }
+}
+
+.cube-stage[data-phase="reveal"][data-category="sandwich"] .face--top > .skin {
+  animation: drop-lid 360ms var(--ease-spring) 460ms both;
+}
+
+@keyframes drop-lid {
+  from {
+    translate: 0 0 calc(var(--cube) * 0.18);
+  }
+}
+
+.cube-stage[data-phase="reveal"][data-category="taco"] :is(.face--left, .face--right) > .skin,
+.cube-stage[data-phase="reveal"][data-category="quiche"]
+  :is(.face--left, .face--right, .face--front, .face--back)
+  > .skin {
+  transform-origin: 50% 100%;
+  animation: wall-up 360ms var(--ease-out) both;
+  animation-delay: calc(250ms + var(--order, 0) * 70ms);
+}
+
+@keyframes wall-up {
+  from {
+    scale: 1 0;
+  }
+}
+
+.cube-stage[data-phase="reveal"][data-category="sushi"] .face--bottom {
+  --order: 0;
+}
+.cube-stage[data-phase="reveal"][data-category="sushi"] .face--right {
+  --order: 1.3;
+}
+.cube-stage[data-phase="reveal"][data-category="sushi"] .face--top {
+  --order: 2.6;
+}
+.cube-stage[data-phase="reveal"][data-category="sushi"] .face--left {
+  --order: 3.9;
+}
+
+.cube-stage[data-phase="reveal"][data-category="calzone"] .cube-wrap {
+  animation: crimp 380ms var(--ease-spring) 720ms both;
+}
+
+@keyframes crimp {
+  from {
+    scale: 1.06;
+  }
+}
+
+.cube-stage[data-phase="reveal"][data-category="cake"] .face--bottom > .skin {
+  animation: drop-layer-up 300ms var(--ease-out) 250ms both;
+}
+.cube-stage[data-phase="reveal"][data-category="cake"] .slab > .skin {
+  animation: drop-layer 300ms var(--ease-out) 370ms both;
+}
+.cube-stage[data-phase="reveal"][data-category="cake"] .face--top > .skin {
+  animation: drop-layer 300ms var(--ease-out) 490ms both;
+}
+
+@keyframes drop-layer {
+  from {
+    translate: 0 0 calc(var(--cube) * 0.2);
+    opacity: 0;
+  }
+}
+
+@keyframes drop-layer-up {
+  from {
+    translate: 0 0 calc(var(--cube) * -0.2);
+    opacity: 0;
+  }
+}
+
+.cube-stage[data-phase="reveal"][data-category="nachos"] .chip {
+  animation: chip-drop 420ms var(--ease-spring) both;
+  animation-delay: calc(300ms + var(--i) * 40ms);
+}
+
+@keyframes chip-drop {
+  from {
+    translate: 0 calc(var(--cube) * -0.6);
+    opacity: 0;
+  }
+}
+
+.cube-stage[data-phase="reveal"][data-category="salad"] .cube-wrap {
+  animation: wobble 520ms ease-in-out 380ms both;
+}
+
+@keyframes wobble {
+  0%,
+  100% {
+    scale: 1;
+  }
+  25% {
+    scale: 1.06 0.94;
+  }
+  50% {
+    scale: 0.96 1.04;
+  }
+  75% {
+    scale: 1.02 0.98;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cube,
+  .cube-stage *,
+  .cube-stage[data-phase] * {
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must win over every rule */
+    animation: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must win over every rule */
+    transition: none !important;
+  }
+
+  .cube-stage[data-phase="reveal"] {
+    animation: fade-in 150ms ease-out both;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
