@@ -25,7 +25,7 @@ describe("classify", () => {
   afterEach(() => vi.useRealTimers());
 
   it("calls only the canonical same-origin URL and caches the answer", async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn(async (_url: string) =>
       json(
         { ...mockCubeResponse("hot dog"), mock: true },
         { headers: { "cf-cache-status": "HIT" } },

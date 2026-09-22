@@ -22,7 +22,7 @@ export function applyThemePref(pref: ThemePref): void {
   else root.dataset.theme = pref;
   safeStorage.set(THEME_KEY, pref === "system" ? null : pref);
   for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
-    const scheme = meta.media.includes("dark") ? "dark" : "light";
+    const scheme = meta.getAttribute("media")?.includes("dark") ? "dark" : "light";
     meta.content = THEME_COLORS[pref === "system" ? scheme : pref];
   }
 }
