@@ -1,0 +1,256 @@
+{
+  "questionSetVersion": "2",
+  "model": "jev-1.13.0",
+  "fingerprint": "8510ae891b2cc7ebcf5cd58d4f590f73c05afd2a82de3cd5d472a53e1475e620",
+  "datasetSize": 156,
+  "scored": 156,
+  "missing": 0,
+  "headline": {
+    "tuneN": 67,
+    "tuneAccuracy": 0.9104,
+    "tuneFamilyAccuracy": 0.9701,
+    "holdoutN": 44,
+    "holdoutAccuracy": 0.9545,
+    "holdoutFamilyAccuracy": 0.9773,
+    "canonN": 45,
+    "canonJevAgreement": 0.9778,
+    "inputKindAccuracy": 0.9936,
+    "abuseFalsePositives": 0,
+    "eyesAgreeRate": 0.9063,
+    "eyesNullRate": 0.3143,
+    "avgInputTokens": 8581,
+    "p50LatencyMs": 198,
+    "p95LatencyMs": 327,
+    "runCostUsd": 0.056226
+  },
+  "splits": {
+    "canon": {
+      "n": 45,
+      "accuracy": {
+        "n": 45,
+        "hits": 44,
+        "rate": 0.9777777777777777
+      },
+      "familyAccuracy": {
+        "n": 45,
+        "hits": 44,
+        "rate": 0.9777777777777777
+      },
+      "categoryAccuracy": {
+        "n": 44,
+        "hits": 43,
+        "rate": 0.9772727272727273
+      },
+      "inputKindAccuracy": {
+        "n": 45,
+        "hits": 45,
+        "rate": 1
+      },
+      "unleakedAccuracy": {
+        "n": 8,
+        "hits": 8,
+        "rate": 1
+      },
+      "verdicts": {
+        "unanimous": {
+          "n": 43,
+          "hits": 43,
+          "rate": 1
+        },
+        "majority": {
+          "n": 0,
+          "hits": 0,
+          "rate": null
+        },
+        "split": {
+          "n": 1,
+          "hits": 0,
+          "rate": 0
+        }
+      }
+    },
+    "tune": {
+      "n": 67,
+      "accuracy": {
+        "n": 67,
+        "hits": 61,
+        "rate": 0.9104477611940298
+      },
+      "familyAccuracy": {
+        "n": 67,
+        "hits": 65,
+        "rate": 0.9701492537313433
+      },
+      "categoryAccuracy": {
+        "n": 58,
+        "hits": 53,
+        "rate": 0.9137931034482759
+      },
+      "inputKindAccuracy": {
+        "n": 67,
+        "hits": 66,
+        "rate": 0.9850746268656716
+      },
+      "unleakedAccuracy": {
+        "n": 53,
+        "hits": 47,
+        "rate": 0.8867924528301887
+      },
+      "verdicts": {
+        "unanimous": {
+          "n": 42,
+          "hits": 42,
+          "rate": 1
+        },
+        "majority": {
+          "n": 16,
+          "hits": 11,
+          "rate": 0.6875
+        },
+        "split": {
+          "n": 0,
+          "hits": 0,
+          "rate": null
+        }
+      }
+    },
+    "holdout": {
+      "n": 44,
+      "accuracy": {
+        "n": 44,
+        "hits": 42,
+        "rate": 0.9545454545454546
+      },
+      "familyAccuracy": {
+        "n": 44,
+        "hits": 43,
+        "rate": 0.9772727272727273
+      },
+      "categoryAccuracy": {
+        "n": 38,
+        "hits": 36,
+        "rate": 0.9473684210526315
+      },
+      "inputKindAccuracy": {
+        "n": 44,
+        "hits": 44,
+        "rate": 1
+      },
+      "unleakedAccuracy": {
+        "n": 35,
+        "hits": 33,
+        "rate": 0.9428571428571428
+      },
+      "verdicts": {
+        "unanimous": {
+          "n": 25,
+          "hits": 25,
+          "rate": 1
+        },
+        "majority": {
+          "n": 12,
+          "hits": 10,
+          "rate": 0.8333333333333334
+        },
+        "split": {
+          "n": 1,
+          "hits": 1,
+          "rate": 1
+        }
+      }
+    },
+    "all": {
+      "n": 156,
+      "accuracy": {
+        "n": 156,
+        "hits": 147,
+        "rate": 0.9423076923076923
+      },
+      "familyAccuracy": {
+        "n": 156,
+        "hits": 152,
+        "rate": 0.9743589743589743
+      },
+      "categoryAccuracy": {
+        "n": 140,
+        "hits": 132,
+        "rate": 0.9428571428571428
+      },
+      "inputKindAccuracy": {
+        "n": 156,
+        "hits": 155,
+        "rate": 0.9935897435897436
+      },
+      "unleakedAccuracy": {
+        "n": 96,
+        "hits": 88,
+        "rate": 0.9166666666666666
+      },
+      "verdicts": {
+        "unanimous": {
+          "n": 110,
+          "hits": 110,
+          "rate": 1
+        },
+        "majority": {
+          "n": 28,
+          "hits": 21,
+          "rate": 0.75
+        },
+        "split": {
+          "n": 2,
+          "hits": 1,
+          "rate": 0.5
+        }
+      }
+    }
+  },
+  "eyes": {
+    "n": 140,
+    "nullRate": 0.3143,
+    "agree": {
+      "n": 96,
+      "hits": 87,
+      "rate": 0.90625
+    },
+    "accuracy": {
+      "n": 96,
+      "hits": 88,
+      "rate": 0.9166666666666666
+    }
+  },
+  "wet": {
+    "n": 16,
+    "hits": 16,
+    "rate": 1
+  },
+  "honorary": {
+    "n": 7,
+    "hits": 5,
+    "rate": 0.7142857142857143
+  },
+  "abuse": {
+    "threshold": 0.85,
+    "falsePositives": 0,
+    "maxProbability": 0.18,
+    "maxItem": "slippery nipple shot"
+  },
+  "tokens": {
+    "totalInput": 1338709,
+    "totalOutput": 86218,
+    "avgInput": 8581,
+    "avgOutput": 553,
+    "maxInput": 8589
+  },
+  "latency": {
+    "p50": 198,
+    "p95": 327,
+    "max": 432,
+    "retried": 0
+  },
+  "cost": {
+    "pricePerMillionInputUsd": 0.042,
+    "perCallUsd": 0.00036042,
+    "runUsd": 0.056226
+  }
+}
