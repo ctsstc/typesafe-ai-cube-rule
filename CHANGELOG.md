@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-22
+
 ### Added
 
 - **Rulings.** Type any food and TypeSafe's Jev model (`jev-1.13.0`) rules which of the nine Cube Rule categories it belongs to, from where its structural starch sits. One request asks 16 typed questions and returns probabilities, which the browser turns into a ruling.
