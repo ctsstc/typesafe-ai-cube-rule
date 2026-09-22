@@ -54,9 +54,9 @@ export function splitOf({ item, source }: Pick<EvalItem, "item" | "source">): Sp
   return fnv1a(item) % 100 < TUNE_PERCENT ? "tune" : "holdout";
 }
 
+// Strip parentheticals before normalizeItem, which cuts at 60 characters and can orphan a "(".
 export function exampleKey(text: string): string {
-  return normalizeItem(text)
-    .replace(/\s*\([^)]*\)/g, "")
+  return normalizeItem(text.replace(/\s*\([^)]*\)/g, ""))
     .replace(/^(a|an|the) /, "")
     .trim();
 }

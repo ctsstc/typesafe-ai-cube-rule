@@ -1,4 +1,4 @@
-import { findOfficialRuling } from "@cube/core";
+import { CATEGORIES, CATEGORY_IDS, findOfficialRuling } from "@cube/core";
 import { describe, expect, it } from "vitest";
 import {
   exampleKey,
@@ -139,10 +139,20 @@ describe("promptExamples", () => {
   it("finds items that appear as worked examples, ignoring articles and parentheticals", () => {
     expect(exampleKey("a canoe")).toBe("canoe");
     expect(exampleKey("club sandwich (three slices of bread)")).toBe("club sandwich");
+    expect(exampleKey(`pie (${"a long gloss ".repeat(8)})`)).toBe("pie");
     expect(examples.get("club sandwich")).toContain("category");
     expect(examples.get("sleeping bag")).toEqual(
       expect.arrayContaining(["input_kind", "is_abusive"]),
     );
+  });
+
+  it("still sees every site example in the category prompt after glossing", () => {
+    const missing = CATEGORY_IDS.flatMap((id) =>
+      CATEGORIES[id].examples.filter(
+        (example) => !examples.get(exampleKey(example))?.includes("category"),
+      ),
+    );
+    expect(missing).toEqual([]);
   });
 
   it("flags leaked items on the labelled dataset", () => {
