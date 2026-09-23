@@ -339,7 +339,7 @@
   --card-cube: 72px;
   padding-block: var(--space-8) var(--space-6);
   content-visibility: auto;
-  contain-intrinsic-size: auto 1600px;
+  contain-intrinsic-size: auto 2700px;
 }
 
 .gallery__grid {
@@ -426,6 +426,7 @@
 @media (min-width: 640px) {
   .gallery {
     --card-cube: 104px;
+    contain-intrinsic-size: auto 2250px;
   }
 
   .gallery__grid {
@@ -446,6 +447,10 @@
 }
 
 @media (min-width: 900px) {
+  .gallery {
+    contain-intrinsic-size: auto 1500px;
+  }
+
   .gallery__grid {
     grid-template-columns: repeat(3, 1fr);
   }
