@@ -13,7 +13,7 @@ function show(error: RulingError) {
 
 describe("ErrorPanel", () => {
   it("rests until tomorrow on daily_limit and points at other foods", async () => {
-    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-09-22T21:00:00Z"));
+    vi.spyOn(Date, "now").mockReturnValue(new Date(2026, 8, 22, 22, 0).getTime());
     const { onEdit, onRetry } = show(new RulingError("daily_limit", 3 * 3600));
     expect(screen.getByText("The oracle is resting until tomorrow.")).toBeInTheDocument();
     expect(screen.getByText(/New foods open again at .+ your time\./)).toBeInTheDocument();

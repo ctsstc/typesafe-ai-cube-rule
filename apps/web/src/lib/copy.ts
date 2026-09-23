@@ -268,10 +268,26 @@ export interface ErrorCopy {
   readonly action: "retry" | "edit" | "reload";
 }
 
+function resetAt(retryAfter: number | null): Date | null {
+  return retryAfter && retryAfter > 0 ? new Date(Date.now() + retryAfter * 1000) : null;
+}
+
+function clockTime(date: Date): string {
+  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
 function resetTime(retryAfter: number | null): string {
-  if (!retryAfter || retryAfter <= 0) return "midnight UTC";
-  const reset = new Date(Date.now() + retryAfter * 1000);
-  return `${reset.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} your time`;
+  const reset = resetAt(retryAfter);
+  return reset ? `${clockTime(reset)} your time` : "midnight UTC";
+}
+
+// The cap resets at midnight UTC, which is still today's afternoon or evening west of UTC.
+function restingTitle(retryAfter: number | null): string {
+  const reset = resetAt(retryAfter);
+  if (!reset) return "The oracle is resting for today.";
+  return reset.toDateString() === new Date(Date.now()).toDateString()
+    ? `The oracle is resting until ${clockTime(reset)}.`
+    : "The oracle is resting until tomorrow.";
 }
 
 export function errorCopy(code: RulingErrorCode, retryAfter: number | null): ErrorCopy {
@@ -323,7 +339,7 @@ export function errorCopy(code: RulingErrorCode, retryAfter: number | null): Err
       };
     case "daily_limit":
       return {
-        title: "The oracle is resting until tomorrow.",
+        title: restingTitle(retryAfter),
         body: `Jev has ruled on all the new foods it can today. New foods open again at ${resetTime(retryAfter)}. Foods someone has already asked about usually still work.`,
         action: "edit",
       };

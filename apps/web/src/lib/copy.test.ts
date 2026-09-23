@@ -114,13 +114,25 @@ describe("errorCopy", () => {
     ["network", "Couldn't reach the oracle."],
     ["bad_request", "That doesn't look like a food name."],
     ["challenge_required", "Couldn't confirm you're human."],
-    ["daily_limit", "The oracle is resting until tomorrow."],
+    ["daily_limit", "The oracle is resting for today."],
     ["method_not_allowed", "Something broke on our side."],
     ["not_found", "Something broke on our side."],
     ["stale_client", "The oracle was updated."],
     ["client_limit", "That's a lot of new foods for one day."],
   ] as const)("titles %s", (code, title) => {
     expect(errorCopy(code, null).title).toBe(title);
+  });
+
+  it("says tomorrow only when the daily reset falls on another local day", () => {
+    const at = (hour: number) => new Date(2026, 8, 22, hour, 0).getTime();
+    const clock = (time: number) =>
+      new Date(time).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    vi.spyOn(Date, "now").mockReturnValue(at(10));
+    expect(errorCopy("daily_limit", 7 * 3600).title).toBe(
+      `The oracle is resting until ${clock(at(17))}.`,
+    );
+    vi.spyOn(Date, "now").mockReturnValue(at(22));
+    expect(errorCopy("daily_limit", 3 * 3600).title).toBe("The oracle is resting until tomorrow.");
   });
 
   it("tells when new foods open again after the daily limit", () => {
