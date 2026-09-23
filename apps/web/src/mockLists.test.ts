@@ -40,6 +40,7 @@ describe("dev:mock /api/lists", () => {
     if (!core.isListsResponse(body)) throw new Error("not a lists body");
     expect(body.activity).toBeNull();
     expect(body.lists.jevDissents.length).toBeLessThan(3);
+    expect(body.lists.friendshipEnding.length).toBeLessThan(3);
   });
 
   it("matches the server's disabled body and error codes", () => {

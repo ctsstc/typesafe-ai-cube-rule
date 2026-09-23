@@ -101,12 +101,26 @@ const DOCKET: readonly ListEntry[] = [
   food("poutine", "nachos", 0.84, { official: "nachos" }),
 ];
 
-function docketLists(pool: readonly ListEntry[]): ListsResponse["lists"] {
+const LIST_LENGTH = 8;
+
+// Mirrors the Function's list queries.
+function docketLists(pool: readonly ListEntry[], unanimous: number): ListsResponse["lists"] {
+  const top = (entries: ListEntry[], order: (a: ListEntry, b: ListEntry) => number) =>
+    entries.sort(order).slice(0, LIST_LENGTH);
   return {
-    latest: pool.slice(0, 8),
-    mostDebated: [...pool].sort((a, b) => a.confidence - b.confidence).slice(0, 5),
-    jevDissents: pool.filter((e) => e.official !== null && e.official !== e.category).slice(0, 5),
-    friendshipEnding: [...pool].sort((a, b) => b.debateLevel - a.debateLevel).slice(0, 5),
+    latest: pool.slice(0, LIST_LENGTH),
+    mostDebated: top(
+      pool.filter((e) => e.confidence < unanimous),
+      (a, b) => a.confidence - b.confidence,
+    ),
+    jevDissents: top(
+      pool.filter((e) => e.official !== null && e.official !== e.category),
+      (a, b) => b.confidence - a.confidence,
+    ),
+    friendshipEnding: top(
+      pool.filter((e) => e.debateLevel > 0),
+      (a, b) => b.debateLevel - a.debateLevel,
+    ),
   };
 }
 
@@ -134,14 +148,15 @@ export function listsReply(
     return listsError(core, new URLSearchParams(search).has("v") ? "stale_client" : "bad_request");
   }
   const base = { enabled: true, questionSetVersion: core.QUESTION_SET_VERSION };
+  const lists = (pool: readonly ListEntry[]) => docketLists(pool, core.THRESHOLDS.unanimous);
   switch (mode) {
     case "partial":
       return {
         status: 200,
-        body: { ...base, activity: null, lists: docketLists(DOCKET.slice(0, 3)) },
+        body: { ...base, activity: null, lists: lists(DOCKET.slice(0, 3)) },
       };
     case "empty":
-      return { status: 200, body: { ...base, activity: null, lists: docketLists([]) } };
+      return { status: 200, body: { ...base, activity: null, lists: lists([]) } };
     case "disabled":
       return { status: 200, body: core.disabledListsResponse() };
     case "error":
@@ -149,7 +164,7 @@ export function listsReply(
     default:
       return {
         status: 200,
-        body: { ...base, activity: { newFoodsLastHour: 14 }, lists: docketLists(DOCKET) },
+        body: { ...base, activity: { newFoodsLastHour: 14 }, lists: lists(DOCKET) },
       };
   }
 }
