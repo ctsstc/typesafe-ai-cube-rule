@@ -24,6 +24,7 @@
     "deploy:pages": "bash scripts/deploy.sh",
     "spend": "node scripts/spend.mjs",
     "recent": "pnpm -C eval exec tsx ../scripts/recent.mjs",
+    "seed:docket": "pnpm -C eval exec tsx ../scripts/seed-docket.mjs",
     "migrate:remote": "node scripts/cloudflare-config.mjs >/dev/null && pnpm --filter @cube/web exec wrangler d1 migrations apply cube-rule-oracle --remote -c wrangler.production.jsonc"
   },
   "devDependencies": {
