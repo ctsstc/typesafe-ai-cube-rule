@@ -117,7 +117,7 @@ Read the local counters with `pnpm exec wrangler d1 execute cube-rule-oracle --l
    pnpm migrate:remote
    ```
 
-   The committed `apps/web/wrangler.jsonc` keeps placeholder KV and D1 ids, so the real ones never enter the repo. `scripts/cloudflare-config.mjs` copies it to the gitignored `apps/web/wrangler.production.jsonc` with the ids from `.env`, and `pnpm migrate:remote`, `pnpm spend` and `scripts/deploy.sh` pass that file to wrangler with `-c`. Run any other remote wrangler command the same way (`node scripts/cloudflare-config.mjs`, then `-c wrangler.production.jsonc`). The config file is the source of truth for Pages bindings, so do not add the bindings in the dashboard.
+   The committed `apps/web/wrangler.jsonc` keeps placeholder KV and D1 ids, so the real ones never enter the repo. `scripts/cloudflare-config.mjs` copies it to the gitignored `apps/web/wrangler.production.jsonc` with the ids from `.env`, and `pnpm migrate:remote`, `pnpm spend` and the deploy's D1 check pass that file to wrangler with `-c`. Pages refuses a custom config path for uploads, so `scripts/deploy.sh` copies it over `wrangler.jsonc` just for the upload and restores the committed file on exit. A test fails if real ids are ever committed there. Run any other remote wrangler command the same way (`node scripts/cloudflare-config.mjs`, then `-c wrangler.production.jsonc`). The config file is the source of truth for Pages bindings, so do not add the bindings in the dashboard.
 
    `scripts/deploy.sh` refuses to run while a migration is unapplied.
 
@@ -171,7 +171,7 @@ pnpm deploy:pages
 - the remote D1 database has no unapplied migrations
 - `pnpm check` passes
 
-It then builds the SPA with the sitekey and runs `wrangler pages deploy dist -c wrangler.production.jsonc --project-name cube-rule-oracle --branch main` from `apps/web`.
+It then builds the SPA with the sitekey, swaps the real ids into `wrangler.jsonc`, runs `wrangler pages deploy dist --project-name cube-rule-oracle --branch main` from `apps/web`, and restores the committed `wrangler.jsonc`.
 
 > [!IMPORTANT]
 > Deploy from `apps/web`, never with `wrangler pages deploy apps/web/dist` from the repo root. Wrangler looks for `functions/` in its working directory. From the root it would upload the SPA without the API.

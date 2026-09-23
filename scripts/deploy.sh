@@ -85,9 +85,13 @@ pnpm check
 echo "deploy: building with SITE_URL=$SITE_URL and sitekey $VITE_TURNSTILE_SITE_KEY"
 SITE_URL="$SITE_URL" VITE_TURNSTILE_SITE_KEY="$VITE_TURNSTILE_SITE_KEY" pnpm --filter @cube/web build
 
-# Run from apps/web: wrangler finds functions/ relative to its cwd.
+# Pages refuses a custom config path, so the upload swaps the real ids into wrangler.jsonc and puts
+# the committed file back on exit, however the deploy ends.
+trap 'git -C "$root" checkout -- apps/web/wrangler.jsonc' EXIT
+cp "$web/$PRODUCTION_CONFIG" "$web/wrangler.jsonc"
+
+# Run from apps/web: wrangler finds functions/ and wrangler.jsonc relative to its cwd.
 wrangler pages deploy dist \
-  -c "$PRODUCTION_CONFIG" \
   --project-name "$PROJECT" \
   --branch "$BRANCH" \
   --commit-hash "$(git rev-parse HEAD)" \

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   D1_PLACEHOLDER,
@@ -51,5 +52,13 @@ describe("productionConfig", () => {
 
   it("refuses a template without exactly one of each placeholder", () => {
     expect(() => productionConfig("{}", settings)).toThrow(/exactly once/);
+  });
+});
+
+describe("apps/web/wrangler.jsonc", () => {
+  it("keeps the placeholder ids, so real ones never get committed", () => {
+    const committed = readFileSync(new URL("../apps/web/wrangler.jsonc", import.meta.url), "utf8");
+    expect(committed.split(KV_PLACEHOLDER)).toHaveLength(2);
+    expect(committed.split(D1_PLACEHOLDER)).toHaveLength(2);
   });
 });
