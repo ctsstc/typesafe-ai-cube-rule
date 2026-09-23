@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { PEOPLE_WROTE_IT } from "../test/claims";
 
+const DASHES = /[\u2013\u2014]/;
 const web = fileURLToPath(new URL("../..", import.meta.url));
 
 function shippedSources(): { path: string; text: string }[] {
@@ -25,7 +26,7 @@ describe("shipped source copy", () => {
   });
 
   it("uses no em or en dashes", () => {
-    const offenders = shippedSources().filter(({ text }) => /[–—]/.test(text));
+    const offenders = shippedSources().filter(({ text }) => DASHES.test(text));
     expect(offenders.map(({ path }) => path)).toEqual([]);
   });
 });
