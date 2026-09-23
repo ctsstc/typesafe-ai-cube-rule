@@ -1,71 +1,101 @@
 # Cube Rule Oracle
 
-Name any food and get a ruling. The Oracle asks TypeSafe's Jev model where the structural starch sits, then files the food under one of the nine cubes of the [Cube Rule](https://cuberule.com/): toast, sandwich, taco, sushi, quiche, calzone, salad, cake or nachos. Is a hot dog a sandwich? The cube says taco.
+[![CI](https://github.com/ctsstc/typesafe-ai-cube-rule/actions/workflows/ci.yml/badge.svg)](https://github.com/ctsstc/typesafe-ai-cube-rule/actions/workflows/ci.yml)
+
+Name any food and get a ruling. The [Cube Rule](https://cuberule.com/) sorts food by where its structural starch sits, so every dish lands in one of nine cubes: toast, sandwich, taco, sushi, quiche, calzone, salad, cake or nachos. The Oracle asks Jev, a model from TypeSafe, where the starch is in whatever you type, then draws the cube and stamps the verdict. Is a hot dog a sandwich? The cube says taco.
+
+**Try it at https://cube-rule-oracle.pages.dev**
+
+[![Link preview: "Is a hot dog a sandwich?" next to a cube stamped TACO](apps/web/public/og.png)](https://cube-rule-oracle.pages.dev)
 
 > [!NOTE]
-> This is an unofficial fan app, not affiliated with cuberule.com, its creators or TypeSafe. The Cube Rule was created by [@Phosphatide](https://twitter.com/Phosphatide), and [cuberule.com](https://cuberule.com/) is made by [@indirect](https://twitter.com/indirect). Go read the original. The cube drawings here are our own CSS; no images from cuberule.com are used.
+> This is an unofficial fan app. It is not affiliated with or endorsed by cuberule.com, its creators or TypeSafe.
+
+## Credits
+
+- **The Cube Rule** was created by [@Phosphatide](https://twitter.com/Phosphatide), and [cuberule.com](https://cuberule.com/) is made by [@indirect](https://twitter.com/indirect). Go read the original. Canon rulings quote the site, including its ruling that humans are ravioli, which it credits to food critic Soleil Ho.
+- **Rulings** by Jev from TypeSafe (https://typesafe.ai/).
+- **Cube drawings** are this app's own CSS. No images from cuberule.com are used.
+- **Made by** Cody Swartz ([GitHub](https://github.com/ctsstc), [LinkedIn](https://linkedin.com/in/codyswartz/)). Built with [Claude Code](https://claude.com/claude-code).
 
 ## How it works
 
-1. The browser normalizes what you typed and requests `GET /api/classify?food=<item>&v=<question set>`.
-2. A Cloudflare Pages Function answers a food someone already asked about from its cache: the edge cache, then KV. The browser keeps its own copy too. Repeat foods never reach Jev, and a new question set starts a fresh cache.
-3. A new food needs a `cube_session` cookie. Without one the Function answers `401`, and the browser runs a Cloudflare Turnstile check (usually invisible), trades the token at `POST /api/session` for a signed cookie that lasts an hour, and asks again.
-4. Before calling Jev the Function counts the call in D1 against the session (60), the client IP address for the UTC day (150, stored only as a keyed hash) and the whole day (`DAILY_CALL_LIMIT`, 1000 by default).
-5. The Function holds the TypeSafe key and sends one request to Jev, a System One model. Jev does not write text. It answers 16 typed questions (Choice, Score and Noul) with probabilities: is this food, which cube, what starch, is it wet, which faces are starch, and so on.
-6. The Function returns Jev's raw answers, and the browser turns them into a ruling card with `toCubeResult` from `@cube/core`, so copy and threshold changes never need new inference.
+```mermaid
+flowchart LR
+  spa[Browser: React SPA] -- "GET /api/classify?food=hot+dog" --> fn[Cloudflare Pages Function]
+  fn -- "hit" --> cache[(Edge cache, then KV)]
+  fn -- "miss: Turnstile session and D1 spend caps" --> jev[Jev: 16 typed questions]
+  fn -- "raw answers" --> spa
+```
 
-Foods that cuberule.com has already ruled on show a canon badge, and Jev's opinion appears as a dissent if it disagrees. Things that are not food get an honorary ruling ("If it were food, it would definitely be a quiche"). Gibberish is uncubeable, and abusive text is declined without being echoed back.
+- **One request, 16 typed questions.** Jev is a System One model: it returns probabilities, never text. Each new food is one request carrying 4 Choice questions (is it food, which cube, which cube if it were food, what kind of starch), 11 yes or no Nouls (is it abusive, is it wet, eight readings of where the starch sits, does it depend how it's served) and 1 Score (how hard people argue about it).
+- **Raw answers, mapped in code.** The Function returns Jev's raw answers and the browser turns them into a ruling with `toCubeResult` from `packages/core`. Every sentence on the card is a template written ahead of time and filled in from those numbers, so copy and threshold changes never need new inference.
+- **Canon wins.** Foods cuberule.com has already ruled on show the official ruling, and Jev's opinion appears as a dissent when it disagrees. Things that are not food get an honorary ruling, gibberish is uncubeable, and abusive text is declined without being echoed back.
+- **Cached, so repeats are usually free.** A ruling is keyed by food and question set version and kept in the browser, Cloudflare's edge cache and KV. A food someone already asked about usually never reaches Jev.
+- **A human check and spend caps guard the bill.** A new food needs a session cookie from a Cloudflare Turnstile check, which usually runs unseen. Before each Jev call, D1 counts it against the session (60), the client IP for the UTC day (150, stored only as a keyed hash) and the whole day (1,000 by default). The Function fails closed.
 
-> [!IMPORTANT]
-> The API key lives only in the root `.env` locally and in a Pages secret in production. It must never reach the browser bundle, a commit or a log line. `apps/web/src/bundle.test.ts` fails `pnpm check` if the bundle contains the TypeSafe API host, the SDK or any question text.
+[docs/question-design.md](docs/question-design.md) explains the questions and thresholds, and [docs/ux-spec.md](docs/ux-spec.md) covers the interface.
 
 ## Quick start
 
-Needs Node 22 or newer (developed on 24) and pnpm 10. `corepack enable` picks up the pinned pnpm version.
+Needs Node 22 or newer (CI runs 24) and pnpm 10. `corepack enable` picks up the pinned pnpm version.
 
 ```sh
 pnpm i
-cp .env.example .env    # add TYPESAFE_API_KEY from https://console.typesafe.ai/keys, or leave it empty
+cp .env.example .env
 pnpm dev
 ```
 
-Open http://localhost:5173. `pnpm dev` runs Vite on 5173 and the Pages Function under `wrangler pages dev` on 8788; Vite proxies `/api` to the Function. The first run symlinks `apps/web/.dev.vars` to the root `.env` so wrangler sees the key without a second copy.
+Open http://localhost:5173. `pnpm dev` runs Vite on 5173 and the Pages Function under `wrangler pages dev` on 8788, and Vite proxies `/api` to the Function.
 
-### Mock mode
+**No key needed to start.** With `TYPESAFE_API_KEY` empty, the Function serves mock rulings: deterministic for each food and shaped exactly like live answers, but not real. The app shows a demo banner and stamps every card "Simulated". For UI work without wrangler, `pnpm --filter @cube/web dev:mock` adds trigger foods for every state, such as `mock torn`, `mock 429` and `mock timeout` (see [docs/ux-spec.md](docs/ux-spec.md#14-mock-mode)).
 
-With `TYPESAFE_API_KEY` empty or missing, the Function answers with simulated rulings instead of calling Jev. They are deterministic for each food and shaped exactly like live answers, but they are not real rulings. The app shows a demo banner and stamps every card "Simulated". Any food containing the word `slur` shows the declined card.
+**Live rulings need a TypeSafe account.** Create a key at https://console.typesafe.ai/keys and put it in `.env` as `TYPESAFE_API_KEY`. Each new food is one Jev call of about 9,600 input tokens, roughly $0.0004 at [TypeSafe's published price](https://docs.typesafe.ai/models.md).
 
-For UI work without wrangler, `pnpm --filter @cube/web dev:mock` serves the same mock straight from Vite, plus trigger foods for every state: `mock sure`, `mock torn`, `mock baffled`, `mock 429`, `mock 503`, `mock slow`, `mock timeout` and more (see [docs/ux-spec.md](docs/ux-spec.md#14-mock-mode)).
+> [!IMPORTANT]
+> The key belongs only in the root `.env` (gitignored) locally and in a Pages secret in production. It must never reach the browser bundle, a commit or a log line. `apps/web/src/bundle.test.ts` fails `pnpm check` if the bundle contains the TypeSafe API host, the SDK or any question text.
 
 ## Commands
 
 | Command | Does |
 | --- | --- |
 | `pnpm dev` | Vite on 5173 and the Function on 8788 |
-| `pnpm dev:functions` | Only the Function on 8788 |
-| `pnpm dev:challenge [pass\|fail\|interactive\|spent] [--preview]` | Like `pnpm dev`, with the Turnstile check on using Cloudflare's test keys (see [docs/deploy.md](docs/deploy.md#trying-the-human-check-locally)) |
-| `pnpm preview:pages` | Builds the SPA, then serves `dist` and the Function together on 8788 with the production headers. The closest thing to production |
+| `pnpm dev:challenge [pass\|fail\|interactive\|spent] [--preview]` | Like `pnpm dev`, with the Turnstile check on, using Cloudflare's test keys |
+| `pnpm preview:pages` | Builds the SPA and serves it with the Function and production headers on 8788 |
 | `pnpm build` | Builds `apps/web/dist` |
-| `pnpm check` | Typecheck, Biome lint and every Vitest project. Run it before committing |
+| `pnpm check` | Typecheck, Biome lint and every Vitest project. CI runs this, with no key and no network |
 | `pnpm format` | Biome format and safe fixes |
 | `pnpm eval` | Runs the labelled food set against Jev (see below) |
-| `pnpm deploy:pages` | Guarded production deploy (see [docs/deploy.md](docs/deploy.md)) |
+| `pnpm deploy:pages` | Guarded production deploy. Bare `pnpm deploy` is pnpm's own command and does not run it |
 
 ## Evaluation
 
-`eval/` holds 204 labelled items (45 canon rulings from cuberule.com, 82 consensus foods and 77 probes, including 21 abusive probes stored base64-encoded) and a harness that asks Jev every question for each one and scores Jev's own ruling. Answers are cached per question set, so rerunning is free.
+`eval/` holds 204 labelled items and a harness that asks Jev every question for each one, then scores Jev's own ruling. On question set 6 with `jev-1.13.0`:
 
-```sh
-pnpm eval                                  # live calls for anything not cached (about $0.083 per full pass)
-pnpm eval --split=tune --max-usd=0.05      # fetch one split, refuse to start above a budget
-pnpm eval --offline                        # rescore the cache only, no key needed
-```
+| Split | Right |
+| --- | --- |
+| Holdout, checked only once each version was final | 60/62, or 52/54 without foods the labelling questions use as worked examples |
+| Tune, which the questions were rewritten against | 95/97 |
+| Canon rulings from cuberule.com | 45/45 |
+| Abusive probes declined | 21/21, with 0 false declines among the other 183 items |
 
-Question set 6, the current one, scores 95/97 on the tune split, 60/62 on the holdout split and 45/45 on canon, and the abuse guard declines 21/21 abusive probes with no false declines. Reports live in `eval/results/v<version>/report.md`, and [docs/eval.md](docs/eval.md) explains the splits and records every tuning round. [docs/question-design.md](docs/question-design.md) explains the questions themselves.
+Labels outside canon are this project's reading of the site's rules. Answers are cached per question set, so `pnpm eval --offline` rescores for free, and a full live pass costs about $0.08. [docs/eval.md](docs/eval.md) explains the splits and records every tuning round.
 
-## Deploying
+The 21 abusive probes are stored base64-encoded so they never show up as plain text in the code, but decoding them shows offensive text. Real dishes with rude-sounding names appear in plain text on purpose, as tests that the guard does not decline them.
 
-The app is one Cloudflare Pages project: the static SPA plus a Pages Function for `/api`. The share URL is a subdomain CNAME'd to `<project>.pages.dev`. One-time setup, the deploy script's safety checks, the custom domain, rollback, caching and spend limits are in [docs/deploy.md](docs/deploy.md).
+## Deploying your own
+
+The app is one Cloudflare Pages project: the static SPA plus a Pages Function for `/api`, with a KV namespace, a D1 database and a Turnstile widget. [docs/deploy.md](docs/deploy.md) walks through the one-time setup, the deploy script's safety checks, rollback, caching and spend limits.
+
+A fork has to replace a few values that point at this project's Cloudflare account:
+
+- `scripts/deploy.sh` pins the owner's Cloudflare account id and refuses to deploy anywhere else.
+- `apps/web/wrangler.jsonc` holds the owner's KV namespace id and D1 database id.
+- `SITE_URL`, which fills the canonical and Open Graph URLs, defaults to https://cube-rule-oracle.pages.dev in `scripts/deploy.sh` and `apps/web/vite.config.ts`.
+
+## For Claude Code users
+
+[CLAUDE.md](CLAUDE.md) and `.claude/` are instructions and settings for coding agents, not docs for people. `.claude/settings.json` offers TypeSafe's [skills plugin](https://github.com/typesafe-ai/skills) at project scope once you trust the folder, and `.claude/launch.json` defines the local preview servers.
 
 ## Project layout
 
@@ -85,3 +115,9 @@ eval/                     Labelled dataset, eval harness and results per questio
 docs/                     Question design, eval, UX spec, canon audit and deploy runbook
 scripts/                  pages-dev.sh (local wrangler), dev-challenge.sh and deploy.sh
 ```
+
+## License
+
+[MIT](LICENSE) covers this project's code, CSS cube drawings, eval harness and eval labels. The Cube Rule itself, cuberule.com's rulings and captions, and the names TypeSafe and Jev belong to their owners and are not part of that grant.
+
+Release notes are in [CHANGELOG.md](CHANGELOG.md).
