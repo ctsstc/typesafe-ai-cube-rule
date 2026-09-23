@@ -31,10 +31,13 @@ const COLUMNS = `item, kind, category, wet, confidence, runner_up, official, deb
 const PUBLIC = `listed = 1 AND asks >= ${MIN_ASKS}`;
 const NOT_BLOCKED = "NOT EXISTS (SELECT 1 FROM blocklist WHERE blocklist.item = rulings.item)";
 
-const list = (index: string, where: string, order: string) =>
+// Honorary court reads a deeper pool so onePerCube can still fill it with different cubes.
+export const HONORARY_POOL = 40;
+
+const list = (index: string, where: string, order: string, limit = LIST_LENGTH) =>
   `SELECT ${COLUMNS} FROM rulings INDEXED BY ${index}
 WHERE question_set = ?1 AND ${PUBLIC}${where} AND ${NOT_BLOCKED}
-ORDER BY ${order} LIMIT ${LIST_LENGTH}`;
+ORDER BY ${order} LIMIT ${limit}`;
 
 export const LIST_QUERIES: Readonly<Record<ListName, string>> = {
   latest: list("rulings_latest1", "", "first_seen DESC"),
@@ -43,7 +46,12 @@ export const LIST_QUERIES: Readonly<Record<ListName, string>> = {
     ` AND confidence < ${THRESHOLDS.unanimous}`,
     "confidence ASC",
   ),
-  honoraryCourt: list("rulings_honorary", " AND kind = 'honorary'", "confidence DESC"),
+  honoraryCourt: list(
+    "rulings_honorary",
+    " AND kind = 'honorary'",
+    "confidence DESC",
+    HONORARY_POOL,
+  ),
   friendshipEnding: list(
     "rulings_heat1",
     " AND debate_level > 0",
@@ -110,6 +118,21 @@ function toEntry(row: RulingRow): ListEntry | null {
   return listingBar(entry.item, scores) === null ? entry : null;
 }
 
+// The most confident honorary rulings are mostly abstract things ruled salad, so the court keeps
+// the best ruling for each cube instead.
+export function onePerCube(entries: readonly ListEntry[]): ListEntry[] {
+  const cubes = new Set<string>();
+  const picked: ListEntry[] = [];
+  for (const entry of entries) {
+    const cube = entry.official ?? entry.category;
+    if (cubes.has(cube)) continue;
+    cubes.add(cube);
+    picked.push(entry);
+    if (picked.length === LIST_LENGTH) break;
+  }
+  return picked;
+}
+
 export async function readLists(db: D1Database, env: Env, now: number): Promise<ListsResponse> {
   const since = Math.floor(now / 1000) - HOUR_S;
   const results = await db.batch([
@@ -126,12 +149,12 @@ export async function readLists(db: D1Database, env: Env, now: number): Promise<
     return disabledListsResponse();
   const rows = (index: number) => (results[index + 1]?.results ?? []) as RulingRow[];
   const lists = Object.fromEntries(
-    LIST_NAMES.map((name, index) => [
-      name,
-      rows(index)
+    LIST_NAMES.map((name, index) => {
+      const entries = rows(index)
         .map(toEntry)
-        .filter((entry) => entry !== null),
-    ]),
+        .filter((entry) => entry !== null);
+      return [name, name === "honoraryCourt" ? onePerCube(entries) : entries];
+    }),
   ) as Record<ListName, ListEntry[]>;
   const newFoodsLastHour = rows(LIST_NAMES.length).length;
   return {

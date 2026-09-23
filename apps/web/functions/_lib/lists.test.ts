@@ -7,6 +7,7 @@ import {
   isListsResponse,
   LIST_NAMES,
   LISTS_PATH,
+  type ListEntry,
   type ListsResponse,
   listsUrl,
   QUESTION_SET_VERSION,
@@ -23,6 +24,7 @@ import {
   LIST_LENGTH,
   LISTS_TTL_S,
   listsEnabled,
+  onePerCube,
 } from "./lists";
 import { MIN_ASKS } from "./rulings";
 
@@ -496,5 +498,49 @@ ORDER BY ${order} LIMIT ${LIST_LENGTH}`,
       )
       .all(QUESTION_SET_VERSION);
     expect(rows.map((row) => row.item)).toEqual(["hot dog"]);
+  });
+});
+
+describe("onePerCube", () => {
+  const honorary = (
+    item: string,
+    category: ListEntry["category"],
+    official: ListEntry["official"] = null,
+  ) => ({
+    item,
+    kind: "honorary" as const,
+    category,
+    wet: false,
+    confidence: 1,
+    runnerUp: null,
+    official,
+    debateLevel: 0 as const,
+  });
+
+  it("keeps the first ruling for each cube, so abstract salads cannot fill the court", () => {
+    const court = onePerCube([
+      honorary("existential dread", "salad"),
+      honorary("good vibes", "salad"),
+      honorary("humans", "toast", "calzone"),
+      honorary("a canoe", "quiche"),
+      honorary("the moon", "salad"),
+      honorary("a sleeping bag", "calzone"),
+    ]);
+    expect(court.map((entry) => entry.item)).toEqual(["existential dread", "humans", "a canoe"]);
+  });
+
+  it("stops at the list length", () => {
+    const cubes = [
+      "salad",
+      "toast",
+      "sandwich",
+      "taco",
+      "sushi",
+      "quiche",
+      "calzone",
+      "cake",
+      "nachos",
+    ] as const;
+    expect(onePerCube(cubes.map((cube) => honorary(cube, cube)))).toHaveLength(LIST_LENGTH);
   });
 });
