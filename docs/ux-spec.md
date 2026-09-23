@@ -202,7 +202,7 @@ Mobile first. The content column is `min(100% - 32px, 640px)`. The gallery and, 
 - **Header:** logo cube and wordmark, nav links (Rule, Cubes, How Jev rules, About) from 520px, and the theme toggle. From 520 to 679px the nav takes its own row under the wordmark, since four links do not fit beside it.
 - **Skip link:** "Skip to the oracle", first in tab order, targets the food input.
 - **Footer:** "Unofficial fan app. The Cube Rule is by @Phosphatide. cuberule.com is by @indirect. Rulings by Jev from TypeSafe." Then "Made by Cody Swartz (GitHub, LinkedIn). Built with Claude Code. Source code on GitHub." (`MadeBy`), then the app version, question set, the model from the last response, and links to About and privacy, How Jev rules and the nine cubes.
-- **Direct anchors:** a page opened at `/#about` or `/#how-jev-rules` scrolls there once the display font has loaded, since the sections render after the browser's own jump. A `?food=` link wins over the hash.
+- **Direct anchors:** a page opened at `/#about` or `/#how-jev-rules` scrolls there once How Jev rules has rendered and the display font has loaded. How Jev rules loads late, above About, and browsers without scroll anchoring (Safari before 27) would otherwise leave About thousands of pixels down. A `?food=` link wins over the hash, and the scroll is skipped if the visitor has already moved to another anchor or a food.
 
 ### 7.2 Home and hero
 

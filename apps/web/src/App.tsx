@@ -25,11 +25,22 @@ import { surpriseFood } from "./lib/foods";
 import { sentenceCase } from "./lib/format";
 import { foodFromSearch, foodHref } from "./lib/url";
 
+interface ShownProps {
+  readonly onShown: () => void;
+}
+
+function announceShown(Section: ComponentType): ComponentType<ShownProps> {
+  return function Shown({ onShown }: ShownProps) {
+    useEffect(() => onShown(), [onShown]);
+    return <Section />;
+  };
+}
+
 // Below the fold and mostly text, so it stays out of the initial bundle.
 const HowJevRules = lazy(() =>
   import("./components/HowJevRules").then(
-    (m): { default: ComponentType } => ({ default: m.HowJevRules }),
-    () => ({ default: () => null }),
+    (m) => ({ default: announceShown(m.HowJevRules) }),
+    () => ({ default: announceShown(() => null) }),
   ),
 );
 
@@ -67,6 +78,9 @@ export function App() {
   const hero = useRef(heroQuestion()).current;
   const heroItem = normalizeItem(hero.food);
   const shown = useRef({ search: location.search, typed: false });
+  const pendingHash = useRef(foodFromSearch(location.search) ? "" : location.hash);
+  const [sectionsShown, setSectionsShown] = useState(false);
+  const showSections = useCallback(() => setSectionsShown(true), []);
 
   const submit = useCallback(
     (item: string) => {
@@ -86,14 +100,6 @@ export function App() {
   useEffect(() => {
     const fromUrl = foodFromSearch(location.search);
     if (fromUrl) rule(fromUrl, "link");
-    // The sections render after the browser's own jump to #about or #how-jev-rules, and the
-    // display font can still move them, so this waits for it.
-    else if (location.hash) {
-      const id = location.hash.slice(1);
-      void (document.fonts?.ready ?? Promise.resolve()).then(() =>
-        document.getElementById(id)?.scrollIntoView(),
-      );
-    }
     const onPop = () => {
       const typed = isTyped(history.state);
       // In-page anchors fire popstate too. They keep the search, so the ruling stays as it is.
@@ -117,6 +123,18 @@ export function App() {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, [rule, reset]);
+
+  // How Jev rules renders late, above About, and the display font can still move things. Browsers
+  // without scroll anchoring keep the old offset, so a hash in the first URL waits for both.
+  useEffect(() => {
+    const hash = pendingHash.current;
+    if (!sectionsShown || !hash) return;
+    pendingHash.current = "";
+    void (document.fonts?.ready ?? Promise.resolve()).then(() => {
+      if (location.hash !== hash || foodFromSearch(location.search)) return;
+      document.getElementById(hash.slice(1))?.scrollIntoView();
+    });
+  }, [sectionsShown]);
 
   useEffect(() => {
     document.title = titleFor(state);
@@ -197,7 +215,7 @@ export function App() {
           </div>
           <Gallery onPick={submit} />
           <Suspense fallback={<section id="how-jev-rules" className="jev container" />}>
-            <HowJevRules />
+            <HowJevRules onShown={showSections} />
           </Suspense>
           <About />
         </main>
