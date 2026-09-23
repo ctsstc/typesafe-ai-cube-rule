@@ -117,6 +117,7 @@ describe("errorCopy", () => {
     ["daily_limit", "The oracle is resting until tomorrow."],
     ["method_not_allowed", "Something broke on our side."],
     ["not_found", "Something broke on our side."],
+    ["stale_client", "The oracle was updated."],
   ] as const)("titles %s", (code, title) => {
     expect(errorCopy(code, null).title).toBe(title);
   });

@@ -18,6 +18,7 @@ describe("CLASSIFY_ERROR_CODES", () => {
       challenge_required: 401,
       not_found: 404,
       method_not_allowed: 405,
+      stale_client: 409,
       rate_limited: 429,
       daily_limit: 503,
       upstream_busy: 503,
@@ -33,6 +34,7 @@ describe("CLASSIFY_ERROR_CODES", () => {
       | "challenge_required"
       | "not_found"
       | "method_not_allowed"
+      | "stale_client"
       | "rate_limited"
       | "daily_limit"
       | "upstream_busy"
@@ -41,7 +43,7 @@ describe("CLASSIFY_ERROR_CODES", () => {
       | "internal"
     >();
     expectTypeOf<ClassifyErrorStatus>().toEqualTypeOf<
-      400 | 401 | 404 | 405 | 429 | 503 | 502 | 504 | 500
+      400 | 401 | 404 | 405 | 409 | 429 | 503 | 502 | 504 | 500
     >();
     expectTypeOf<ClassifyErrorBody["error"]["code"]>().toEqualTypeOf<ClassifyErrorCode>();
   });

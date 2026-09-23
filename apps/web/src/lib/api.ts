@@ -33,6 +33,7 @@ const STATUS_CODES: Record<number, ClassifyErrorCode> = {
   401: "challenge_required",
   404: "not_found",
   405: "method_not_allowed",
+  409: "stale_client",
   429: "rate_limited",
   502: "upstream_error",
   503: "upstream_busy",
@@ -115,9 +116,15 @@ async function load(item: string): Promise<Classified> {
 async function startSession(): Promise<void> {
   const sitekey: unknown = import.meta.env.VITE_TURNSTILE_SITE_KEY;
   if (typeof sitekey !== "string" || !sitekey) throw new RulingError("challenge_required");
+  let solveChallenge: typeof import("./challenge").solveChallenge;
+  try {
+    ({ solveChallenge } = await import("./challenge"));
+  } catch {
+    // After a deploy the old hashed chunk is gone, so only a reload can load the check.
+    throw new RulingError(navigator.onLine === false ? "offline" : "stale_client");
+  }
   let token: string;
   try {
-    const { solveChallenge } = await import("./challenge");
     token = await solveChallenge(sitekey);
   } catch {
     throw new RulingError(navigator.onLine === false ? "offline" : "challenge_required");

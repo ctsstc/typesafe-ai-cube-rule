@@ -50,6 +50,7 @@ describe("classify", () => {
     [400, "bad_request"],
     [404, "not_found"],
     [405, "method_not_allowed"],
+    [409, "stale_client"],
     [429, "rate_limited"],
     [502, "upstream_error"],
     [503, "upstream_busy"],

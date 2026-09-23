@@ -227,7 +227,7 @@ A ruling is a pure function of the canonical URL `/api/classify?food=<item>&v=<Q
 2. **Cache API** (`caches.default`): per data center. It works on both `*.pages.dev` and custom domains.
 3. **KV** (`CLASSIFICATIONS`): global and durable, so a new data center fills from KV instead of calling Jev. The response header `X-Cube-Cache` reads `HIT`, `KV` or `MISS`.
 
-Bumping `QUESTION_SET_VERSION` in `packages/core/src/questions.ts` changes every URL and KV key, which retires all cached rulings at once.
+Bumping `QUESTION_SET_VERSION` in `packages/core/src/questions.ts` changes every URL and KV key, which retires all cached rulings at once. A tab still open on the old version sends the old `v`, and the Function answers `409 stale_client` instead of `400`, so the SPA offers a reload rather than blaming the food. A rollback across question sets does the same to tabs loaded on the newer version.
 
 KV on the Free plan allows 1,000 writes and 100,000 reads a day. Writes happen only on a Jev call, so the write limit caps new rulings stored per day, not rulings served. A failed write is logged and the ruling is still returned.
 

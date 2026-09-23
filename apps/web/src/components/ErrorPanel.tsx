@@ -53,7 +53,16 @@ export function ErrorPanel({ error, onRetry, onEdit }: ErrorPanelProps) {
       </span>
       <h3 className="error-panel__title">{copy.title}</h3>
       <p className="error-panel__body">{copy.body}</p>
-      {copy.action === "edit" ? (
+      {copy.action === "reload" ? (
+        <button
+          type="button"
+          className="button button--secondary"
+          onClick={() => window.location.reload()}
+        >
+          <RefreshIcon />
+          Reload the page
+        </button>
+      ) : copy.action === "edit" ? (
         <button type="button" className="button button--secondary" onClick={onEdit}>
           <PencilIcon />
           {editLabel}

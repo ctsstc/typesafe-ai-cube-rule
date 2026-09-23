@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifyQuery,
   classifyUrl,
+  isStaleClassifyQuery,
   MAX_ITEM_LENGTH,
   normalizeItem,
   parseClassifyQuery,
@@ -70,6 +71,22 @@ describe("parseClassifyQuery", () => {
     ["empty food", `food=&v=${v}`],
   ])("rejects %s", (_label, search) => {
     expect(parseClassifyQuery(search)).toBeNull();
+  });
+
+  it("tells a tab from another deploy apart from a malformed query", () => {
+    expect(isStaleClassifyQuery("food=hot+dog&v=5")).toBe(true);
+    expect(isStaleClassifyQuery(`?food=taco&v=${Number(v) + 1}`)).toBe(true);
+    for (const search of [
+      `food=taco&v=${v}`,
+      "food=Taco&v=5",
+      "v=5&food=taco",
+      "food=taco&v=5&x=1",
+      "food=123&v=5",
+      "food=taco&v=five",
+      "food=taco",
+    ]) {
+      expect(isStaleClassifyQuery(search), search).toBe(false);
+    }
   });
 
   it("builds the wire URL", () => {

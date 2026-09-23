@@ -123,7 +123,6 @@ describe("request validation", () => {
   it.each([
     ["no query", "/api/classify"],
     ["missing version", "/api/classify?food=taco"],
-    ["stale version", "/api/classify?food=taco&v=0"],
     ["params out of order", `/api/classify?v=${QUESTION_SET_VERSION}&food=taco`],
     ["extra param", `${classifyUrl("taco")}&x=1`],
     ["not normalized", `/api/classify?food=Hot+Dog&v=${QUESTION_SET_VERSION}`],
@@ -134,6 +133,22 @@ describe("request validation", () => {
     expect(response.status).toBe(400);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect((await errorBody(response)).error.code).toBe("bad_request");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("tells a tab from another deploy to reload, before looking at any cache", async () => {
+    const kv = fakeKv();
+    const response = await call(
+      `/api/classify?food=hot+dog&v=${Number(QUESTION_SET_VERSION) - 1}`,
+      {
+        TYPESAFE_API_KEY: KEY,
+        CLASSIFICATIONS: kv as unknown as KVNamespace,
+      },
+    );
+    expect(response.status).toBe(409);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect((await errorBody(response)).error.code).toBe("stale_client");
+    expect(kv.get).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

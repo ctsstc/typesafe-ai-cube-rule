@@ -32,6 +32,17 @@ describe("ErrorPanel", () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
+  it("asks for a reload when the page is from an older deploy", async () => {
+    const reload = vi.fn();
+    vi.spyOn(window, "location", "get").mockReturnValue({ ...window.location, reload });
+    const { onRetry, onEdit } = show(new RulingError("stale_client"));
+    expect(screen.getByText("The oracle was updated.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Reload the page" }));
+    expect(reload).toHaveBeenCalledOnce();
+    expect(onRetry).not.toHaveBeenCalled();
+    expect(onEdit).not.toHaveBeenCalled();
+  });
+
   it.each(["not_found", "method_not_allowed"] as const)("treats %s as our fault", (code) => {
     show(new RulingError(code));
     expect(screen.getByText("Something broke on our side.")).toBeInTheDocument();

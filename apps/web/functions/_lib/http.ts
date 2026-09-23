@@ -17,6 +17,7 @@ const ERROR_MESSAGES: Record<ClassifyErrorCode, string> = {
   challenge_required: "New rulings need a quick human check first.",
   not_found: "No such API route.",
   method_not_allowed: "That method is not supported here.",
+  stale_client: "This page is from another version of the oracle. Reload it.",
   rate_limited: "Too many new rulings at once. Try again in a moment.",
   daily_limit: "The oracle has used up today's new rulings. Cached foods still work.",
   upstream_busy: "Jev is busy right now. Try again shortly.",

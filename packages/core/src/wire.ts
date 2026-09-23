@@ -5,6 +5,7 @@ export const CLASSIFY_ERROR_CODES = {
   challenge_required: 401,
   not_found: 404,
   method_not_allowed: 405,
+  stale_client: 409,
   rate_limited: 429,
   daily_limit: 503,
   upstream_busy: 503,

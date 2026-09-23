@@ -3,6 +3,7 @@ import {
   type ClassifyErrorCode,
   type ClassifyResponse,
   classifyUrl,
+  isStaleClassifyQuery,
   mockCubeResponse,
   PREFETCH_HEADER,
   parseClassifyQuery,
@@ -73,7 +74,9 @@ async function classify(
   }
   const url = new URL(request.url);
   const item = parseClassifyQuery(url.search);
-  if (item === null) return errorResponse("bad_request");
+  if (item === null) {
+    return errorResponse(isStaleClassifyQuery(url.search) ? "stale_client" : "bad_request");
+  }
 
   const now = Date.now();
   const apiKey = env.TYPESAFE_API_KEY?.trim();

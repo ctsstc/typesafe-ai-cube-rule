@@ -20,6 +20,7 @@ export {
   CLASSIFY_PATH,
   classifyQuery,
   classifyUrl,
+  isStaleClassifyQuery,
   MAX_ITEM_LENGTH,
   normalizeItem,
   parseClassifyQuery,

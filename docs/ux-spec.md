@@ -223,6 +223,7 @@ Every simulated ruling shows a "Simulated" pill beside the eyebrow and a "SIMULA
 | `offline` | You're offline. | The cube needs the internet to rule. | disabled until the `online` event |
 | `network` | Couldn't reach the oracle. | Check your connection and try again. | Try again |
 | `bad_request` | That doesn't look like a food name. | Letters, numbers, spaces, and apostrophes work best. | Edit the food (focuses the input) |
+| `stale_client` | The oracle was updated. | This page is from an older version. Reload it to keep asking about new foods. | Reload the page. Sent as a 409 when `v` is another question set, and used when the human check's chunk no longer exists after a deploy |
 
 **Share bar:** "Share ruling" uses `navigator.share({ title, text, url })` and falls back to copying; a cancelled share is silent. "Copy link" shows the toast "Link copied." or, if the clipboard refuses, a read-only field with the URL selected. "Cube another" clears and focuses the input.
 

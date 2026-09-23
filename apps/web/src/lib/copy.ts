@@ -265,7 +265,7 @@ export const NO_FOOD_IN_LINK = "That link has no food in it.";
 export interface ErrorCopy {
   readonly title: string;
   readonly body: string;
-  readonly action: "retry" | "edit";
+  readonly action: "retry" | "edit" | "reload";
 }
 
 function resetTime(retryAfter: number | null): string {
@@ -326,6 +326,12 @@ export function errorCopy(code: RulingErrorCode, retryAfter: number | null): Err
         title: "The oracle is resting until tomorrow.",
         body: `Jev has ruled on all the new foods it can today. New foods open again at ${resetTime(retryAfter)}. Foods someone has already asked about still work.`,
         action: "edit",
+      };
+    case "stale_client":
+      return {
+        title: "The oracle was updated.",
+        body: "This page is from an older version. Reload it to keep asking about new foods.",
+        action: "reload",
       };
     case "method_not_allowed":
     case "not_found":
