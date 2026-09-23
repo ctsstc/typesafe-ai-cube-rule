@@ -40,9 +40,10 @@ describe("About: what gets sent where", () => {
 
   it("says what the public lists show and what they screen out", () => {
     const text = privacyList().textContent?.replace(/\s+/g, " ") ?? "";
-    expect(text).toContain("asked about at least twice");
-    expect(text).toContain("usually means from two different browsers");
-    expect(text).toContain("may show up in the public lists on this page");
+    expect(text).toContain(
+      "A food can show up in the public lists on this page the first time anyone asks about it, if it passes the checks: nothing abusive, no private people, no contact details and no gibberish.",
+    );
+    expect(text).toContain("The lists started with foods from our own testing.");
     expect(text).toContain("The server notes when each food was first asked");
     expect(text).toContain("never who asked, and no times");
     expect(text).toContain(
@@ -51,6 +52,7 @@ describe("About: what gets sent where", () => {
     expect(text).toContain("No screen catches everything");
     expect(text).toContain("Who asked is not stored.");
     expect(text).not.toMatch(/anonymous|guarantee/i);
+    expect(text).not.toMatch(/at least twice|two different browsers|two asks|second ask/i);
   });
 
   it("links the Cloudflare, Turnstile and TypeSafe privacy policies", () => {

@@ -72,12 +72,13 @@ export function About() {
               isn't asked twice. Who asked is not stored.
             </li>
             <li>
-              Once a food has been asked about at least twice, which usually means from two
-              different browsers, it may show up in the public lists on this page. The server notes
-              when each food was first asked, but the lists show only foods and rulings: never who
-              asked, and no times. Pattern rules and Jev's own reading screen out names of private
+              A food can show up in the public lists on this page the first time anyone asks about
+              it, if it passes the checks: nothing abusive, no private people, no contact details
+              and no gibberish. Pattern rules and Jev's own reading screen out names of private
               people, phone numbers, email addresses, links and anything flagged as abusive. No
-              screen catches everything, so anything that slips through can be hidden by hand.
+              screen catches everything, so anything that slips through can be hidden by hand. The
+              lists started with foods from our own testing. The server notes when each food was
+              first asked, but the lists show only foods and rulings: never who asked, and no times.
             </li>
             <li>
               A new food costs real money, so first Turnstile by Cloudflare checks that a person is
