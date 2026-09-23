@@ -1,4 +1,10 @@
-import { disabledListsResponse, LISTS_ACTIVITY_CAP, listsUrl } from "@cube/core";
+import {
+  disabledListsResponse,
+  LIST_NAMES,
+  LISTS_ACTIVITY_CAP,
+  type ListEntry,
+  listsUrl,
+} from "@cube/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { entry, FULL_LISTS, honorary, listsBody } from "../test/lists";
 import {
@@ -17,39 +23,29 @@ const items = (body: unknown, name: string) =>
     ?.entries.map((e) => e.item);
 
 describe("readDocket", () => {
-  it("keeps every list that has enough entries, in the contract's order", () => {
+  it("keeps every list that has an entry, in the contract's order", () => {
     expect(names(listsBody())).toEqual([
       "latest",
       "mostDebated",
-      "jevDissents",
+      "honoraryCourt",
       "friendshipEnding",
     ]);
     expect(readDocket(listsBody())?.newFoodsLastHour).toBe(14);
   });
 
-  it(`hides a list with fewer than ${MIN_LIST_ENTRIES.friendshipEnding} entries`, () => {
-    const body = listsBody({
-      ...FULL_LISTS,
-      friendshipEnding: FULL_LISTS.friendshipEnding.slice(0, 2),
-    });
-    expect(names(body)).toEqual(["latest", "mostDebated", "jevDissents"]);
+  it.each(LIST_NAMES)("shows %s from a single entry", (name) => {
+    expect(MIN_LIST_ENTRIES).toBe(1);
+    const body = listsBody({ [name]: FULL_LISTS[name].slice(0, 1) }, null);
+    expect(names(body)).toEqual([name]);
+    expect(items(body, name)).toEqual([FULL_LISTS[name][0]?.item]);
   });
 
-  // Jev agrees with every canon ruling in the eval, so one dissent is already news.
-  it("shows Jev vs the canon from a single dissent", () => {
-    const body = listsBody({ ...FULL_LISTS, jevDissents: FULL_LISTS.jevDissents.slice(0, 1) });
-    expect(items(body, "jevDissents")).toEqual(["big mac"]);
-    expect(names(listsBody({ ...FULL_LISTS, jevDissents: [] }))).not.toContain("jevDissents");
+  it("hides an empty list and keeps the rest", () => {
+    const body = listsBody({ ...FULL_LISTS, honoraryCourt: [], friendshipEnding: [] });
+    expect(names(body)).toEqual(["latest", "mostDebated"]);
   });
 
-  it("hides the whole section when every list is short, empty, off or unreadable", () => {
-    const short = {
-      ...Object.fromEntries(
-        Object.entries(FULL_LISTS).map(([name, list]) => [name, list.slice(0, 2)]),
-      ),
-      jevDissents: [],
-    };
-    expect(readDocket(listsBody(short))).toBeNull();
+  it("hides the whole section only when every list is empty, off or unreadable", () => {
     expect(readDocket(listsBody({}, { newFoodsLastHour: 40 }))).toBeNull();
     expect(readDocket(disabledListsResponse())).toBeNull();
     expect(readDocket({ ...(listsBody() as object), enabled: false })).toBeNull();
@@ -59,35 +55,29 @@ describe("readDocket", () => {
   });
 
   it("drops declined, malformed, unnormalized and personal entries before counting", () => {
-    const body = listsBody({
-      latest: [
-        entry("gyro"),
-        { ...entry("some slur"), kind: "declined" },
-        { ...entry("flan"), confidence: 2 },
-        entry("Hot Dog"),
-        entry("call 555 123 4567"),
-        entry("me at example.com"),
-        entry("gyro"),
-        entry("ramen"),
-      ],
-    });
-    expect(items(body, "latest")).toBeUndefined();
-    const enough = listsBody({
-      latest: [entry("gyro"), { ...entry("x"), kind: "declined" }, entry("ramen"), entry("flan")],
-    });
-    expect(items(enough, "latest")).toEqual(["gyro", "ramen", "flan"]);
+    const junk = [
+      { ...entry("some slur"), kind: "declined" },
+      { ...entry("flan"), confidence: 2 },
+      entry("Hot Dog"),
+      entry("call 555 123 4567"),
+      entry("me at example.com"),
+    ];
+    expect(readDocket(listsBody({ latest: junk }))).toBeNull();
+    const body = listsBody({ latest: [entry("gyro"), ...junk, entry("gyro"), entry("ramen")] });
+    expect(items(body, "latest")).toEqual(["gyro", "ramen"]);
   });
 
   it("keeps each list true to its title", () => {
     const body = listsBody({
-      jevDissents: [...FULL_LISTS.jevDissents, entry("hot dog", "taco", { official: "taco" })],
+      honoraryCourt: [...FULL_LISTS.honoraryCourt, entry("hot dog", "taco")],
       friendshipEnding: [
         ...FULL_LISTS.friendshipEnding,
         entry("toast", "toast", { debateLevel: 0 }),
       ],
     });
-    expect(items(body, "jevDissents")).not.toContain("hot dog");
+    expect(items(body, "honoraryCourt")).not.toContain("hot dog");
     expect(items(body, "friendshipEnding")).not.toContain("toast");
+    expect(names(listsBody({ honoraryCourt: [entry("hot dog", "taco")] }))).toBeNull();
   });
 
   it("includes honorary rulings", () => {
@@ -111,7 +101,7 @@ describe("readDocket", () => {
 });
 
 describe("entryDetail", () => {
-  it("names the ruling a card shows, the pair Jev was torn between, the dissent and the heat", () => {
+  it("names the ruling a card shows, the pair Jev was torn between and the heat", () => {
     expect(entryDetail("latest", entry("ramen", "salad", { official: "nachos", wet: true }))).toBe(
       "wet nachos",
     );
@@ -124,13 +114,21 @@ describe("entryDetail", () => {
     expect(entryDetail("mostDebated", entry("flan", "salad", { confidence: 0.6 }))).toBe(
       "probably salad",
     );
-    expect(entryDetail("jevDissents", entry("cheesecake", "cake", { official: "quiche" }))).toBe(
-      "Canon: quiche, Jev: cake",
-    );
     expect(entryDetail("friendshipEnding", entry("hot dog", "taco", { debateLevel: 3 }))).toBe(
       "Debate: Friendship-ending",
     );
     expect(entryDetail("latest", honorary("canoe", "taco"))).toBe("taco");
+  });
+
+  it("calls each honorary ruling with the verdict's own adverb", () => {
+    const court = (confidence: number, more: Partial<ListEntry> = {}) =>
+      entryDetail("honoraryCourt", { ...honorary("canoe", "taco"), confidence, ...more });
+    expect(court(0.97)).toBe("definitely honorary taco");
+    expect(court(0.65)).toBe("probably honorary taco");
+    expect(court(0.44)).toBe("arguably honorary taco");
+    expect(court(0.99, { category: "salad", official: "calzone" })).toBe(
+      "officially honorary calzone",
+    );
   });
 });
 

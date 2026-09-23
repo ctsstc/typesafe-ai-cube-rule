@@ -35,7 +35,7 @@ function Entry({ list, entry, className, onPick }: EntryProps) {
         <>
           <span className="docket__name">
             {sentenceCase(entry.item)}
-            {entry.kind === "honorary" && (
+            {entry.kind === "honorary" && list !== "honoraryCourt" && (
               <>
                 <span className="visually-hidden">,</span>{" "}
                 <span className="docket__honorary">Honorary</span>

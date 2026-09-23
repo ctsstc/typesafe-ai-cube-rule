@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import axe from "axe-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearDocketCache } from "../lib/docket";
-import { entry, FULL_LISTS, listsBody } from "../test/lists";
+import { entry, FULL_LISTS, honorary, listsBody } from "../test/lists";
 import { Docket } from "./Docket";
 
 function serve(body: unknown, status = 200) {
@@ -45,17 +45,17 @@ describe("The docket", () => {
       within(region)
         .getAllByRole("heading", { level: 3 })
         .map((h) => h.textContent),
-    ).toEqual(["Latest rulings", "Most debated", "Jev vs the canon", "Friendship-ending"]);
+    ).toEqual(["Latest rulings", "Most debated", "Honorary court", "Friendship-ending"]);
     expect(region).toHaveTextContent("14 new foods ruled in the last hour.");
 
     expect(
       within(list(region, "Most debated")).getByRole("link", { name: "Gyro: taco or sushi" }),
     ).toHaveAttribute("href", "/?food=gyro");
     expect(
-      within(list(region, "Jev vs the canon")).getByRole("link", {
-        name: "Big mac: Canon: cake, Jev: sandwich",
+      within(list(region, "Honorary court")).getByRole("link", {
+        name: "Good vibes: definitely honorary salad",
       }),
-    ).toHaveAttribute("href", "/?food=big+mac");
+    ).toHaveAttribute("href", "/?food=good+vibes");
     expect(
       within(list(region, "Friendship-ending")).getByRole("link", {
         name: "Hot dog: Debate: Friendship-ending",
@@ -103,14 +103,21 @@ describe("The docket", () => {
     expect(region.querySelectorAll(".docket__honorary")).toHaveLength(2);
   });
 
-  it("hides short lists and the activity line when there is little to show", async () => {
+  it("hides empty lists and the activity line when there is little to show", async () => {
+    serve(listsBody({ ...FULL_LISTS, honoraryCourt: [], friendshipEnding: [] }, null));
+    const { region } = await renderDocket();
+    expect(
+      within(region)
+        .getAllByRole("heading", { level: 3 })
+        .map((h) => h.textContent),
+    ).toEqual(["Latest rulings", "Most debated"]);
+    expect(region).not.toHaveTextContent(/in the last hour/);
+  });
+
+  it("shows the section for a single ruling, with only the lists it belongs to", async () => {
     serve(
       listsBody(
-        {
-          ...FULL_LISTS,
-          jevDissents: [],
-          friendshipEnding: FULL_LISTS.friendshipEnding.slice(0, 2),
-        },
+        { latest: [honorary("canoe", "taco")], honoraryCourt: [honorary("canoe", "taco")] },
         null,
       ),
     );
@@ -119,8 +126,30 @@ describe("The docket", () => {
       within(region)
         .getAllByRole("heading", { level: 3 })
         .map((h) => h.textContent),
-    ).toEqual(["Latest rulings", "Most debated"]);
-    expect(region).not.toHaveTextContent(/in the last hour/);
+    ).toEqual(["Latest rulings", "Honorary court"]);
+    expect(
+      within(list(region, "Honorary court")).getByRole("link", {
+        name: "Canoe: arguably honorary taco",
+      }),
+    ).toBeInTheDocument();
+    expect(within(region).getAllByRole("link")).toHaveLength(2);
+  });
+
+  it("reads each Honorary court ruling in the order sent, with no second marker", async () => {
+    serve(listsBody());
+    const { region } = await renderDocket();
+    const court = list(region, "Honorary court");
+    expect(
+      within(court)
+        .getAllByRole("link")
+        .map((link) => link.textContent),
+    ).toEqual([
+      "Good vibes: definitely honorary salad",
+      "Humans: officially honorary calzone",
+      "The moon: probably honorary toast",
+      "Canoe: arguably honorary taco",
+    ]);
+    expect(court.querySelector(".docket__honorary")).toBeNull();
   });
 
   it("never renders a declined ruling, even if the server sends one", async () => {

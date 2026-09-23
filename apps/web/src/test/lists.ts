@@ -41,10 +41,11 @@ export const FULL_LISTS: Readonly<Record<ListName, readonly ListEntry[]>> = {
     honorary("canoe", "taco", "sushi"),
     entry("flan", "salad", { confidence: 0.58 }),
   ],
-  jevDissents: [
-    entry("big mac", "sandwich", { official: "cake", confidence: 0.71 }),
-    entry("cheesecake", "cake", { official: "quiche", runnerUp: "quiche" }),
-    entry("enchilada", "taco", { official: "sushi" }),
+  honoraryCourt: [
+    { ...honorary("good vibes", "salad"), confidence: 1 },
+    { ...honorary("humans", "calzone"), official: "calzone", confidence: 0.99 },
+    { ...honorary("the moon", "toast", "calzone"), confidence: 0.65 },
+    honorary("canoe", "taco", "sushi"),
   ],
   friendshipEnding: [
     entry("hot dog", "taco", { official: "taco", confidence: 0.93, debateLevel: 3 }),

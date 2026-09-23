@@ -15,23 +15,31 @@ describe("dev:mock /api/lists", () => {
     },
   );
 
-  // Jev's real question set 7 picks agree with every canon ruling, so Jev vs the canon stays empty.
-  it("fills every list but Jev vs the canon, and the activity line, by default", () => {
+  it("fills every list and the activity line by default", () => {
     const { body } = listsReply(core, "GET", query, undefined);
     if (!core.isListsResponse(body)) throw new Error("not a lists body");
     expect(body.enabled).toBe(true);
     expect(body.activity).toEqual({ newFoodsLastHour: 14 });
-    for (const name of core.LIST_NAMES.filter((name) => name !== "jevDissents")) {
-      expect(body.lists[name].length).toBeGreaterThanOrEqual(3);
+    for (const name of core.LIST_NAMES) {
+      expect(body.lists[name].length, name).toBeGreaterThanOrEqual(3);
     }
-    expect(body.lists.jevDissents).toEqual([]);
     expect(body.lists.latest.some((entry) => entry.kind === "honorary")).toBe(true);
   });
 
-  it("adds one dissent and a capped activity count in dissent mode", () => {
-    const { body } = listsReply(core, "GET", query, "dissent");
+  it("fills the Honorary court with honorary rulings only, most confident first", () => {
+    const { body } = listsReply(core, "GET", query, "full");
     if (!core.isListsResponse(body)) throw new Error("not a lists body");
-    expect(body.lists.jevDissents.map((entry) => entry.item)).toEqual(["pumpkin pie slice"]);
+    const court = body.lists.honoraryCourt;
+    expect(court.every((entry) => entry.kind === "honorary")).toBe(true);
+    expect(court.map((entry) => entry.confidence)).toEqual(
+      court.map((entry) => entry.confidence).sort((a, b) => b - a),
+    );
+    expect(court.some((entry) => entry.official !== null)).toBe(true);
+  });
+
+  it("caps the activity count in busy mode", () => {
+    const { body } = listsReply(core, "GET", query, "busy");
+    if (!core.isListsResponse(body)) throw new Error("not a lists body");
     expect(body.activity).toEqual({ newFoodsLastHour: core.LISTS_ACTIVITY_CAP });
   });
 
@@ -46,12 +54,14 @@ describe("dev:mock /api/lists", () => {
     }
   });
 
-  it("leaves some lists short in partial mode", () => {
-    const { body } = listsReply(core, "GET", query, "partial");
+  it("holds a single ruling in one mode, leaving the lists it misses empty", () => {
+    const { body } = listsReply(core, "GET", query, "one");
     if (!core.isListsResponse(body)) throw new Error("not a lists body");
     expect(body.activity).toBeNull();
-    expect(body.lists.jevDissents.length).toBeLessThan(3);
-    expect(body.lists.friendshipEnding.length).toBeLessThan(3);
+    expect(body.lists.latest).toHaveLength(1);
+    expect(body.lists.honoraryCourt).toEqual([]);
+    const items = new Set(Object.values(body.lists).flatMap((list) => list.map((e) => e.item)));
+    expect([...items]).toEqual([body.lists.latest[0]?.item]);
   });
 
   it("matches the server's disabled body and error codes", () => {

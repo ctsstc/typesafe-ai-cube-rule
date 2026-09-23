@@ -16,21 +16,12 @@ import {
   VERDICT_ADVERBS,
 } from "@cube/core";
 
-/**
- * A list with fewer entries than this is hidden, so a quiet day never looks empty. Jev agrees with
- * every canon ruling in the eval, so a single dissent is worth showing.
- */
-export const MIN_LIST_ENTRIES: Readonly<Record<ListName, number>> = {
-  latest: 3,
-  mostDebated: 3,
-  jevDissents: 1,
-  friendshipEnding: 3,
-};
+export const MIN_LIST_ENTRIES = 1;
 
 const SHOWN: Readonly<Record<ListName, number>> = {
   latest: 6,
   mostDebated: 5,
-  jevDissents: 5,
+  honoraryCourt: 5,
   friendshipEnding: 5,
 };
 
@@ -38,21 +29,21 @@ const SHOWN: Readonly<Record<ListName, number>> = {
 const BELONGS: Readonly<Record<ListName, (entry: ListEntry) => boolean>> = {
   latest: () => true,
   mostDebated: () => true,
-  jevDissents: (entry) => entry.official !== null && entry.official !== entry.category,
+  honoraryCourt: (entry) => entry.kind === "honorary",
   friendshipEnding: (entry) => entry.debateLevel > 0,
 };
 
 export const LIST_TITLES: Readonly<Record<ListName, string>> = {
   latest: "Latest rulings",
   mostDebated: "Most debated",
-  jevDissents: "Jev vs the canon",
+  honoraryCourt: "Honorary court",
   friendshipEnding: "Friendship-ending",
 };
 
 export const LIST_BLURBS: Readonly<Record<ListName, string>> = {
   latest: "Newest cases first.",
   mostDebated: "Jev couldn't settle on one cube.",
-  jevDissents: "cuberule.com has ruled. Jev, on its own, disagrees.",
+  honoraryCourt: "Not food. The court ruled anyway.",
   friendshipEnding: "What people argue about most, by Jev's read.",
 };
 
@@ -99,7 +90,7 @@ export function readDocket(body: unknown): Docket | null {
   if (body.questionSetVersion !== QUESTION_SET_VERSION) return null;
   const lists = isRecord(body.lists) ? body.lists : {};
   const shown = LIST_NAMES.map((name) => readList(name, lists[name])).filter(
-    ({ name, entries }) => entries.length >= MIN_LIST_ENTRIES[name],
+    ({ entries }) => entries.length >= MIN_LIST_ENTRIES,
   );
   if (shown.length === 0) return null;
   return { newFoodsLastHour: readActivity(body.activity), lists: shown };
@@ -155,8 +146,8 @@ export function entryDetail(name: ListName, entry: ListEntry): string {
       return entry.runnerUp
         ? `${noun(entry.category)} or ${noun(entry.runnerUp)}`
         : `${adverb(entry.confidence)} ${noun(entry.category)}`;
-    case "jevDissents":
-      return `Canon: ${noun(ruling)}, Jev: ${noun(entry.category)}`;
+    case "honoraryCourt":
+      return `${entry.official !== null ? "officially" : adverb(entry.confidence)} honorary ${noun(ruling)}`;
     case "friendshipEnding":
       return `Debate: ${DEBATE_LABELS[entry.debateLevel]}`;
   }
