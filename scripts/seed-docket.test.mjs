@@ -195,6 +195,19 @@ describe("seedEntries", () => {
     expect(Object.fromEntries(skipped)).toEqual({ "abusive probe": 1 });
   });
 
+  it("skips person probes that are not foods but keeps foods named after people", () => {
+    const { entries, skipped } = seed(
+      [record("taylor swift"), record("my family"), record("eggs benedict")],
+      [
+        { key: "taylor swift", item: "taylor swift", expected: "not_food", person: "public" },
+        { key: "my family", item: "my family", expected: "not_food", person: "none" },
+        { key: "eggs benedict", item: "eggs benedict", expected: "toast", person: "none" },
+      ],
+    );
+    expect(entries.map((e) => e.item)).toEqual(["eggs benedict"]);
+    expect(Object.fromEntries(skipped)).toEqual({ "person probe": 2 });
+  });
+
   it("seeds only listed, plain items from the real question set eval", () => {
     const text = readFileSync(
       new URL(`../eval/results/v${QUESTION_SET_VERSION}/raw.jsonl`, import.meta.url),

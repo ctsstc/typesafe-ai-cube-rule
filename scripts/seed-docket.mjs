@@ -14,6 +14,7 @@ import { parseRaw, requestFingerprint } from "../eval/src/cache.ts";
 import { loadDataset } from "../eval/src/dataset.ts";
 import {
   buildCubeRequest,
+  CATEGORY_IDS,
   CUBE_MODEL,
   isClassifyResponse,
   normalizeItem,
@@ -110,7 +111,13 @@ const canonical = (item) => item === normalizeItem(item) && !precheckItem(item);
 
 const count = (tally, reason) => tally.set(reason, (tally.get(reason) ?? 0) + 1);
 
-/** Encoded abusive probes are never seeded, whatever the gates say. `firstSeen` is in ms. */
+const FOOD_LABELS = new Set(CATEGORY_IDS);
+
+/**
+ * Encoded abusive probes are never seeded, whatever the gates say, and neither are the person
+ * probes that are not foods ("my family", "taylor swift"): they test the person gate, nobody asked
+ * for them. Foods named after people ("eggs benedict") stay. `firstSeen` is in ms.
+ */
 export function seedEntries(records, dataset, { questionSet, model, fingerprint }) {
   const byKey = new Map(dataset.map((entry) => [entry.key, entry]));
   const skipped = new Map();
@@ -124,6 +131,8 @@ export function seedEntries(records, dataset, { questionSet, model, fingerprint 
       reason = "stale request";
     } else if (!known) reason = "not in the dataset";
     else if (known.encoded) reason = "abusive probe";
+    else if (known.person !== undefined && !FOOD_LABELS.has(known.expected))
+      reason = "person probe";
     else if (!isClassifyResponse(response)) reason = "malformed";
     else if (!canonical(known.item)) reason = "not canonical";
     if (reason) {
