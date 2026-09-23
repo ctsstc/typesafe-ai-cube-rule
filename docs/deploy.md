@@ -27,7 +27,7 @@ Every uncached ruling calls Jev, about $0.0004 each. Cached rulings stay free an
 
 Each charge is one atomic `INSERT ... ON CONFLICT DO UPDATE ... WHERE calls < limit RETURNING calls`. No row back means refused, and a refusal gives back the charges already made, since Jev was never asked. A Jev call that fails after the charge stays counted, because it may still be billed.
 
-After a successful call the Function adds the `usage.input_tokens` Jev reports to today's `usage.input_tokens` column (migration 0004), in the background. That write never delays or fails the ruling; a failure is logged as `classify: token count failed`.
+After a successful call the Function adds the `usage.input_tokens` Jev reports to today's `usage.input_tokens` column (migration 0004), in the background. That write never delays or fails the ruling; a failure is logged as `classify: token count failed`. `pnpm spend` reads it (see [Watching spend](#watching-spend)).
 
 The per-session count lives in D1, not in the cookie. A stateless cookie cannot count: a client could replay its first cookie forever. With the count in D1, every Turnstile solve buys at most 60 Jev calls.
 
@@ -265,6 +265,27 @@ Other levers:
 1. **Kill switch.** Set `DAILY_CALL_LIMIT` to `"0"` in `wrangler.jsonc` and deploy. Every cached ruling keeps working.
 2. **Provider budget.** Use any spend cap or alert the TypeSafe console offers for the key. Revoking the key there is the fastest stop that needs no deploy: the Function then returns `502 upstream_error` for new items while cached rulings keep working.
 3. **Not available on this setup.** The Workers Rate Limiting binding (`ratelimits`) is rejected in a Pages config, and WAF rate limiting rules need the zone on Cloudflare.
+
+## Watching spend
+
+`pnpm spend` prints the Jev spend from the production D1 counters. It only runs `SELECT`s, through `wrangler d1 execute cube-rule-oracle --remote` from `apps/web`, with `CLOUDFLARE_ACCOUNT_ID` pinned to the same account as `scripts/deploy.sh`. The daily query reads at most 31 rows; `--detail` also reads today's client rows and the live session rows, through the migration 0003 indexes.
+
+```sh
+pnpm spend            # per UTC day for the last 30 days, then totals and the ceiling
+pnpm spend --detail   # adds today's distinct clients and the live sessions
+```
+
+For each day it shows the Jev calls, the share of `DAILY_CALL_LIMIT` (read from `apps/web/wrangler.jsonc`), the input tokens and the dollars at $0.042 per million input tokens ([TypeSafe's list price](https://docs.typesafe.ai/models.md); output tokens are free). Totals cover today, the last 7 days, the last 30 days and the month to date. The ceiling is the most a day can cost at the current limit.
+
+- Days with a recorded `usage.input_tokens` are priced exactly.
+- Days without one are estimated as calls times the average input tokens in `eval/results/v<QUESTION_SET_VERSION>/raw.jsonl` (9,642 for question set 6, and the fallback when that file is missing), and marked `~`.
+- The day migration 0004 lands mixes both: calls charged before the deploy that records tokens have none, so that day's exact figure runs low.
+- `usage.calls` counts reserved calls. A call that failed after the charge stays counted, and the SDK retries once, so one counted call can make two upstream attempts. Estimates therefore run slightly high, which is the safe direction.
+
+> [!IMPORTANT]
+> These are the app's own counters. The [TypeSafe console](https://console.typesafe.ai) is the source of truth for what the key is billed. Revoking the key there at `/keys` is the fastest stop and needs no deploy.
+
+On the Cloudflare side, the free quotas show up in the dashboard: **Workers & Pages > cube-rule-oracle > Functions Metrics** for requests (100,000 a day), **D1 > cube-rule-oracle > Metrics** for rows read and written, and **Workers KV > CLASSIFICATIONS > Metrics** for the 1,000 writes a day. Refusals such as `401`, `429` and `503` count as successful invocations there, so tail the logs or run `pnpm spend` to see the caps at work.
 
 ## Web Analytics
 
