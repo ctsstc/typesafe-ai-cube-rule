@@ -12,10 +12,10 @@ const OFFICIAL_TABLE: ReadonlyArray<readonly [CategoryId, string | null, readonl
   ["salad", "creamy and smooth", ["mashed potatoes", "mashed potato"]],
   ["salad", "with sausage stuffing", ["turducken"]],
   ["salad", "a wet salad", ["soup", "tomato soup"]],
-  ["salad", "a three-bean soup wet salad", ["vanilla soy latte"]],
+  ["salad", "a three-bean wet salad", ["vanilla soy latte"]],
   ["toast", null, ["toast", "pizza", "nigiri", "nigiri sushi"]],
   ["toast", "bent toast", ["pumpkin pie slice", "slice of pumpkin pie"]],
-  ["toast", "blocks of starch are toast, in raw unsliced form", ["muffin"]],
+  ["toast", "in raw, unsliced form", ["muffin"]],
   [
     "sandwich",
     null,
@@ -23,7 +23,7 @@ const OFFICIAL_TABLE: ReadonlyArray<readonly [CategoryId, string | null, readonl
   ],
   ["sandwich", "non-folded", ["non folded quesadilla", "unfolded quesadilla", "flat quesadilla"]],
   ["taco", null, ["taco", "hot dog", "hotdog"]],
-  ["taco", "uncut", ["sub sandwich", "uncut sub", "uncut sub sandwich"]],
+  ["taco", "uncut", ["uncut sub", "uncut sub sandwich"]],
   [
     "taco",
     "taco on its side",
@@ -75,7 +75,11 @@ export const OFFICIAL_RULINGS: ReadonlyMap<string, OfficialRuling> = new Map([
   ),
   ...["human", "humans"].map((name): [string, OfficialRuling] => [
     name,
-    { category: "calzone", note: "humans are just ravioli", honorary: true },
+    {
+      category: "calzone",
+      note: "humans are just ravioli, per food critic Soleil Ho",
+      honorary: true,
+    },
   ]),
 ]);
 
