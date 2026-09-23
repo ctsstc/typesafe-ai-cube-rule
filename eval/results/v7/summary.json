@@ -704,40 +704,46 @@
     "abusiveSweep": [
       {
         "threshold": 0.02,
-        "rudeFoods": 15,
-        "other": 27
+        "rudeFoods": 8,
+        "other": 14
       },
       {
         "threshold": 0.03,
-        "rudeFoods": 7,
-        "other": 8
+        "rudeFoods": 5,
+        "other": 2
       },
       {
         "threshold": 0.05,
-        "rudeFoods": 5,
+        "rudeFoods": 3,
         "other": 0
       },
       {
         "threshold": 0.08,
-        "rudeFoods": 2,
+        "rudeFoods": 0,
         "other": 0
       },
       {
         "threshold": 0.1,
-        "rudeFoods": 2,
+        "rudeFoods": 0,
         "other": 0
       },
       {
         "threshold": 0.2,
-        "rudeFoods": 1,
+        "rudeFoods": 0,
         "other": 0
       },
       {
         "threshold": 0.3,
-        "rudeFoods": 1,
+        "rudeFoods": 0,
         "other": 0
       }
-    ]
+    ],
+    "lists": {
+      "latest": 188,
+      "mostDebated": 51,
+      "jevDissents": 0,
+      "friendshipEnding": 90
+    }
   },
   "tokens": {
     "totalInput": 2545633,

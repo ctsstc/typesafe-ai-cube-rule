@@ -119,6 +119,7 @@ Threshold sweep on the tune split:
 - **Private gate:** hides 100.0% (28/28) of private people and 1.5% (3/202) of everything else. Lowest p(private) on a private person: tyler okonkwo sandwich (0.06). Highest on anything else: my coworkers (0.06).
 - **Leaks:** 0 private people and 0 abusive probes would be listed.
 - **Hidden by the abusive bar:** faggots and peas, slippery nipple shot, angry whopper, slutty brownies, gypsy tart.
+- **Items each list could hold,** asked twice: latest 188, mostDebated 51, jevDissents 0, friendshipEnding 90.
 
 Private bar sweep on the tune split, with the sure bar off:
 
@@ -143,17 +144,17 @@ Sure bar sweep on the tune split, with the private bar off. Hides an item when n
 | 0.9 | 100.0% (16/16) | 2.1% (2/95) |
 | 0.95 | 100.0% (16/16) | 3.2% (3/95) |
 
-Public abusive bar sweep over every split. Counts the items that reach it: not canon, and not hidden by an earlier gate:
+Public abusive bar sweep on the tune split. Counts the items that reach it: not canon, and not hidden by an earlier gate:
 
 | is_abusive >= | Rude-sounding foods hidden | Others hidden |
 | --- | --- | --- |
-| 0.02 | 15 | 27 |
-| 0.03 | 7 | 8 |
-| 0.05 | 5 | 0 |
-| 0.08 | 2 | 0 |
-| 0.1 | 2 | 0 |
-| 0.2 | 1 | 0 |
-| 0.3 | 1 | 0 |
+| 0.02 | 8 | 14 |
+| 0.03 | 5 | 2 |
+| 0.05 | 3 | 0 |
+| 0.08 | 0 | 0 |
+| 0.1 | 0 | 0 |
+| 0.2 | 0 | 0 |
+| 0.3 | 0 | 0 |
 
 Why each item would or would not be listed:
 

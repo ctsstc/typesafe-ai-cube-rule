@@ -203,11 +203,12 @@ describe("person kind and public listing", () => {
       jev: "private",
       correct: true,
     });
-    expect(caught.listing).toEqual({ reason: "private_person", canon: false });
+    expect(caught.listing).toEqual({ reason: "private_person", canon: false, lists: [] });
 
     const gyro = scoreItem(labelled({ item: "gyro", expected: "taco" }), record("gyro"));
     expect(gyro.person).toMatchObject({ expected: "none", labelled: false, correct: true });
     expect(gyro.listing.reason).toBe("listed");
+    expect(gyro.listing.lists).toContain("latest");
   });
 
   it("leaves abusive probes out of person scoring and never lists them", () => {
@@ -294,7 +295,19 @@ describe("person kind and public listing", () => {
       hiddenByAbuse: ["slutty brownies"],
     });
     expect(summary.listing.reasons).toMatchObject({ listed: 2, private_person: 2, abusive: 1 });
+    expect(summary.listing.lists.latest).toBe(2);
+    expect(summary.listing.lists.jevDissents).toBe(0);
     expect(summary.headline.personKindAccuracy).toBe(0.8);
+  });
+
+  it("picks the public abusive bar on tune only", () => {
+    const holdout = scoreItem(
+      labelled({ item: "spotted dick", expected: "cake", tags: ["abuse_guard"], split: "holdout" }),
+      record("spotted dick", { is_abusive: noul(0.09) }),
+    );
+    const meta = { questionSetVersion: "7", model: "jev-1.13.0", fingerprint: "f", datasetSize: 6 };
+    const sweep = summarize([...outcomes, holdout], meta).listing.abusiveSweep;
+    expect(sweep.find((row) => row.threshold === 0.08)).toMatchObject({ rudeFoods: 1 });
   });
 });
 

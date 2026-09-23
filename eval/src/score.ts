@@ -8,7 +8,10 @@ import {
   type HonoraryResult,
   INPUT_KIND_IDS,
   type InputKindId,
+  LIST_NAMES,
+  type ListEntry,
   type ListingBars,
+  type ListName,
   mayNamePrivatePerson,
   PERSON_KIND_IDS,
   type PersonKindId,
@@ -16,6 +19,7 @@ import {
   publicListing,
   THRESHOLDS,
   toCubeResult,
+  toListEntry,
   type Verdict,
 } from "@cube/core";
 import type { RawRecord } from "./cache";
@@ -98,7 +102,12 @@ export interface ItemOutcome {
     readonly correct: boolean | null;
     readonly probabilities: Readonly<Record<PersonKindId, number>>;
   };
-  readonly listing: { readonly reason: PublicListingReason; readonly canon: boolean };
+  readonly listing: {
+    readonly reason: PublicListingReason;
+    readonly canon: boolean;
+    /** The lists a listed item could appear in, by the Function's list queries. */
+    readonly lists: readonly ListName[];
+  };
   readonly inputTokens: number;
   readonly outputTokens: number;
   readonly latencyMs: number;
@@ -131,6 +140,18 @@ export function jevHonoraryResult(response: CubeResponse): HonoraryResult {
     throw new Error(`expected an honorary result, got ${result.kind}`);
   }
   return result;
+}
+
+const JOINS: Readonly<Record<ListName, (entry: ListEntry) => boolean>> = {
+  latest: () => true,
+  mostDebated: (entry) => entry.confidence < THRESHOLDS.unanimous,
+  jevDissents: (entry) => entry.official !== null && entry.official !== entry.category,
+  friendshipEnding: (entry) => entry.debateLevel > 0,
+};
+
+function listsJoined(item: string, response: CubeResponse, reason: PublicListingReason) {
+  const entry = reason === "listed" ? toListEntry(item, toCubeResult(item, response)) : null;
+  return entry ? LIST_NAMES.filter((name) => JOINS[name](entry)) : [];
 }
 
 const expectedKind = (label: Label): InputKindId | null =>
@@ -220,10 +241,14 @@ export function scoreItem(item: LabelledItem, record: RawRecord): ItemOutcome {
         PERSON_KIND_IDS.map((id) => [id, answers.person_kind.probabilities[id]]),
       ) as Record<PersonKindId, number>,
     },
-    listing: {
-      reason: publicListing(item.item, response).reason,
-      canon: findOfficialRuling(item.item) !== null,
-    },
+    listing: (() => {
+      const { reason } = publicListing(item.item, response);
+      return {
+        reason,
+        canon: findOfficialRuling(item.item) !== null,
+        lists: listsJoined(item.item, response, reason),
+      };
+    })(),
     inputTokens: record.usage.input_tokens,
     outputTokens: record.usage.output_tokens,
     latencyMs: record.latencyMs,
@@ -460,6 +485,7 @@ export interface Summary {
     readonly declinedListed: number;
     readonly hiddenByAbuse: readonly string[];
     readonly abusiveSweep: readonly PublicAbuseRow[];
+    readonly lists: Readonly<Record<ListName, number>>;
   };
   readonly tokens: {
     readonly totalInput: number;
@@ -634,7 +660,13 @@ export function summarize(
       privateListed: outcomes.filter((o) => listed(o) && o.person.expected === "private").length,
       declinedListed: outcomes.filter((o) => listed(o) && shouldDecline(o)).length,
       hiddenByAbuse: outcomes.filter((o) => o.listing.reason === "abusive").map((o) => o.item),
-      abusiveSweep: publicAbuseSweep(outcomes),
+      abusiveSweep: publicAbuseSweep(outcomes.filter((o) => o.split === "tune")),
+      lists: Object.fromEntries(
+        LIST_NAMES.map((name) => [
+          name,
+          outcomes.filter((o) => o.listing.lists.includes(name)).length,
+        ]),
+      ) as Record<ListName, number>,
     },
     tokens: {
       totalInput,

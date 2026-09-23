@@ -1,4 +1,4 @@
-import { THRESHOLDS } from "@cube/core";
+import { LIST_NAMES, THRESHOLDS } from "@cube/core";
 import type { Split } from "./dataset";
 import {
   type Confusion,
@@ -178,6 +178,7 @@ function renderPublicListing(summary: Summary, outcomes: readonly ItemOutcome[])
       `- **Private gate:** hides ${pct(person.gate.privateHidden)} of private people and ${pct(person.gate.othersHidden)} of everything else. Lowest p(private) on a private person: ${extreme(person.minPrivate)}. Highest on anything else: ${extreme(person.maxOther)}.`,
       `- **Leaks:** ${listing.privateListed} private people and ${listing.declinedListed} abusive probes would be listed.`,
       `- **Hidden by the abusive bar:** ${listing.hiddenByAbuse.length === 0 ? "none" : listing.hiddenByAbuse.join(", ")}.`,
+      `- **Items each list could hold,** asked twice: ${LIST_NAMES.map((name) => `${name} ${listing.lists[name]}`).join(", ")}.`,
     ].join("\n"),
     "Private bar sweep on the tune split, with the sure bar off:",
     table(
@@ -197,7 +198,7 @@ function renderPublicListing(summary: Summary, outcomes: readonly ItemOutcome[])
         pct(row.othersHidden),
       ]),
     ),
-    "Public abusive bar sweep over every split. Counts the items that reach it: not canon, and not hidden by an earlier gate:",
+    "Public abusive bar sweep on the tune split. Counts the items that reach it: not canon, and not hidden by an earlier gate:",
     table(
       ["is_abusive >=", "Rude-sounding foods hidden", "Others hidden"],
       listing.abusiveSweep.map((row) => [
