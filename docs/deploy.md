@@ -304,7 +304,7 @@ The SPA shows four short lists and an activity line from `GET /api/lists?v=<QUES
 
 `activity` is `{ "newFoodsLastHour": n }` only when at least `ACTIVITY_THRESHOLD` (default 5, at most 50) listable rulings were first seen in the last hour, and `null` otherwise, so a quiet hour shows nothing rather than a small number. It counts only rulings that passed the listing gates when they were recorded, never declined, nonsense or hidden ones, through the `rulings_activity` index. It stops counting at 50 (`LISTS_ACTIVITY_CAP` in `@cube/core`), and the SPA shows 50 as "50+". Honorary (not food) rulings also appear in the other lists like foods. The SPA shows every list that has at least one entry, and hides the section only when all four are empty.
 
-Up to v1.2 the third list was `jevDissents`, "Jev vs the canon". It never had an entry, because Jev agrees with all 45 canon rulings in the question set 7 eval: most canon names are worked examples in its questions. A tab still running a v1.2 SPA rejects the renamed response and hides the docket until it reloads.
+Up to v1.2 the third list was `jevDissents`, "Jev vs the canon". It never had an entry, because Jev agrees with all 45 canon rulings in the question set 7 eval: most canon names are worked examples in its questions. A tab still running a v1.2 SPA has no Honorary court card, treats the missing `jevDissents` as empty, and still shows Latest, Most debated and Friendship-ending once each has three entries, until it reloads.
 
 ### What gets recorded and what gets listed
 

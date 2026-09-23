@@ -446,7 +446,7 @@ Chosen on tune, then checked once on holdout and canon. `publicPrivatePerson` an
 
 Over the whole set, `publicListing` lists 188 items and hides 21 declined probes, 6 nonsense items, 31 items at the person gate (all 28 private people plus "my coworkers", "shirley temple" and "gordon ramsay's beef wellington") and 5 rude-sounding dishes. No private person and no abusive probe would be listed.
 
-Of the 188, 51 could appear in Most debated and 90 in Friendship-ending, but none in Jev vs the canon: Jev's own pick matches the canon on all 45 canon items, most of which are worked examples in its questions. The SPA therefore shows that card from a single dissent, and it will usually stay hidden.
+Of the 188, 51 could appear in Most debated, 29 in Honorary court and 90 in Friendship-ending. None could appear in Jev vs the canon, the v1.2 card Honorary court replaced in v1.3: Jev's own pick matches the canon on all 45 canon items, most of which are worked examples in its questions, so it stayed empty.
 
 > [!NOTE]
 > "my boss", "my mom" and "dave from accounting" are worked examples in the private option, so the report marks them in prompt. The other 25 private probes are not.

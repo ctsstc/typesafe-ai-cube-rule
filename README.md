@@ -34,7 +34,7 @@ flowchart LR
 - **Raw answers, mapped in code.** The Function returns Jev's raw answers and the browser turns them into a ruling with `toCubeResult` from `packages/core`. Every sentence on the card is a template written ahead of time and filled in from those numbers, so copy and threshold changes never need new inference.
 - **Canon wins.** Foods cuberule.com has already ruled on show the official ruling, and Jev's opinion appears as a dissent when it disagrees. Things that are not food get an honorary ruling, gibberish is uncubeable, and abusive text is declined without being echoed back.
 - **Cached, so repeats are usually free.** A ruling is keyed by food and question set version and kept in the browser, Cloudflare's edge cache and KV. A food someone already asked about usually never reaches Jev.
-- **Public lists, screened.** "The docket" lists foods people asked about at least twice: the latest rulings, the most debated, Jev vs the canon and the friendship-ending ones, with honorary rulings for things that are not food. Declined rulings never appear. Pattern rules and Jev's person reading keep out private people's names, phone numbers, email addresses, links and handles, and a kill switch and a blocklist sit behind `pnpm recent`.
+- **Public lists, screened.** "The docket" can list a food from the first time anyone asks about it, once it passes the screens: the latest rulings, the most debated, Honorary court (things that are not food) and the friendship-ending ones. Declined rulings never appear. Pattern rules and Jev's person reading keep out private people's names, phone numbers, email addresses, links and handles. No second ask stands behind them, so a kill switch and a blocklist behind `pnpm recent` are the backstops. The lists started with the eval's listed rulings and foods visitors had asked about before.
 - **A human check and spend caps guard the bill.** A new food needs a session cookie from a Cloudflare Turnstile check, which usually runs unseen. Before each Jev call, D1 counts it against the session (60), the client IP for the UTC day (150, stored only as a keyed hash) and the whole day (1,000 by default). The Function fails closed.
 
 [docs/question-design.md](docs/question-design.md) explains the questions and thresholds, and [docs/ux-spec.md](docs/ux-spec.md) covers the interface.
@@ -72,6 +72,7 @@ Open http://localhost:5173. `pnpm dev` runs Vite on 5173 and the Pages Function 
 | `pnpm deploy:pages` | Guarded production deploy. Bare `pnpm deploy` is pnpm's own command and does not run it |
 | `pnpm spend [--detail]` | Read-only Jev spend report from the production D1 counters (see [docs/deploy.md](docs/deploy.md#watching-spend)) |
 | `pnpm recent [--flagged]` | Recorded rulings behind the public lists, plus `--block`, `--unblock`, `--lists off\|on` and `--prune` (see [docs/deploy.md](docs/deploy.md#the-blocklist-and-pnpm-recent)) |
+| `pnpm seed:docket [--backfill] [--apply]` | Plans, then with `--apply` writes, the docket's seed from the eval's listed rulings, and with `--backfill` re-asks foods stored under older question sets (see [docs/deploy.md](docs/deploy.md#seeding-and-backfill)) |
 
 ## Evaluation
 
