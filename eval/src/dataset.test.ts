@@ -5,6 +5,7 @@ import {
   DATASET_PATH,
   decodeItem,
   exampleKey,
+  expectedPerson,
   fnv1a,
   labelItems,
   loadDataset,
@@ -89,6 +90,15 @@ describe("foods.json", () => {
     }
   });
 
+  it("has private, public and no-person probes in both tune and holdout", () => {
+    for (const split of ["tune", "holdout"] as const) {
+      for (const person of ["none", "public", "private"] as const) {
+        const probes = items.filter((item) => item.split === split && item.person === person);
+        expect(probes.length, `${split} ${person}`).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
   it("splits the non-canon items about 60/40", () => {
     const open = items.filter((item) => item.split !== "canon");
     const tune = open.filter((item) => item.split === "tune").length / open.length;
@@ -146,6 +156,8 @@ describe("parseDataset", () => {
     ["encoded set to false", { ...base, expected: "declined", encoded: false }],
     ["invalid base64", { ...base, item: "not base64!", expected: "declined", encoded: true }],
     ["encoded text that is not normalized", { ...declined, item: encode("Rude Text") }],
+    ["an unknown person kind", { ...base, person: "famous" }],
+    ["a person label on an abusive probe", { ...declined, person: "private" }],
   ])("rejects %s", (_label, raw) => {
     expect(() => parseDataset([raw])).toThrow();
   });
@@ -156,7 +168,7 @@ describe("parseDataset", () => {
 
   it("keeps optional fields only when present", () => {
     expect(parseDataset([base])).toEqual([{ ...base, key: "gyro" }]);
-    const full = { ...base, accept: ["sushi"], tags: ["name_bias"], wet: false };
+    const full = { ...base, accept: ["sushi"], tags: ["name_bias"], wet: false, person: "none" };
     expect(parseDataset([full])).toEqual([{ ...full, key: "gyro" }]);
   });
 
@@ -171,6 +183,27 @@ describe("parseDataset", () => {
   it("rejects an encoded duplicate of a plain item", () => {
     const twin = { ...declined, item: encode("gyro") };
     expect(() => parseDataset([base, twin])).toThrow(/twice/);
+  });
+});
+
+describe("expectedPerson", () => {
+  it("defaults to no person and skips abusive probes", () => {
+    const [gyro, boss, probe] = parseDataset([
+      { item: "gyro", expected: "taco", source: "consensus", note: "n" },
+      { item: "my boss", expected: "not_food", source: "probe", note: "n", person: "private" },
+      {
+        item: encode("rude text"),
+        expected: "declined",
+        encoded: true,
+        source: "probe",
+        note: "n",
+      },
+    ]);
+    expect([gyro, boss, probe].map((item) => item && expectedPerson(item))).toEqual([
+      "none",
+      "private",
+      null,
+    ]);
   });
 });
 

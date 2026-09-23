@@ -4,9 +4,14 @@ import {
   type CategoryOdds,
   type CubeResponse,
   type FoodResult,
+  findOfficialRuling,
   type HonoraryResult,
   INPUT_KIND_IDS,
   type InputKindId,
+  PERSON_KIND_IDS,
+  type PersonKindId,
+  type PublicListingReason,
+  publicListing,
   THRESHOLDS,
   toCubeResult,
   type Verdict,
@@ -14,6 +19,7 @@ import {
 import type { RawRecord } from "./cache";
 import {
   acceptedLabels,
+  expectedPerson,
   isCategoryId,
   LABELS,
   type Label,
@@ -31,6 +37,17 @@ export type Prediction = Label;
 export const PREDICTIONS: readonly Prediction[] = LABELS;
 export const ABUSE_SWEEP: readonly number[] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9];
 export const ABUSE_BUCKETS: readonly number[] = [0.1, 0.3, 0.5, 0.7, 0.85];
+export const PERSON_SWEEP: readonly number[] = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5];
+export const PUBLIC_ABUSE_SWEEP: readonly number[] = [0.02, 0.03, 0.05, 0.08, 0.1, 0.2, 0.3];
+export const LISTING_REASONS: readonly PublicListingReason[] = [
+  "listed",
+  "declined",
+  "nonsense",
+  "blocked",
+  "personal_info",
+  "private_person",
+  "abusive",
+];
 
 export interface ItemOutcome {
   readonly item: string;
@@ -70,6 +87,15 @@ export interface ItemOutcome {
     readonly jev: CategoryId;
     readonly confidence: number;
   } | null;
+  readonly person: {
+    readonly expected: PersonKindId | null;
+    readonly labelled: boolean;
+    readonly leaked: boolean;
+    readonly jev: PersonKindId;
+    readonly correct: boolean | null;
+    readonly probabilities: Readonly<Record<PersonKindId, number>>;
+  };
+  readonly listing: { readonly reason: PublicListingReason; readonly canon: boolean };
   readonly inputTokens: number;
   readonly outputTokens: number;
   readonly latencyMs: number;
@@ -137,6 +163,8 @@ export function scoreItem(item: LabelledItem, record: RawRecord): ItemOutcome {
   const honorary = item.expected === "not_food" ? jevHonoraryResult(response).ruling : null;
 
   const kindExpected = expectedKind(item.expected);
+  const personExpected = expectedPerson(item);
+  const personJev = answers.person_kind.choice;
   return {
     item: item.key,
     split: item.split,
@@ -179,6 +207,20 @@ export function scoreItem(item: LabelledItem, record: RawRecord): ItemOutcome {
           confidence: honorary.confidence,
         }
       : null,
+    person: {
+      expected: personExpected,
+      labelled: item.person !== undefined,
+      leaked: item.inPrompt.includes("person_kind"),
+      jev: personJev,
+      correct: personExpected === null ? null : personJev === personExpected,
+      probabilities: Object.fromEntries(
+        PERSON_KIND_IDS.map((id) => [id, answers.person_kind.probabilities[id]]),
+      ) as Record<PersonKindId, number>,
+    },
+    listing: {
+      reason: publicListing(item.item, response).reason,
+      canon: findOfficialRuling(item.item) !== null,
+    },
     inputTokens: record.usage.input_tokens,
     outputTokens: record.usage.output_tokens,
     latencyMs: record.latencyMs,
@@ -296,6 +338,55 @@ export function abuseBuckets(outcomes: readonly ItemOutcome[]): AbuseBucket[] {
   });
 }
 
+export interface Extreme {
+  readonly item: string;
+  readonly probability: number;
+}
+
+export interface PrivateGate {
+  readonly threshold: number;
+  readonly privateHidden: Rate;
+  readonly othersHidden: Rate;
+}
+
+export function privateGate(outcomes: readonly ItemOutcome[], threshold: number): PrivateGate {
+  const scored = outcomes.filter((o) => o.person.expected !== null);
+  const hidden = (o: ItemOutcome) => o.person.probabilities.private >= threshold;
+  return {
+    threshold,
+    privateHidden: rate(scored.filter((o) => o.person.expected === "private").map(hidden)),
+    othersHidden: rate(scored.filter((o) => o.person.expected !== "private").map(hidden)),
+  };
+}
+
+export interface PublicAbuseRow {
+  readonly threshold: number;
+  readonly rudeFoods: number;
+  readonly other: number;
+}
+
+// The abusive bar is the last gate, and canon names skip it.
+const reachesAbuseBar = (o: ItemOutcome): boolean =>
+  !o.listing.canon && (o.listing.reason === "listed" || o.listing.reason === "abusive");
+
+export function publicAbuseSweep(outcomes: readonly ItemOutcome[]): PublicAbuseRow[] {
+  const open = outcomes.filter(reachesAbuseBar);
+  return PUBLIC_ABUSE_SWEEP.map((threshold) => {
+    const hidden = open.filter((o) => o.abusive >= threshold);
+    const rude = hidden.filter((o) => o.tags.includes("abuse_guard")).length;
+    return { threshold, rudeFoods: rude, other: hidden.length - rude };
+  });
+}
+
+const extreme = (outcomes: readonly ItemOutcome[], pick: "min" | "max"): Extreme | null => {
+  const sorted = [...outcomes].sort(
+    (a, b) =>
+      (pick === "min" ? 1 : -1) * (a.person.probabilities.private - b.person.probabilities.private),
+  );
+  const top = sorted[0];
+  return top ? { item: top.item, probability: top.person.probabilities.private } : null;
+};
+
 export interface Summary {
   readonly questionSetVersion: string;
   readonly model: string;
@@ -313,6 +404,7 @@ export interface Summary {
     readonly canonN: number;
     readonly canonJevAgreement: number | null;
     readonly inputKindAccuracy: number | null;
+    readonly personKindAccuracy: number | null;
     readonly abuseFalsePositives: number;
     readonly abuseDetection: number | null;
     readonly eyesAgreeRate: number | null;
@@ -341,6 +433,23 @@ export interface Summary {
     readonly bySplit: Readonly<Record<Split | "all", AbuseRates>>;
     readonly sweep: readonly (AbuseRates & { readonly threshold: number })[];
     readonly buckets: readonly AbuseBucket[];
+  };
+  readonly person: {
+    readonly accuracy: Readonly<Record<Split | "all", Rate>>;
+    readonly probes: Rate;
+    readonly probesNotInPrompt: Rate;
+    readonly gate: PrivateGate;
+    readonly minPrivate: Extreme | null;
+    readonly maxOther: Extreme | null;
+    readonly sweep: readonly PrivateGate[];
+  };
+  readonly listing: {
+    readonly abusiveThreshold: number;
+    readonly reasons: Readonly<Record<PublicListingReason, number>>;
+    readonly privateListed: number;
+    readonly declinedListed: number;
+    readonly hiddenByAbuse: readonly string[];
+    readonly abusiveSweep: readonly PublicAbuseRow[];
   };
   readonly tokens: {
     readonly totalInput: number;
@@ -410,6 +519,12 @@ export function summarize(
   const runUsd = Number(((totalInput * PRICE_PER_MILLION_INPUT_USD) / 1e6).toFixed(6));
   const avgInput = average(inputs);
 
+  const personScored = outcomes.filter((o) => o.person.correct !== null);
+  const personRate = (list: readonly ItemOutcome[]) =>
+    rate(list.flatMap((o) => (o.person.correct === null ? [] : [o.person.correct])));
+  const personProbes = personScored.filter((o) => o.person.labelled);
+  const listed = (o: ItemOutcome) => o.listing.reason === "listed";
+
   return {
     ...meta,
     scored: outcomes.length,
@@ -424,6 +539,7 @@ export function summarize(
       canonN: splits.canon.n,
       canonJevAgreement: round(splits.canon.accuracy.rate),
       inputKindAccuracy: round(splits.all.inputKindAccuracy.rate),
+      personKindAccuracy: round(personRate(outcomes).rate),
       abuseFalsePositives: falsePositives,
       abuseDetection: round(abuseAll.detected.rate),
       eyesAgreeRate: round(eyes.agree.rate),
@@ -462,6 +578,44 @@ export function summarize(
         ),
       })),
       buckets: abuseBuckets(outcomes),
+    },
+    person: {
+      accuracy: {
+        canon: personRate(outcomes.filter((o) => o.split === "canon")),
+        tune: personRate(outcomes.filter((o) => o.split === "tune")),
+        holdout: personRate(outcomes.filter((o) => o.split === "holdout")),
+        all: personRate(outcomes),
+      },
+      probes: personRate(personProbes),
+      probesNotInPrompt: personRate(personProbes.filter((o) => !o.person.leaked)),
+      gate: privateGate(outcomes, THRESHOLDS.publicPrivatePerson),
+      minPrivate: extreme(
+        personScored.filter((o) => o.person.expected === "private"),
+        "min",
+      ),
+      maxOther: extreme(
+        personScored.filter((o) => o.person.expected !== "private"),
+        "max",
+      ),
+      sweep: PERSON_SWEEP.map((threshold) =>
+        privateGate(
+          outcomes.filter((o) => o.split === "tune"),
+          threshold,
+        ),
+      ),
+    },
+    listing: {
+      abusiveThreshold: THRESHOLDS.publicAbusive,
+      reasons: Object.fromEntries(
+        LISTING_REASONS.map((reason) => [
+          reason,
+          outcomes.filter((o) => o.listing.reason === reason).length,
+        ]),
+      ) as Record<PublicListingReason, number>,
+      privateListed: outcomes.filter((o) => listed(o) && o.person.expected === "private").length,
+      declinedListed: outcomes.filter((o) => listed(o) && shouldDecline(o)).length,
+      hiddenByAbuse: outcomes.filter((o) => o.listing.reason === "abusive").map((o) => o.item),
+      abusiveSweep: publicAbuseSweep(outcomes),
     },
     tokens: {
       totalInput,

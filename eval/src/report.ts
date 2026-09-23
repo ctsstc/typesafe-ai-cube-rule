@@ -159,6 +159,67 @@ function renderAbuse(summary: Summary): string {
   ].join("\n\n");
 }
 
+function renderPublicListing(summary: Summary, outcomes: readonly ItemOutcome[]): string {
+  const { person, listing } = summary;
+  const splits: readonly (Split | "all")[] = ["tune", "holdout", "canon", "all"];
+  const extreme = (e: { item: string; probability: number } | null) =>
+    e ? `${e.item} (${p2(e.probability)})` : "n/a";
+  const shown = outcomes.filter(
+    (o) => o.person.labelled || (o.person.expected !== null && o.person.correct === false),
+  );
+  return [
+    `\`person_kind\` is scored on every item except abusive probes. Items without a person label name no specific person. A public list hides an item when p(private) >= ${person.gate.threshold} or \`is_abusive\` >= ${listing.abusiveThreshold} (canon names skip the abusive bar), and never lists a declined or nonsense ruling.`,
+    table(
+      ["Split", "Person kind"],
+      splits.map((name) => [name, pct(person.accuracy[name])]),
+    ),
+    [
+      `- **Person probes:** ${pct(person.probes)}, not in prompt ${pct(person.probesNotInPrompt)}.`,
+      `- **Private gate:** hides ${pct(person.gate.privateHidden)} of private people and ${pct(person.gate.othersHidden)} of everything else. Lowest p(private) on a private person: ${extreme(person.minPrivate)}. Highest on anything else: ${extreme(person.maxOther)}.`,
+      `- **Leaks:** ${listing.privateListed} private people and ${listing.declinedListed} abusive probes would be listed.`,
+      `- **Hidden by the abusive bar:** ${listing.hiddenByAbuse.length === 0 ? "none" : listing.hiddenByAbuse.join(", ")}.`,
+    ].join("\n"),
+    "Private gate sweep on the tune split:",
+    table(
+      ["p(private) >=", "Private people hidden", "Others hidden"],
+      person.sweep.map((row) => [
+        String(row.threshold),
+        pct(row.privateHidden),
+        pct(row.othersHidden),
+      ]),
+    ),
+    "Public abusive bar sweep over every split. Counts the items that reach it: not canon, and not hidden by an earlier gate:",
+    table(
+      ["is_abusive >=", "Rude-sounding foods hidden", "Others hidden"],
+      listing.abusiveSweep.map((row) => [
+        String(row.threshold),
+        String(row.rudeFoods),
+        String(row.other),
+      ]),
+    ),
+    "Why each item would or would not be listed:",
+    table(
+      ["Reason", "Items"],
+      Object.entries(listing.reasons).map(([reason, n]) => [reason, String(n)]),
+    ),
+    "Person probes, and every other item where Jev read a person that is not there:",
+    table(
+      ["Item", "Split", "Expected", "Jev", "none", "public", "private", "Listing", "OK"],
+      shown.map((o) => [
+        o.person.leaked ? `${o.item} (in prompt)` : o.item,
+        o.split,
+        o.person.expected ?? "",
+        o.person.jev,
+        p2(o.person.probabilities.none),
+        p2(o.person.probabilities.public),
+        p2(o.person.probabilities.private),
+        o.listing.reason,
+        o.person.correct ? "yes" : "**no**",
+      ]),
+    ),
+  ].join("\n\n");
+}
+
 function renderHonorary(outcomes: readonly ItemOutcome[]): string {
   const rows = outcomes.flatMap((o) =>
     o.honorary
@@ -222,6 +283,7 @@ export function renderReport(
     renderSplitTable(summary),
     [
       `- **Canon agreement:** ${pct(summary.splits.canon.accuracy)}`,
+      `- **Person kind:** ${pct(summary.person.accuracy.all)}, with ${summary.listing.privateListed} private people listed.`,
       `- **Abuse guard:** detected ${pct(abuse.bySplit.all.detected)} of abusive probes at is_abusive >= ${abuse.threshold}, with ${abuse.falsePositives} false declines. Highest on an item that should get a ruling: ${abuse.maxItem ?? "n/a"} (${abuse.maxProbability ?? "n/a"}).`,
       `- **Jev's eyes** (food items): null on ${eyes.nullRate === null ? "n/a" : `${(eyes.nullRate * 100).toFixed(1)}%`} of ${eyes.n}. When not null, they agree with Jev's ruling ${pct(eyes.agree)} and match the label ${pct(eyes.accuracy)}.`,
       `- **Wet flag** (labelled items): ${pct(summary.wet)}`,
@@ -240,6 +302,8 @@ export function renderReport(
     renderConfusion(confusion(inSplit("canon"))),
     "## Abuse guard",
     renderAbuse(summary),
+    "## Public listing",
+    renderPublicListing(summary, outcomes),
     "## Probes",
     "Name-bias, abuse-guard, abusive, reading, not-food and nonsense probes from every split.",
     renderProbes(outcomes),

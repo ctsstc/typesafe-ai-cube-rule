@@ -88,6 +88,7 @@ describe("renderReport", () => {
       "## Confusion matrix: tune",
       "## Confusion matrix: canon",
       "## Abuse guard",
+      "## Public listing",
       "## Probes",
       "## Honorary rulings",
       "## Failures: tune",

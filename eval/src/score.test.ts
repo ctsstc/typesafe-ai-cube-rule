@@ -5,7 +5,10 @@ import {
   INPUT_KIND_IDS,
   type InputKindId,
   mockCubeResponse,
+  PERSON_KIND_IDS,
+  type PersonKindId,
   QUESTION_SET_VERSION,
+  THRESHOLDS,
 } from "@cube/core";
 import { describe, expect, it } from "vitest";
 import type { RawRecord } from "./cache";
@@ -17,6 +20,8 @@ import {
   confusionKey,
   jevFoodResult,
   percentile,
+  privateGate,
+  publicAbuseSweep,
   rate,
   scoreItem,
   splitMetrics,
@@ -44,6 +49,13 @@ const kind = (pick: InputKindId, top = 0.9) => ({
 
 const noul = (p: number) => ({ type: "noul" as const, noul: p });
 
+const person = (pick: PersonKindId, top = 0.9) => ({
+  type: "choice" as const,
+  choice: pick,
+  confidence: top,
+  probabilities: spread(PERSON_KIND_IDS, pick, top),
+});
+
 function record(
   item: string,
   patch: Partial<Record<keyof CubeAnswers, unknown>> = {},
@@ -58,6 +70,7 @@ function record(
       ...mockCubeResponse(item).answers,
       is_abusive: noul(0.01),
       input_kind: kind("food"),
+      person_kind: person("none", 1),
       ...patch,
     } as CubeAnswers,
     usage: { input_tokens: 8000, output_tokens: 500 },
@@ -174,6 +187,107 @@ describe("scoreItem", () => {
     const starchOnly = labelled({ item: "onigiri", expected: "calzone", inPrompt: ["starch"] });
     expect(scoreItem(leaked, record("club sandwich")).leaked).toBe(true);
     expect(scoreItem(starchOnly, record("onigiri")).leaked).toBe(false);
+  });
+});
+
+describe("person kind and public listing", () => {
+  it("scores person kind against the label, defaulting to no person", () => {
+    const boss = labelled({ item: "my boss", expected: "not_food", person: "private" });
+    const caught = scoreItem(
+      boss,
+      record("my boss", { input_kind: kind("not_food"), person_kind: person("private") }),
+    );
+    expect(caught.person).toMatchObject({
+      expected: "private",
+      labelled: true,
+      jev: "private",
+      correct: true,
+    });
+    expect(caught.listing).toEqual({ reason: "private_person", canon: false });
+
+    const gyro = scoreItem(labelled({ item: "gyro", expected: "taco" }), record("gyro"));
+    expect(gyro.person).toMatchObject({ expected: "none", labelled: false, correct: true });
+    expect(gyro.listing.reason).toBe("listed");
+  });
+
+  it("leaves abusive probes out of person scoring and never lists them", () => {
+    const probe = labelled({ key: "c2x1cg==", item: "slur", expected: "declined" });
+    const outcome = scoreItem(probe, record("c2x1cg==", { is_abusive: noul(0.97) }));
+    expect(outcome.person.correct).toBeNull();
+    expect(outcome.listing.reason).toBe("declined");
+  });
+
+  it("marks items named in the person question as leaked for person kind only", () => {
+    const boss = labelled({ item: "my boss", expected: "not_food", inPrompt: ["person_kind"] });
+    const outcome = scoreItem(boss, record("my boss"));
+    expect(outcome.person.leaked).toBe(true);
+    expect(outcome.leaked).toBe(false);
+  });
+
+  const outcomes = [
+    scoreItem(
+      labelled({ item: "my boss", expected: "not_food", person: "private" }),
+      record("my boss", { input_kind: kind("not_food"), person_kind: person("private", 0.95) }),
+    ),
+    scoreItem(
+      labelled({ item: "tyler okonkwo", expected: "not_food", person: "private" }),
+      record("tyler okonkwo", {
+        input_kind: kind("not_food"),
+        person_kind: {
+          ...person("public", 0.69),
+          probabilities: { none: 0.02, public: 0.69, private: 0.29 },
+        },
+      }),
+    ),
+    scoreItem(
+      labelled({ item: "cream pie", expected: "quiche", tags: ["abuse_guard"] }),
+      record("cream pie", { is_abusive: noul(0.03) }),
+    ),
+    scoreItem(
+      labelled({ item: "slutty brownies", expected: "toast", tags: ["abuse_guard"] }),
+      record("slutty brownies", { is_abusive: noul(0.11) }),
+    ),
+    scoreItem(
+      labelled({ item: "humans", expected: "not_food", source: "cuberule", split: "canon" }),
+      record("humans", { input_kind: kind("not_food"), is_abusive: noul(0.12) }),
+    ),
+  ];
+
+  it("counts what the private gate hides at each bar", () => {
+    expect(privateGate(outcomes, 0.15)).toEqual({
+      threshold: 0.15,
+      privateHidden: { n: 2, hits: 2, rate: 1 },
+      othersHidden: { n: 3, hits: 0, rate: 0 },
+    });
+    expect(privateGate(outcomes, 0.3).privateHidden.hits).toBe(1);
+  });
+
+  it("sweeps the abusive bar over items that reach it, skipping canon and people", () => {
+    const rows = publicAbuseSweep(outcomes);
+    expect(rows.find((row) => row.threshold === 0.03)).toEqual({
+      threshold: 0.03,
+      rudeFoods: 2,
+      other: 0,
+    });
+    expect(rows.find((row) => row.threshold === 0.2)).toMatchObject({ rudeFoods: 0 });
+  });
+
+  it("summarizes leaks, reasons and extremes", () => {
+    const summary = summarize(outcomes, {
+      questionSetVersion: "7",
+      model: "jev-1.13.0",
+      fingerprint: "f",
+      datasetSize: 5,
+    });
+    expect(summary.person.gate.threshold).toBe(THRESHOLDS.publicPrivatePerson);
+    expect(summary.person.minPrivate).toEqual({ item: "tyler okonkwo", probability: 0.29 });
+    expect(summary.listing).toMatchObject({
+      privateListed: 0,
+      declinedListed: 0,
+      hiddenByAbuse: ["slutty brownies"],
+    });
+    expect(summary.listing.reasons).toMatchObject({ listed: 2, private_person: 2, abusive: 1 });
+    expect(summary.headline.personKindAccuracy).toBe(0.8);
   });
 });
 

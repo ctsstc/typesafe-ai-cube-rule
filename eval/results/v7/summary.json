@@ -15,6 +15,7 @@
     "canonN": 45,
     "canonJevAgreement": 1,
     "inputKindAccuracy": 1,
+    "personKindAccuracy": 0.986,
     "abuseFalsePositives": 0,
     "abuseDetection": 1,
     "eyesAgreeRate": 0.9206,
@@ -434,6 +435,199 @@
         "to": 1,
         "abusive": 21,
         "rudeFoods": 0,
+        "other": 0
+      }
+    ]
+  },
+  "person": {
+    "accuracy": {
+      "canon": {
+        "n": 45,
+        "hits": 45,
+        "rate": 1
+      },
+      "tune": {
+        "n": 101,
+        "hits": 98,
+        "rate": 0.9702970297029703
+      },
+      "holdout": {
+        "n": 68,
+        "hits": 68,
+        "rate": 1
+      },
+      "all": {
+        "n": 214,
+        "hits": 211,
+        "rate": 0.985981308411215
+      }
+    },
+    "probes": {
+      "n": 35,
+      "hits": 32,
+      "rate": 0.9142857142857143
+    },
+    "probesNotInPrompt": {
+      "n": 32,
+      "hits": 29,
+      "rate": 0.90625
+    },
+    "gate": {
+      "threshold": 0.15,
+      "privateHidden": {
+        "n": 12,
+        "hits": 12,
+        "rate": 1
+      },
+      "othersHidden": {
+        "n": 202,
+        "hits": 0,
+        "rate": 0
+      }
+    },
+    "minPrivate": {
+      "item": "tyler okonkwo",
+      "probability": 0.29
+    },
+    "maxOther": {
+      "item": "my coworkers",
+      "probability": 0.06
+    },
+    "sweep": [
+      {
+        "threshold": 0.05,
+        "privateHidden": {
+          "n": 6,
+          "hits": 6,
+          "rate": 1
+        },
+        "othersHidden": {
+          "n": 95,
+          "hits": 1,
+          "rate": 0.010526315789473684
+        }
+      },
+      {
+        "threshold": 0.1,
+        "privateHidden": {
+          "n": 6,
+          "hits": 6,
+          "rate": 1
+        },
+        "othersHidden": {
+          "n": 95,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.15,
+        "privateHidden": {
+          "n": 6,
+          "hits": 6,
+          "rate": 1
+        },
+        "othersHidden": {
+          "n": 95,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.2,
+        "privateHidden": {
+          "n": 6,
+          "hits": 6,
+          "rate": 1
+        },
+        "othersHidden": {
+          "n": 95,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.3,
+        "privateHidden": {
+          "n": 6,
+          "hits": 5,
+          "rate": 0.8333333333333334
+        },
+        "othersHidden": {
+          "n": 95,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.5,
+        "privateHidden": {
+          "n": 6,
+          "hits": 5,
+          "rate": 0.8333333333333334
+        },
+        "othersHidden": {
+          "n": 95,
+          "hits": 0,
+          "rate": 0
+        }
+      }
+    ]
+  },
+  "listing": {
+    "abusiveThreshold": 0.05,
+    "reasons": {
+      "listed": 191,
+      "declined": 21,
+      "nonsense": 6,
+      "blocked": 0,
+      "personal_info": 0,
+      "private_person": 12,
+      "abusive": 5
+    },
+    "privateListed": 0,
+    "declinedListed": 0,
+    "hiddenByAbuse": [
+      "faggots and peas",
+      "slippery nipple shot",
+      "angry whopper",
+      "slutty brownies",
+      "gypsy tart"
+    ],
+    "abusiveSweep": [
+      {
+        "threshold": 0.02,
+        "rudeFoods": 15,
+        "other": 29
+      },
+      {
+        "threshold": 0.03,
+        "rudeFoods": 7,
+        "other": 10
+      },
+      {
+        "threshold": 0.05,
+        "rudeFoods": 5,
+        "other": 0
+      },
+      {
+        "threshold": 0.08,
+        "rudeFoods": 2,
+        "other": 0
+      },
+      {
+        "threshold": 0.1,
+        "rudeFoods": 2,
+        "other": 0
+      },
+      {
+        "threshold": 0.2,
+        "rudeFoods": 1,
+        "other": 0
+      },
+      {
+        "threshold": 0.3,
+        "rudeFoods": 1,
         "other": 0
       }
     ]
