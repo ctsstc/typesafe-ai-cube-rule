@@ -38,7 +38,7 @@ flowchart LR
 
 ## Quick start
 
-Needs Node 22 or newer (CI runs 24) and pnpm 10. `corepack enable` picks up the pinned pnpm version.
+Needs an even-numbered Node release from 22.13 on (CI runs 24; the tests use `node:sqlite`, which 22.13 unflagged) and pnpm 10. `corepack enable` picks up the pinned pnpm version. Node 25 and later no longer ship Corepack, so run `npm i -g corepack` first, or install pnpm 10 directly.
 
 ```sh
 pnpm i

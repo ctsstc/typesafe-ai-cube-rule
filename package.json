@@ -6,7 +6,7 @@
   "type": "module",
   "packageManager": "pnpm@10.26.0",
   "engines": {
-    "node": ">=22"
+    "node": "^22.13.0 || ^24.0.0 || >=26.0.0"
   },
   "scripts": {
     "dev": "concurrently --kill-others --names api,web --prefix-colors cyan,magenta \"pnpm dev:functions\" \"pnpm --filter @cube/web exec vite\"",
