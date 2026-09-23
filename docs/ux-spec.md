@@ -56,7 +56,7 @@ The heading reads as one sentence to a screen reader: "Hot dog: Definitely a tac
 | 5 | quiche | bottom, left, right, front, back | none | shell |
 | 6 | calzone | all six | none | shell |
 | 7 | cake | top, bottom | a middle layer | layered |
-| 8 | nachos | none | scattered pieces | loose |
+| 8 | nachos | none | a smaller starch cube | loose |
 
 `examples` holds only rulings published on cuberule.com. The gallery shows the first three per category, and `exampleQuery()` turns qualifiers such as "sub sandwich (uncut)" into the name the canon lookup knows ("uncut sub sandwich"). A test checks that every example opens its own canon ruling.
 
@@ -343,7 +343,7 @@ Inline SVG on a 24px grid, 1.75px stroke, `currentColor`, `aria-hidden`: share, 
       <div class="face face--bottom is-starch"><div class="skin"><i class="out"></i><i class="in"></i></div></div>
       <!-- top, left, right, front, back -->
       <div class="slab is-starch">...</div>   <!-- cake only -->
-      <div class="chip is-starch"></div>      <!-- nachos only, eight chips -->
+      <div class="core">...</div>           <!-- nachos only, six starch faces -->
     </div>
   </div>
 </div>
@@ -352,7 +352,7 @@ Inline SVG on a 24px grid, 1.75px stroke, `currentColor`, `aria-hidden`: share, 
 - `.face` places the plane, `.skin` carries flourish transforms, and `.out` and `.in` are the outer and inner layers with `backface-visibility: hidden`, so the inside of a taco is shaded darker with no lighting math.
 - Starch faces: crumb fill with three speckle layers (11, 14, 17px tiles), a crust edge, and a per-face shade. Food rulings tint the crumb toward the `starch` color.
 - Open faces: a faint glass tint with a dashed control outline.
-- Cake gets a middle slab. Nachos get eight triangular chips at hand-picked 3D positions.
+- Cake gets a middle slab. Nachos get a smaller starch cube at the center, drawn with the same faces, as on cuberule.com.
 
 ## 11. Motion
 
@@ -369,7 +369,7 @@ Only `transform`, the individual transform properties, and `opacity` animate. Th
 | 950 | confidence line, canon badge, and chips rise in |
 | 1400 | focus moves to the heading, but only for rulings the user typed |
 
-**Flourishes:** salad wobbles, toast's base rises into place, sandwich's lid drops, taco's walls grow up from the base, sushi rolls on in order, quiche's four walls rise together, calzone crimps, cake's layers drop in one by one, nachos' chips drop with a bounce.
+**Flourishes:** salad wobbles, toast's base rises into place, sandwich's lid drops, taco's walls grow up from the base, sushi rolls on in order, quiche's four walls rise together, calzone crimps, cake's layers drop in one by one, nachos' inner cube drops in with a bounce.
 
 **Reduced motion** (`prefers-reduced-motion: reduce`): no spin, bake, flourish, slam, or bar growth. The final state fades in over 150ms. Scrolling is instant. Nothing loops, and the hero cube animates once.
 

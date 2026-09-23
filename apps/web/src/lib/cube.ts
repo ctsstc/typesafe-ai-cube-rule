@@ -54,7 +54,7 @@ export function describeCube(id: CategoryId | null): string {
   const open = CUBE_FACES.filter((face) => !geometry.faces[face]);
   const prefix = `Cube diagram, ${name}:`;
   if (geometry.interior === "core") {
-    return `${prefix} no starch on any face, with starch pieces scattered inside.`;
+    return `${prefix} no starch on any face, with a smaller cube of starch inside.`;
   }
   if (solid.length === 0) return `${prefix} no structural starch on any face.`;
   if (open.length === 0) return `${prefix} starch sealing all six faces.`;

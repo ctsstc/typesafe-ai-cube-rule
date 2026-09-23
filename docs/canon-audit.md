@@ -47,11 +47,11 @@ Nothing was added.
 
 ### Cube geometry
 
-The site's cube drawings, by alt text: toast has the bottom face solid; sandwich the bottom and top; taco the bottom and two sides; sushi the bottom, top and two sides; quiche the bottom and all four sides; calzone all six; salad none; cake three stacked layers; nachos a smaller solid cube inside. `CATEGORIES` in `packages/core/src/categories.ts` matches every face set.
+The site's cube drawings, by alt text: toast has the bottom face solid; sandwich the bottom and top; taco the bottom and two sides; sushi the bottom, top and two sides; quiche the bottom and all four sides; calzone all six; salad none; cake three stacked layers; nachos a smaller solid cube inside. `CATEGORIES` in `packages/core/src/categories.ts` matches every face set, and `Cube3D` draws the nachos interior as a smaller starch cube, like the site.
 
 ### Credits, as the site states them
 
-- The Cube Rule slide credits "the holy prophet @Phosphatide" and links his original tweet, https://twitter.com/Phosphatide/status/974067376894328833.
+- The Cube Rule slide credits "the holy prophet @Phosphatide" and links the original tweet, https://twitter.com/Phosphatide/status/974067376894328833.
 - The closing slide says the site is made by @indirect and links https://twitter.com/indirect.
 - The humans ruling credits food critic Soleil Ho.
 

@@ -1,4 +1,4 @@
-import { CATEGORIES, type CategoryId, CUBE_FACES } from "@cube/core";
+import { CATEGORIES, type CategoryId, CUBE_FACES, type CubeFace } from "@cube/core";
 import { type CSSProperties, useLayoutEffect, useRef } from "react";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { BAKE_ORDER, describeCube, HERO_ANGLES, WIREFRAME_ANGLE } from "../lib/cube";
@@ -19,19 +19,21 @@ interface Cube3DProps {
 const SPIN_MS = 2400;
 const SETTLE_MS = 800;
 
-// x, y, z as fractions of the cube edge, then rotations in degrees.
-const CHIPS: ReadonlyArray<readonly [number, number, number, number, number, number]> = [
-  [-0.26, 0.28, 0.2, 70, 10, 20],
-  [0.24, 0.3, -0.18, 76, -20, -35],
-  [0.04, 0.3, 0.26, 82, 35, 160],
-  [-0.22, -0.02, -0.24, -30, 50, 10],
-  [0.26, 0.02, 0.22, 40, -40, 120],
-  [0, 0.08, -0.02, 60, 0, 200],
-  [-0.08, -0.26, 0.1, 20, 70, 300],
-  [0.2, -0.24, -0.16, -50, 20, 45],
-];
-
 type Vars = CSSProperties & Record<`--${string}`, string | number>;
+
+function Face({ face, starch }: { face: CubeFace; starch: boolean }) {
+  return (
+    <div
+      className={`face face--${face} ${starch ? "is-starch" : "is-open"}`}
+      style={{ "--order": BAKE_ORDER[face] } as Vars}
+    >
+      <div className="skin">
+        <i className="out" />
+        <i className="in" />
+      </div>
+    </div>
+  );
+}
 
 function spinAngle(animation: Animation | null): number | null {
   if (!animation) return null;
@@ -112,21 +114,9 @@ export function Cube3D({
     >
       <div className="cube-wrap">
         <div className="cube" ref={cubeRef}>
-          {CUBE_FACES.map((face) => {
-            const starch = layout?.faces[face] ?? false;
-            return (
-              <div
-                key={face}
-                className={`face face--${face} ${starch ? "is-starch" : "is-open"}`}
-                style={{ "--order": BAKE_ORDER[face] } as Vars}
-              >
-                <div className="skin">
-                  <i className="out" />
-                  <i className="in" />
-                </div>
-              </div>
-            );
-          })}
+          {CUBE_FACES.map((face) => (
+            <Face key={face} face={face} starch={layout?.faces[face] ?? false} />
+          ))}
           {layout?.interior === "layers" && (
             <div className="slab is-starch" style={{ "--order": 2 } as Vars}>
               <div className="skin">
@@ -135,20 +125,13 @@ export function Cube3D({
               </div>
             </div>
           )}
-          {layout?.interior === "core" &&
-            CHIPS.map(([x, y, z, rx, ry, rz], i) => (
-              <div
-                // biome-ignore lint/suspicious/noArrayIndexKey: fixed decorative list
-                key={i}
-                className="chip is-starch"
-                style={
-                  {
-                    "--i": i,
-                    transform: `translate3d(calc(var(--cube) * ${x}), calc(var(--cube) * ${y}), calc(var(--cube) * ${z})) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg)`,
-                  } as Vars
-                }
-              />
-            ))}
+          {layout?.interior === "core" && (
+            <div className="core">
+              {CUBE_FACES.map((face) => (
+                <Face key={face} face={face} starch />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
