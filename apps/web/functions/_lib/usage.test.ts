@@ -9,7 +9,7 @@ import {
   dailyCallLimit,
   forgetExpired,
   recordInputTokens,
-  refuseSpentDay,
+  refuseSpent,
   reserveJevCall,
 } from "./usage";
 
@@ -53,7 +53,7 @@ describe("D1 statements", () => {
     const env: Env = { DB: d1.binding, DAILY_CALL_LIMIT: "1" };
     await reserveJevCall(env, { session, client: "client-key" }, NOW);
     await reserveJevCall(env, { session, client: "client-key" }, NOW);
-    await refuseSpentDay(env, NOW);
+    await refuseSpent(env, "client-key", NOW);
     await recordInputTokens(env, 9642, NOW);
     await forgetExpired(d1.binding, NOW);
     const statements = new Set(d1.calls);

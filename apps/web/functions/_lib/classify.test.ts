@@ -477,7 +477,7 @@ describe("challenge and spend caps", () => {
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect((await errorBody(response)).error.code).toBe("challenge_required");
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(d1.calls).toEqual(["SELECT calls FROM usage WHERE day = ?1"]);
+    expect(d1.calls).toHaveLength(1);
     expect(usage(d1)).toEqual([]);
   });
 
@@ -495,7 +495,7 @@ describe("challenge and spend caps", () => {
     expect(refused.headers.get("Retry-After")).toBe("3600");
     expect(refused.headers.get("Cache-Control")).toBe("no-store");
     expect((await errorBody(refused)).error.code).toBe("daily_limit");
-    expect(d1.calls).toEqual(["SELECT calls FROM usage WHERE day = ?1"]);
+    expect(d1.calls).toHaveLength(1);
     expect(fetchMock).not.toHaveBeenCalled();
 
     vi.setSystemTime(new Date("2026-09-23T00:00:01Z"));
@@ -520,8 +520,52 @@ describe("challenge and spend caps", () => {
     const response = await ask("taco", env);
     expect(response.status).toBe(401);
     expect((await errorBody(response)).error.code).toBe("challenge_required");
-    expect(JSON.stringify(logs)).toContain("classify: daily usage read failed");
+    expect(JSON.stringify(logs)).toContain("classify: early spend read failed");
   });
+
+  it("skips the human check with 429 client_limit once this client is spent for the day", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-22T20:00:00Z"));
+    const { d1, env } = guardedEnv();
+    fetchMock.mockImplementation(async () => jevOk("taco"));
+    expect((await ask("taco", env, await cookie())).status).toBe(200);
+    d1.sqlite.exec(`UPDATE clients SET calls = ${CLIENT_DAILY_CALL_LIMIT}`);
+    d1.calls.length = 0;
+
+    const refused = await ask("pizza", env);
+    expect(refused.status).toBe(429);
+    expect(refused.headers.get("Retry-After")).toBe(String(4 * 3600));
+    expect((await errorBody(refused)).error.code).toBe("client_limit");
+    expect(d1.calls).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const elsewhere = { "CF-Connecting-IP": "198.51.100.4" };
+    expect((await ask("pizza", env, undefined, elsewhere)).status).toBe(401);
+  });
+
+  it.each([
+    ["the day", { DAILY_CALL_LIMIT: "1" }, "daily_limit", 503],
+    ["the client", {}, "client_limit", 429],
+  ] as const)(
+    "tells a spent session that %s is spent instead of sending it to a check",
+    async (_label, overrides, code, status) => {
+      const { d1, env } = guardedEnv(overrides);
+      const session = await cookie();
+      fetchMock.mockImplementation(async () => jevOk("taco"));
+      expect((await ask("taco", env, session)).status).toBe(200);
+      d1.sqlite.exec(`UPDATE sessions SET calls = ${SESSION_CALL_LIMIT}`);
+      d1.sqlite.exec(`UPDATE clients SET calls = ${CLIENT_DAILY_CALL_LIMIT}`);
+      if (code === "daily_limit") d1.sqlite.exec("UPDATE clients SET calls = 1");
+
+      const response = await ask("pizza", env, session);
+      expect(response.status).toBe(status);
+      expect((await errorBody(response)).error.code).toBe(code);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(d1.sqlite.prepare("SELECT calls FROM sessions").all()).toEqual([
+        { calls: SESSION_CALL_LIMIT },
+      ]);
+    },
+  );
 
   it("rejects an expired or tampered cookie", async () => {
     const { env } = guardedEnv();

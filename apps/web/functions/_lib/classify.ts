@@ -24,7 +24,7 @@ import { clientIp, type Env, type WaitUntil } from "./env";
 import { CACHE_IMMUTABLE, CACHE_NONE, errorResponse, jsonResponse, noContent } from "./http";
 import { createRateLimiter, type RateLimiter } from "./rate-limit";
 import { clientKey, requireSession } from "./session";
-import { recordInputTokens, refuseSpentDay, reserveJevCall, utcDay } from "./usage";
+import { recordInputTokens, refuseSpent, reserveJevCall, utcDay } from "./usage";
 
 export type { Env } from "./env";
 
@@ -106,16 +106,16 @@ async function classify(
 
   if (request.headers.get(PREFETCH_HEADER) === "1") return noContent({});
 
+  const client = await clientKey(request, env, utcDay(now));
   const session = await requireSession(request, env, now);
   if (session instanceof Response) {
     if (session.status !== CLASSIFY_ERROR_CODES.challenge_required) return session;
-    return (await refuseSpentDay(env, now)) ?? session;
+    return (await refuseSpent(env, client, now)) ?? session;
   }
 
   const wait = limiter.take(clientIp(request), now);
   if (wait > 0) return errorResponse("rate_limited", { headers: { "Retry-After": String(wait) } });
 
-  const client = await clientKey(request, env, utcDay(now));
   const refused = await reserveJevCall(env, { session, client }, now);
   if (refused) return refused;
 

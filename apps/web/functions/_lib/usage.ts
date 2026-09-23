@@ -24,7 +24,8 @@ const RESERVE_DAILY_CALL = `INSERT INTO usage (day, calls) SELECT ?1, 1 WHERE ?2
 ON CONFLICT (day) DO UPDATE SET calls = calls + 1 WHERE calls < ?2
 RETURNING calls`;
 
-const READ_DAILY_CALLS = "SELECT calls FROM usage WHERE day = ?1";
+const READ_SPENT = `SELECT (SELECT calls FROM usage WHERE day = ?1) AS day_calls,
+(SELECT calls FROM clients WHERE key = ?2) AS client_calls`;
 
 const ADD_INPUT_TOKENS = "UPDATE usage SET input_tokens = input_tokens + ?2 WHERE day = ?1";
 
@@ -76,9 +77,12 @@ export async function reserveJevCall(
         .bind(session.sid, SESSION_CALL_LIMIT, session.exp)
         .first();
       if (!charged) {
-        return errorResponse("challenge_required", {
-          message: "This session has used its new rulings. A fresh check starts another.",
-        });
+        return (
+          (await refuseSpent(env, client, now)) ??
+          errorResponse("challenge_required", {
+            message: "This session has used its new rulings. A fresh check starts another.",
+          })
+        );
       }
     }
     const refund = async (clientCharged: boolean) => {
@@ -93,10 +97,7 @@ export async function reserveJevCall(
         .first();
       if (!charged) {
         await refund(false);
-        console.warn("classify: client daily Jev call limit reached", { day });
-        return errorResponse("client_limit", {
-          headers: { "Retry-After": String(secondsUntilUtcMidnight(now)) },
-        });
+        return clientLimitReached(day, now);
       }
     }
     const limit = dailyCallLimit(env);
@@ -121,21 +122,38 @@ function dailyLimitReached(day: string, limit: number, now: number): Response {
   });
 }
 
+function clientLimitReached(day: string, now: number): Response {
+  console.warn("classify: client daily Jev call limit reached", { day });
+  return errorResponse("client_limit", {
+    headers: { "Retry-After": String(secondsUntilUtcMidnight(now)) },
+  });
+}
+
 /**
- * daily_limit when today's budget is already spent, so nobody solves a human check for nothing.
- * Only a shortcut: reserveJevCall stays the guard, so a failed read falls through to the check.
+ * The refusal a fresh human check would end in when today's budget or this client's is already
+ * spent, so nobody solves a check for nothing. Only a shortcut: reserveJevCall stays the guard, so
+ * a failed read falls through to the check.
  */
-export async function refuseSpentDay(env: Env, now: number): Promise<Response | null> {
+export async function refuseSpent(
+  env: Env,
+  client: string | null,
+  now: number,
+): Promise<Response | null> {
   const db = env.DB;
   if (!db) return null;
   const day = utcDay(now);
   const limit = dailyCallLimit(env);
   if (limit === 0) return dailyLimitReached(day, limit, now);
   try {
-    const row = await db.prepare(READ_DAILY_CALLS).bind(day).first<{ calls: number }>();
-    return row && row.calls >= limit ? dailyLimitReached(day, limit, now) : null;
+    const row = await db
+      .prepare(READ_SPENT)
+      .bind(day, client)
+      .first<{ day_calls: number | null; client_calls: number | null }>();
+    if ((row?.day_calls ?? 0) >= limit) return dailyLimitReached(day, limit, now);
+    if ((row?.client_calls ?? 0) >= CLIENT_DAILY_CALL_LIMIT) return clientLimitReached(day, now);
+    return null;
   } catch (error) {
-    console.warn("classify: daily usage read failed", {
+    console.warn("classify: early spend read failed", {
       error: error instanceof Error ? error.name : typeof error,
     });
     return null;
