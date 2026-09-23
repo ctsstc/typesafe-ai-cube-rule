@@ -271,6 +271,19 @@ describe("plan", () => {
     expect(basePlan({ entries, usageCalls: 5000 }).refusals[0]).toMatch(/margin of 0 /);
   });
 
+  it("warns when the Function's daily Jev calls plus the one-off KV writes can pass 1,000", () => {
+    const entries = Array.from({ length: 186 }, (_, i) => entry(`food ${i}`));
+    const kv = kvItems(["v6:pizza", "v6:ramen"], "7");
+    const result = basePlan({ entries, kv, backfill: true, usageCalls: 28 });
+    expect(result.kvOverrun).toEqual({ oneOff: 186, dailyCallLimit: 1000, worstCase: 1186 });
+    expect(result.refusals).toEqual([]);
+    expect(basePlan({ entries, dailyCallLimit: 814 }).kvOverrun).toBe(null);
+    expect(basePlan({ entries: [], kv, backfill: true }).kvOverrun).toBe(null);
+    expect(basePlan({ entries, dailyCallLimit: 0, usageCalls: 900 }).kvOverrun).toMatchObject({
+      worstCase: 1086,
+    });
+  });
+
   it("writes nothing to KV and refuses nothing when everything is stored", () => {
     const result = basePlan({
       kv: { ...emptyKv(), current: new Set(["gyro", "hot dog"]) },
@@ -326,6 +339,22 @@ describe("plan", () => {
     expect(text).toContain("1 already recorded");
     expect(text).toContain("Jev: 1 call");
     expect(text).toContain("KV: 3 writes. Today's margin is 888: 900 minus 12 Jev calls");
+    const context = {
+      source: "production D1 and KV",
+      questionSet: "7",
+      apply: false,
+      total: 2,
+      seedable: 2,
+      skipped: new Map(),
+      kvKeys: 0,
+      lookups: 1,
+    };
+    expect(formatPlan(basePlan({ dailyCallLimit: 998 }), context)).not.toContain(
+      "DAILY_CALL_LIMIT",
+    );
+    expect(formatPlan(basePlan({ dailyCallLimit: 1000 }), context)).toContain(
+      "The 2 seed KV writes do not count toward DAILY_CALL_LIMIT (1,000), so if Jev calls reach it today, KV passes 1,000 writes (1,002) and later rulings go unstored. Run the seed late in the UTC day, or deploy DAILY_CALL_LIMIT 998 until 00:00 UTC.",
+    );
     expect(text).toContain("Nothing was written.");
     expect(text).not.toMatch(new RegExp(`[${String.fromCodePoint(0x2013, 0x2014)}]`));
   });

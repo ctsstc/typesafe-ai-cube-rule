@@ -26,7 +26,9 @@ import { loadSettings, PRODUCTION_CONFIG, writeProductionConfig } from "./cloudf
 import { sqlString } from "./recent.mjs";
 import {
   averageInputTokens,
+  DEFAULT_DAILY_CALL_LIMIT,
   FALLBACK_TOKENS_PER_CALL,
+  parseDailyCallLimit,
   USD_PER_MILLION_INPUT_TOKENS,
   utcDay,
 } from "./spend.mjs";
@@ -38,6 +40,7 @@ const LOCAL_KV_NAMESPACE = "CLASSIFICATIONS";
 const TYPESAFE_BASE_URL = "https://api.typesafe.ai";
 // Free plan KV allows 1,000 writes a day; each Jev call today may already have spent one.
 export const KV_WRITE_CEILING = 900;
+const KV_WRITES_PER_DAY = 1000;
 export const DEFAULT_MAX_USD = 0.05;
 const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;
@@ -171,6 +174,7 @@ export function plan({
   maxUsd = DEFAULT_MAX_USD,
   tokensPerCall = FALLBACK_TOKENS_PER_CALL,
   rowsPerRuling,
+  dailyCallLimit = DEFAULT_DAILY_CALL_LIMIT,
 }) {
   const seedRows = entries.filter((entry) => !recorded.has(entry.item));
   const seedKv = entries.filter((entry) => !kv.current.has(entry.item));
@@ -182,6 +186,10 @@ export function plan({
   const kvLimit = KV_WRITE_CEILING - usageCalls;
   const rulings = seedRows.length + backfillItems.length;
   const d1Rows = rulings * rowsPerRuling + (backfillItems.length > 0 ? 2 : 0);
+  // Backfill calls count toward DAILY_CALL_LIMIT like the Function's; the seed's KV writes do not.
+  const worstCase = seedKv.length + Math.max(dailyCallLimit, usageCalls + backfillItems.length);
+  const kvOverrun =
+    worstCase > KV_WRITES_PER_DAY ? { oneOff: seedKv.length, dailyCallLimit, worstCase } : null;
 
   const refusals = [];
   if (kvWrites > 0 && kvWrites > kvLimit) {
@@ -224,6 +232,7 @@ export function plan({
     },
     kvWrites,
     kvLimit,
+    kvOverrun,
     usageCalls,
     d1Rows,
     rowsPerRuling,
@@ -390,6 +399,18 @@ export function formatPlan(
     `  KV: ${number(result.kvWrites)} writes. Today's margin is ${number(Math.max(0, result.kvLimit))}: ${KV_WRITE_CEILING} minus ${plural(result.usageCalls, "Jev call")} so far today.`,
     `Read to plan this: ${plural(kvKeys, "KV key")} (1 list operation per 1,000 keys), ${plural(lookups, "D1 lookup")} and today's usage row.`,
   );
+  const overrun = result.kvOverrun;
+  if (overrun) {
+    const safeLimit = KV_WRITES_PER_DAY - overrun.oneOff;
+    const lower =
+      safeLimit >= result.usageCalls + backfill.items.length
+        ? `, or deploy DAILY_CALL_LIMIT ${safeLimit} until 00:00 UTC`
+        : "";
+    lines.push(
+      "",
+      `The ${number(overrun.oneOff)} seed KV writes do not count toward DAILY_CALL_LIMIT (${number(overrun.dailyCallLimit)}), so if Jev calls reach it today, KV passes ${number(KV_WRITES_PER_DAY)} writes (${number(overrun.worstCase)}) and later rulings go unstored. Run the seed late in the UTC day${lower}.`,
+    );
+  }
   if (result.refusals.length > 0) {
     lines.push("", "Refused:", ...result.refusals.map((reason) => `  ${reason}`));
   } else if (!apply) {
@@ -625,6 +646,7 @@ async function main() {
     maxUsd: options.maxUsd,
     tokensPerCall,
     rowsPerRuling: await rowsPerRuling(),
+    dailyCallLimit: parseDailyCallLimit(readFileSync(`${web}/wrangler.jsonc`, "utf8")),
   });
   console.log(
     formatPlan(result, {

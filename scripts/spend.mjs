@@ -10,7 +10,7 @@ const DATABASE = "cube-rule-oracle";
 // Jev's public list price (https://docs.typesafe.ai/models.md). Output tokens are free.
 export const USD_PER_MILLION_INPUT_TOKENS = 0.042;
 export const FALLBACK_TOKENS_PER_CALL = 9642;
-const DEFAULT_DAILY_CALL_LIMIT = 1000;
+export const DEFAULT_DAILY_CALL_LIMIT = 1000;
 const WINDOW_DAYS = 30;
 
 const root = fileURLToPath(new URL("..", import.meta.url));
