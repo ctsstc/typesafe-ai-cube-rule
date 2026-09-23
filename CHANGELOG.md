@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-09-23
+
+### Fixed
+
+- `pnpm deploy:pages` works again. Pages rejects a custom Wrangler config path, so the deploy now copies the generated `wrangler.production.jsonc` over `wrangler.jsonc` for the upload only and restores the committed file on exit. v1.1.1 was tagged but never deployed because of this. A test fails if real KV or D1 ids are ever committed to `wrangler.jsonc`.
+
 ## [1.1.1] - 2026-09-23
 
 ### Changed
