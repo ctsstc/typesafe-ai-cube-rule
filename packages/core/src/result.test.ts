@@ -175,6 +175,26 @@ describe("toCubeResult", () => {
     expect(humans.headline).toMatch(/^If it were food, it would officially be a calzone/);
   });
 
+  it("reads the interior Nouls on a narrower unsure band than the faces", () => {
+    const loaf = asFood(
+      toCubeResult(
+        "beaver tails",
+        withAnswers("beaver tails", {
+          input_kind: foodInput,
+          category: categoryChoice("toast", { toast: 0.8 }, 0.77),
+          starch_block: noul(0.65),
+          starch_middle_layer: noul(0.35),
+          starch_loose_pieces: noul(0.35),
+          starch_base: noul(0.65),
+        }),
+      ),
+    );
+    expect(loaf.eyes.solidBlock).toBe("yes");
+    expect(loaf.eyes.middleLayer).toBe("no");
+    expect(loaf.eyes.faces.bottom).toBe("unsure");
+    expect(loaf.muffinClause).toBe(true);
+  });
+
   it("rounds the debate score to a level label", () => {
     const base = mockCubeResponse("hot dog").answers.debate_heat;
     const debate = asFood(

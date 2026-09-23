@@ -17,8 +17,8 @@
     "inputKindAccuracy": 1,
     "abuseFalsePositives": 0,
     "abuseDetection": 1,
-    "eyesAgreeRate": 0.9358,
-    "eyesNullRate": 0.3187,
+    "eyesAgreeRate": 0.9098,
+    "eyesNullRate": 0.2375,
     "avgInputTokens": 9642,
     "p50LatencyMs": 255,
     "p95LatencyMs": 372,
@@ -104,14 +104,14 @@
           "rate": 1
         },
         "majority": {
-          "n": 17,
-          "hits": 15,
-          "rate": 0.8823529411764706
+          "n": 14,
+          "hits": 13,
+          "rate": 0.9285714285714286
         },
         "split": {
-          "n": 0,
-          "hits": 0,
-          "rate": null
+          "n": 3,
+          "hits": 2,
+          "rate": 0.6666666666666666
         }
       }
     },
@@ -149,14 +149,14 @@
           "rate": 0.96875
         },
         "majority": {
-          "n": 13,
-          "hits": 12,
-          "rate": 0.9230769230769231
+          "n": 10,
+          "hits": 10,
+          "rate": 1
         },
         "split": {
-          "n": 1,
-          "hits": 1,
-          "rate": 1
+          "n": 4,
+          "hits": 3,
+          "rate": 0.75
         }
       }
     },
@@ -194,30 +194,30 @@
           "rate": 0.9921259842519685
         },
         "majority": {
-          "n": 32,
-          "hits": 29,
-          "rate": 0.90625
+          "n": 26,
+          "hits": 25,
+          "rate": 0.9615384615384616
         },
         "split": {
-          "n": 1,
-          "hits": 1,
-          "rate": 1
+          "n": 7,
+          "hits": 5,
+          "rate": 0.7142857142857143
         }
       }
     }
   },
   "eyes": {
     "n": 160,
-    "nullRate": 0.3187,
+    "nullRate": 0.2375,
     "agree": {
-      "n": 109,
-      "hits": 102,
-      "rate": 0.9357798165137615
+      "n": 122,
+      "hits": 111,
+      "rate": 0.9098360655737705
     },
     "accuracy": {
-      "n": 109,
-      "hits": 101,
-      "rate": 0.926605504587156
+      "n": 122,
+      "hits": 113,
+      "rate": 0.9262295081967213
     }
   },
   "wet": {
@@ -231,7 +231,7 @@
     "rate": 0.8461538461538461
   },
   "abuse": {
-    "threshold": 0.85,
+    "threshold": 0.5,
     "falsePositives": 0,
     "maxProbability": 0.22,
     "maxItem": "slippery nipple shot",

@@ -12,18 +12,20 @@ import {
 export const CUBE_MODEL = "jev-1.13.0";
 export const QUESTION_SET_VERSION = "6";
 
-// Untuned starting points. Calibrate against the official rulings plus held-out foods before trusting them.
+// Applied in code and never sent to Jev, so changing one needs no version bump. Tune with `pnpm eval --offline`.
 export const THRESHOLDS = {
   unanimous: 0.8,
-  majority: 0.4,
+  majority: 0.5,
   dissent: 0.15,
   family: 0.7,
   wet: 0.6,
-  rice: 0.5,
-  dependsOnServing: 0.6,
+  rice: 0.4,
+  dependsOnServing: 0.5,
   yes: 0.7,
   no: 0.3,
-  abusive: 0.85,
+  interiorYes: 0.6,
+  interiorNo: 0.4,
+  abusive: 0.5,
 } as const;
 
 export type CubeState = { item: string };

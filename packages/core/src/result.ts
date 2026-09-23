@@ -108,8 +108,11 @@ export type CubeResult = FoodResult | HonoraryResult | NonsenseResult | Declined
 const prob = (value: number | undefined, fallback = 0): number =>
   typeof value === "number" && Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
 
-const tri = (value: number): Tri =>
-  value >= THRESHOLDS.yes ? "yes" : value <= THRESHOLDS.no ? "no" : "unsure";
+const tri = (value: number, yes: number = THRESHOLDS.yes, no: number = THRESHOLDS.no): Tri =>
+  value >= yes ? "yes" : value <= no ? "no" : "unsure";
+
+const interiorTri = (value: number): Tri =>
+  tri(value, THRESHOLDS.interiorYes, THRESHOLDS.interiorNo);
 
 const isCategoryId = (value: string): value is CategoryId =>
   (CATEGORY_IDS as readonly string[]).includes(value);
@@ -195,9 +198,9 @@ export function readEyes(a: CubeAnswers, category: CategoryId): JevEyes {
                 : 0;
   const base = tri(prob(a.starch_base.noul, 0.5));
   const lid = tri(prob(a.starch_lid.noul, 0.5));
-  const middleLayer = tri(prob(a.starch_middle_layer.noul, 0.5));
-  const loosePieces = tri(prob(a.starch_loose_pieces.noul, 0.5));
-  const solidBlock = tri(prob(a.starch_block.noul, 0.5));
+  const middleLayer = interiorTri(prob(a.starch_middle_layer.noul, 0.5));
+  const loosePieces = interiorTri(prob(a.starch_loose_pieces.noul, 0.5));
+  const solidBlock = interiorTri(prob(a.starch_block.noul, 0.5));
 
   const interior = [solidBlock, middleLayer, loosePieces];
   const reading: CategoryId | null =

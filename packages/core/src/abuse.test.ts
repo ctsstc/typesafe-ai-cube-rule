@@ -29,8 +29,8 @@ describe("is_abusive question", () => {
     }
   });
 
-  it("declines at a high bar", () => {
-    expect(THRESHOLDS.abusive).toBe(0.85);
+  it("declines at the bar picked from the eval's abusive probes", () => {
+    expect(THRESHOLDS.abusive).toBe(0.5);
   });
 });
 
