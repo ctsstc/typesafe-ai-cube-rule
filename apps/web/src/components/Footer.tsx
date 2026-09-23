@@ -1,4 +1,5 @@
 import { QUESTION_SET_VERSION } from "@cube/core";
+import { MadeBy } from "./MadeBy";
 
 export function Footer({ model }: { model: string | null }) {
   return (
@@ -15,6 +16,7 @@ export function Footer({ model }: { model: string | null }) {
           </a>
           . Rulings by Jev from <a href="https://typesafe.ai/">TypeSafe</a>.
         </p>
+        <MadeBy className="site-footer__author" />
         <p className="site-footer__meta">
           <span>v{__APP_VERSION__}</span>
           <span>question set {QUESTION_SET_VERSION}</span>

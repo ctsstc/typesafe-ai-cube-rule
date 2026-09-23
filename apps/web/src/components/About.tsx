@@ -1,4 +1,5 @@
 import { RICE_CLAUSE } from "@cube/core";
+import { MadeBy } from "./MadeBy";
 
 export function About() {
   return (
@@ -124,6 +125,7 @@ export function About() {
             . Rulings by Jev from TypeSafe. The cube drawings on this page are our own. Display type
             is Fraunces by Undercase Type.
           </p>
+          <MadeBy />
         </article>
       </div>
     </section>
