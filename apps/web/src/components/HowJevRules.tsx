@@ -49,7 +49,7 @@ export function HowJevRules() {
       <ul className="jev__stats" aria-label="The short version">
         <li>
           <strong>{formatRate(holdout.all)}</strong>
-          <span>right on foods we never tuned against</span>
+          <span>right on held-out items</span>
         </li>
         <li>
           <strong>{QUESTION_COUNT}</strong>
@@ -239,8 +239,9 @@ export function HowJevRules() {
             <div>
               <dt>Holdout, {holdout.all.n}</dt>
               <dd>
-                Labelled the same way, looked at only after each version of the questions was final,
-                and never tuned against. This is the number to trust.
+                Labelled the same way, looked at only after each version of the questions was final
+                ({stats.holdoutChecks} times so far), never while writing questions. It is the
+                fairest of the three piles.
               </dd>
             </div>
           </dl>

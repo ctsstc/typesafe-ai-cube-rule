@@ -36,6 +36,15 @@ describe("eval stats", () => {
     expect(stats.latency.p50Ms).toBe(summary.latency.p50);
   });
 
+  it("counts every question set whose holdout has been scored, up to the current one", () => {
+    const scored = Array.from({ length: Number(QUESTION_SET_VERSION) }, (_, i) => String(i + 1))
+      .map(summaryPath)
+      .filter(existsSync)
+      .filter((file) => JSON.parse(readFileSync(file, "utf8")).splits?.holdout?.accuracy?.n > 0);
+    expect(stats.holdoutChecks).toBe(scored.length);
+    expect(stats.holdoutChecks).toBeGreaterThan(0);
+  });
+
   it("carries no item names, only numbers plus the version and model", () => {
     const strings: string[] = [];
     JSON.stringify(stats, (_key, value) => {

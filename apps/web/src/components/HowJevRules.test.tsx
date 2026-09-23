@@ -30,7 +30,7 @@ describe("How Jev rules", () => {
     const region = section();
     const rate = `${((holdout.all.hits / holdout.all.n) * 100).toFixed(1)}%`;
     const [firstStat] = within(region).getAllByRole("listitem");
-    expect(firstStat).toHaveTextContent(`${rate}right on foods we never tuned against`);
+    expect(firstStat).toHaveTextContent(`${rate}right on held-out items`);
 
     const row = within(region).getByRole("row", { name: /^Holdout\s/ });
     expect(row).toHaveTextContent(`${rate} (${holdout.all.hits} of ${holdout.all.n})`);
@@ -39,6 +39,14 @@ describe("How Jev rules", () => {
     expect(region).toHaveTextContent(
       `${holdout.sure.hits} of ${holdout.sure.n} rulings we would print as Definitely were right`,
     );
+  });
+
+  it("says how often holdout was looked at, without claiming it never shaped a decision", () => {
+    const region = section();
+    expect(region).toHaveTextContent(
+      `looked at only after each version of the questions was final (${stats.holdoutChecks} times so far), never while writing questions`,
+    );
+    expect(region.textContent).not.toMatch(/never tuned|number to trust/i);
   });
 
   it("discloses how many holdout and canon items leak into the questions", () => {

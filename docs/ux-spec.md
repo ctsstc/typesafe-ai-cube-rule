@@ -264,18 +264,18 @@ A face legend, then one card per category: a static cube at its hero angle, the 
 Between the gallery and About, reachable from the header nav and the footer. `HowJevRules` loads as its own chunk, so it stays out of the initial bundle. Order and rules:
 
 1. **Disclaimer first,** right under the h2: "Unofficial. This fan app is not affiliated with or endorsed by TypeSafe, cuberule.com or its creators." Facts about Jev cite TypeSafe's docs and launch post; the numbers are ours.
-2. **Four stat tiles:** holdout accuracy first ("right on foods we never tuned against"), the question count, the cost per new ruling, and the median Jev call "from a laptop".
+2. **Four stat tiles:** holdout accuracy first ("right on held-out items", since the score counts the non-food probes too), the question count, the cost per new ruling, and the median Jev call "from a laptop".
 3. **It doesn't talk:** System One against a chat model, the three primitives (Choice, Score, Noul), "Jev can't invent a tenth cube", and that every sentence lives in our code and the site was built with Claude Code. Jevons noticed that more efficient steam engines raised coal use; never write "cheaper coal".
 4. **One order, N questions:** grouped by answer type from `CUBE_ANSWER_TYPES`, with plain phrasing per question in `lib/jevQuestions.ts`. A new question fails the typecheck until it gets a phrase.
 5. **Sure, probably, arguably:** probabilities are calibrated across many answers; confidence is a separate score and not a probability. The bands come from `THRESHOLDS` and `VERDICT_ADVERBS`.
 6. **The receipt:** tokens, TypeSafe's published price, cost per new ruling, rulings per dollar, the whole test, repeat foods at "usually $0", and p50 and p95. Latency is always labelled as the developer's laptop calling TypeSafe's API directly.
-7. **How we grade it:** canon, tune and holdout; holdout is "looked at only after each version of the questions was final, and never tuned against". The table leads with holdout, then holdout without the items the ruling questions name, and the leak counts for holdout and canon are spelled out. Links to `docs/eval.md` on GitHub.
+7. **How we grade it:** canon, tune and holdout; holdout is "looked at only after each version of the questions was final (N times so far), never while writing questions", where N counts the question sets with a scored holdout. Never call it untuned: [docs/eval.md](eval.md) keeps or drops changes on holdout results. The table leads with holdout, then holdout without the items the ruling questions name, and the leak counts for holdout and canon are spelled out. Links to `docs/eval.md` on GitHub.
 8. **Honest limits:** our labels, small numbers (one holdout item in points), name only, literal reading, the abuse check as a smoke test, and the pinned model.
 
 Numbers never appear as literals. The `cube:eval-stats` plugin (`apps/web/plugins/evalStats.ts`) reads `eval/results/v<QUESTION_SET_VERSION>/summary.json` at build time and serves only named numbers plus the version and model as `virtual:eval-stats`, because the summary also names eval items, abusive probes included. The build fails when the summary is missing, has missing items, or was scored on another model, and `lib/evalStats.test.ts` fails when the current question set has no summary.
 
 > [!IMPORTANT]
-> Never add "up from" trends, TypeSafe's marketing multipliers, an absolute "free" for repeats, or a claim that people wrote the words. Link only to typesafe.ai and docs.typesafe.ai for TypeSafe. `Claims.test.tsx` and `lib/sourceCopy.test.ts` fail on the authorship claim and on em or en dashes.
+> Never add "up from" trends, TypeSafe's marketing multipliers, an absolute "free" for repeats, a claim that holdout was never tuned against, or a claim that people wrote the words. Link only to typesafe.ai and docs.typesafe.ai for TypeSafe. `Claims.test.tsx` and `lib/sourceCopy.test.ts` fail on "never tuned", the authorship claim and em or en dashes.
 
 ### 7.6 About (`#about`)
 

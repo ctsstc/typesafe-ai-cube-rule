@@ -1,10 +1,11 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import type { Plugin } from "vite";
 import type { EvalStats, Tally } from "../src/lib/evalStats.ts";
 
 export const EVAL_STATS_ID = "virtual:eval-stats";
 const RESOLVED_ID = `\0${EVAL_STATS_ID}`;
 const CORE_QUESTIONS = new URL("../../../packages/core/src/questions.ts", import.meta.url);
+const RESULTS = new URL("../../../eval/results/", import.meta.url);
 
 // Read as text: importing @cube/core here would pull its extensionless imports into the config.
 export function coreConstant(name: "QUESTION_SET_VERSION" | "CUBE_MODEL"): string {
@@ -15,7 +16,7 @@ export function coreConstant(name: "QUESTION_SET_VERSION" | "CUBE_MODEL"): strin
 }
 
 export function summaryPath(version: string = coreConstant("QUESTION_SET_VERSION")): URL {
-  return new URL(`../../../eval/results/v${version}/summary.json`, import.meta.url);
+  return new URL(`v${version}/summary.json`, RESULTS);
 }
 
 function at(summary: unknown, path: string): unknown {
@@ -26,6 +27,22 @@ function at(summary: unknown, path: string): unknown {
         node && typeof node === "object" ? (node as Record<string, unknown>)[key] : undefined,
       summary,
     );
+}
+
+function holdoutChecks(upTo: string): number {
+  return readdirSync(RESULTS).filter((name) => {
+    const version = /^v(\d+)$/.exec(name)?.[1];
+    if (!version || Number(version) > Number(upTo)) return false;
+    try {
+      const n = at(
+        JSON.parse(readFileSync(summaryPath(version), "utf8")),
+        "splits.holdout.accuracy.n",
+      );
+      return typeof n === "number" && n > 0;
+    } catch {
+      return false;
+    }
+  }).length;
 }
 
 // Picks named numbers only: summary.json also names eval items, abusive probes included.
@@ -63,6 +80,7 @@ export function readEvalStats(version: string = coreConstant("QUESTION_SET_VERSI
       notInPrompt: tally("splits.holdout.unleakedAccuracy"),
       sure: tally("splits.holdout.verdicts.unanimous"),
     },
+    holdoutChecks: holdoutChecks(version),
     tune: tally("splits.tune.accuracy"),
     canon: {
       all: tally("splits.canon.accuracy"),

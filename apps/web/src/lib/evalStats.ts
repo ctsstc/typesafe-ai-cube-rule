@@ -8,6 +8,7 @@ export interface EvalStats {
   readonly model: string;
   readonly items: number;
   readonly holdout: { readonly all: Tally; readonly notInPrompt: Tally; readonly sure: Tally };
+  readonly holdoutChecks: number;
   readonly tune: Tally;
   readonly canon: { readonly all: Tally; readonly notInPrompt: Tally };
   readonly inputKind: Tally;

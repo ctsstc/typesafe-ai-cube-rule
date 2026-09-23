@@ -19,6 +19,13 @@ describe("UI copy", () => {
     expect(document.body.textContent).toContain("built with Claude Code");
   });
 
+  it("never says holdout was never tuned against, since docs/eval.md gates decisions on it", async () => {
+    history.replaceState(null, "", "/");
+    render(<App />);
+    await screen.findByRole("region", { name: "How Jev rules" });
+    expect(document.body.textContent).not.toMatch(/never tuned/i);
+  });
+
   it("has a pattern that catches the claims it is meant to", () => {
     for (const claim of [
       "Every word on this page was written by people.",

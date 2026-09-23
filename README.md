@@ -74,7 +74,7 @@ Open http://localhost:5173. `pnpm dev` runs Vite on 5173 and the Pages Function 
 
 | Split | Right |
 | --- | --- |
-| Holdout, checked only once each version was final | 60/62, or 52/54 without foods the labelling questions use as worked examples |
+| Holdout, looked at only after each version was final | 60/62, or 52/54 without items the ruling questions use as worked examples |
 | Tune, which the questions were rewritten against | 95/97 |
 | Canon rulings from cuberule.com | 45/45 |
 | Abusive probes declined | 21/21, with 0 false declines among the other 183 items |
