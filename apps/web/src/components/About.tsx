@@ -38,7 +38,11 @@ export function About() {
             a probability for each one, plus a few yes or no judgments like "is this food?" and "is
             it served in liquid?"
           </p>
-          <p>Every word on this page was written by people. The numbers are Jev's.</p>
+          <p>
+            The words are templates in our code, filled in from Jev's numbers, and the site was
+            built with Claude Code. <a href="#how-jev-rules">How Jev rules</a> has the details and
+            the test scores.
+          </p>
         </article>
 
         <article>
@@ -87,7 +91,11 @@ export function About() {
               instance stops. It is also passed to Cloudflare when you take the check. Our code
               doesn't log it or what you typed.
             </li>
-            <li>No accounts and no analytics scripts. The session cookie is the only cookie.</li>
+            <li>
+              No accounts and no ads. Cloudflare Web Analytics counts page views without cookies and
+              without collecting personal data.
+            </li>
+            <li>The session cookie is the only cookie.</li>
             <li>Your theme choice stays in your browser's local storage.</li>
             <li>Cloudflare and TypeSafe handle each request under their own privacy policies.</li>
           </ul>
