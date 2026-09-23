@@ -423,5 +423,5 @@ Debate, game, X-ray, and share image load through `import()` when they land, so 
 ## 17. Open questions
 
 1. **Site URL.** Set `SITE_URL` at build time once the Porkbun subdomain is live, or link previews point at the default `pages.dev` host.
-2. **Canon accuracy.** Recheck every entry in `OFFICIAL_RULINGS` against cuberule.com before tagging v0.1.
+2. **Canon accuracy.** Audited against cuberule.com on 2026-09-22 ([canon-audit.md](canon-audit.md)), and `official.test.ts` pins the table. Audit again whenever the site changes.
 3. **Privacy copy.** The about section describes the Function as of v0.1. Any new logging or storage needs the copy updated in the same change.
