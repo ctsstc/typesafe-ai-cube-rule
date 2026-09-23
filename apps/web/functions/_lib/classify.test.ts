@@ -106,6 +106,7 @@ describe("request validation", () => {
       expect(response.status).toBe(405);
       expect(response.headers.get("Allow")).toBe("GET");
       expect(response.headers.get("Cache-Control")).toBe("no-store");
+      expect((await errorBody(response)).error.code).toBe("method_not_allowed");
     }
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -137,7 +138,7 @@ describe("request validation", () => {
     const response = await apiFallback({} as Parameters<typeof apiFallback>[0]);
     expect(response.status).toBe(404);
     expect(response.headers.get("Content-Type")).toContain("application/json");
-    expect((await errorBody(response)).error.code).toBe("bad_request");
+    expect((await errorBody(response)).error.code).toBe("not_found");
   });
 });
 

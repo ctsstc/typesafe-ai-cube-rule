@@ -28,6 +28,9 @@ export interface Classified {
 
 const STATUS_CODES: Record<number, ClassifyErrorCode> = {
   400: "bad_request",
+  401: "challenge_required",
+  404: "not_found",
+  405: "method_not_allowed",
   429: "rate_limited",
   502: "upstream_error",
   503: "upstream_busy",

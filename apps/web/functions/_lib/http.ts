@@ -14,7 +14,11 @@ const BASE_HEADERS = {
 
 const ERROR_MESSAGES: Record<ClassifyErrorCode, string> = {
   bad_request: "That is not a canonical classify request.",
+  challenge_required: "New rulings need a quick human check first.",
+  not_found: "No such API route.",
+  method_not_allowed: "That method is not supported here.",
   rate_limited: "Too many new rulings at once. Try again in a moment.",
+  daily_limit: "The oracle has used up today's new rulings. Cached foods still work.",
   upstream_busy: "Jev is busy right now. Try again shortly.",
   upstream_error: "Jev could not rule on that right now.",
   timeout: "Jev took too long to rule. Try again.",

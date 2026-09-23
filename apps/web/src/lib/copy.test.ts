@@ -1,5 +1,5 @@
 import { CATEGORIES, CATEGORY_IDS, type FoodResult, findOfficialRuling } from "@cube/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type result, scenarios } from "../test/fixtures";
 import {
   bandOf,
@@ -112,8 +112,26 @@ describe("errorCopy", () => {
     ["offline", "You're offline."],
     ["network", "Couldn't reach the oracle."],
     ["bad_request", "That doesn't look like a food name."],
+    ["challenge_required", "Couldn't confirm you're human."],
+    ["daily_limit", "The oracle is resting until tomorrow."],
+    ["method_not_allowed", "Something broke on our side."],
+    ["not_found", "Something broke on our side."],
   ] as const)("titles %s", (code, title) => {
     expect(errorCopy(code, null).title).toBe(title);
+  });
+
+  it("tells when new foods open again after the daily limit", () => {
+    const now = Date.parse("2026-09-22T20:00:00Z");
+    vi.spyOn(Date, "now").mockReturnValue(now);
+    const reset = new Date(now + 4 * 3600 * 1000).toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    const copy = errorCopy("daily_limit", 4 * 3600);
+    expect(copy.body).toContain(`open again at ${reset} your time`);
+    expect(copy.body).toContain("already asked about still work");
+    expect(copy.action).toBe("edit");
+    expect(errorCopy("daily_limit", null).body).toContain("midnight UTC");
   });
 });
 

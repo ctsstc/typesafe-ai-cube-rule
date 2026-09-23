@@ -15,7 +15,11 @@ describe("CLASSIFY_ERROR_CODES", () => {
   it("maps each error code to its HTTP status", () => {
     expect(CLASSIFY_ERROR_CODES).toEqual({
       bad_request: 400,
+      challenge_required: 401,
+      not_found: 404,
+      method_not_allowed: 405,
       rate_limited: 429,
+      daily_limit: 503,
       upstream_busy: 503,
       upstream_error: 502,
       timeout: 504,
@@ -25,9 +29,20 @@ describe("CLASSIFY_ERROR_CODES", () => {
 
   it("types codes and statuses as literal unions", () => {
     expectTypeOf<ClassifyErrorCode>().toEqualTypeOf<
-      "bad_request" | "rate_limited" | "upstream_busy" | "upstream_error" | "timeout" | "internal"
+      | "bad_request"
+      | "challenge_required"
+      | "not_found"
+      | "method_not_allowed"
+      | "rate_limited"
+      | "daily_limit"
+      | "upstream_busy"
+      | "upstream_error"
+      | "timeout"
+      | "internal"
     >();
-    expectTypeOf<ClassifyErrorStatus>().toEqualTypeOf<400 | 429 | 503 | 502 | 504 | 500>();
+    expectTypeOf<ClassifyErrorStatus>().toEqualTypeOf<
+      400 | 401 | 404 | 405 | 429 | 503 | 502 | 504 | 500
+    >();
     expectTypeOf<ClassifyErrorBody["error"]["code"]>().toEqualTypeOf<ClassifyErrorCode>();
   });
 });
@@ -58,6 +73,12 @@ describe("isClassifyErrorBody", () => {
     ["a non-string message", { error: { code: "timeout", message: 504 } }],
   ])("rejects %s", (_label, value) => {
     expect(isClassifyErrorBody(value)).toBe(false);
+  });
+
+  it("accepts the guard codes the SPA reacts to", () => {
+    for (const code of ["challenge_required", "daily_limit", "method_not_allowed", "not_found"]) {
+      expect(isClassifyErrorCode(code), code).toBe(true);
+    }
   });
 
   it("narrows unknown JSON", () => {

@@ -2,7 +2,11 @@ import type { CubeResponse } from "./questions";
 
 export const CLASSIFY_ERROR_CODES = {
   bad_request: 400,
+  challenge_required: 401,
+  not_found: 404,
+  method_not_allowed: 405,
   rate_limited: 429,
+  daily_limit: 503,
   upstream_busy: 503,
   upstream_error: 502,
   timeout: 504,

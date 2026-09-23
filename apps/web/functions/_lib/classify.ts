@@ -71,11 +71,7 @@ async function classify(
   limiter: RateLimiter,
 ): Promise<Response> {
   if (request.method !== "GET") {
-    return errorResponse("bad_request", {
-      status: 405,
-      message: "Only GET is supported.",
-      headers: { Allow: "GET" },
-    });
+    return errorResponse("method_not_allowed", { headers: { Allow: "GET" } });
   }
   const url = new URL(request.url);
   const item = parseClassifyQuery(url.search);

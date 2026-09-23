@@ -264,6 +264,12 @@ export interface ErrorCopy {
   readonly action: "retry" | "edit";
 }
 
+function resetTime(retryAfter: number | null): string {
+  if (!retryAfter || retryAfter <= 0) return "midnight UTC";
+  const reset = new Date(Date.now() + retryAfter * 1000);
+  return `${reset.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} your time`;
+}
+
 export function errorCopy(code: RulingErrorCode, retryAfter: number | null): ErrorCopy {
   switch (code) {
     case "rate_limited":
@@ -305,6 +311,20 @@ export function errorCopy(code: RulingErrorCode, retryAfter: number | null): Err
         body: "Letters, numbers, spaces, and apostrophes work best.",
         action: "edit",
       };
+    case "challenge_required":
+      return {
+        title: "Couldn't confirm you're human.",
+        body: "Cloudflare's quick check didn't go through, so Jev wasn't asked. Try again. If it keeps failing, a content blocker may be stopping challenges.cloudflare.com.",
+        action: "retry",
+      };
+    case "daily_limit":
+      return {
+        title: "The oracle is resting until tomorrow.",
+        body: `Jev has ruled on all the new foods it can today. New foods open again at ${resetTime(retryAfter)}. Foods someone has already asked about still work.`,
+        action: "edit",
+      };
+    case "method_not_allowed":
+    case "not_found":
     case "upstream_error":
     case "internal":
       return {
