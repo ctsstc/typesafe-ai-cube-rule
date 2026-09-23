@@ -110,7 +110,7 @@ The honorary card is the more fun answer, and it is no riskier: the nonsense car
 
 ## Verification
 
-- **Live smoke call** (`hot dog`, question set 2, 2026-09-22): 8,580 input tokens and 551 output tokens, 483 ms round trip. That is about $0.00036 per uncached call at $0.042 per million input tokens. Jev chose Taco with confidence 1.0, `is_abusive` was 0.01, the eyes read Taco and agreed, and `debate_heat` was 2.93 (Friendship-ending).
+- **Live smoke call** (`hot dog`, question set 2, 2026-09-22): 8,580 input tokens and 551 output tokens, 483 ms round trip. That is about $0.00036 per uncached call at TypeSafe's [published price](https://docs.typesafe.ai/models.md) of $0.042 per million input tokens. Jev chose Taco with confidence 1.0, `is_abusive` was 0.01, the eyes read Taco and agreed, and `debate_heat` was 2.93 (Friendship-ending).
 - **Vitest** (`pnpm vitest run --project core`): normalization fuzzing and the URL round trip, canonical query rejection, official lookups including `constructor` and `__proto__`, a shape table for every face-defined ruling on the site, mapper scenarios (apple pie slice, cheesecake, ramen, tomato soup, humans), the abuse guard, mock invariants, a fake-fetch round trip through the real `TypeSafeClient`, and the request fingerprint.
 - **Type assertions** (`pnpm --filter @cube/core typecheck`): every Choice narrows to its option ids, the Score's probability keys are `"0" | "1" | "2" | "3"`, a missing option is a compile error, and the wire types match the error code map.
 

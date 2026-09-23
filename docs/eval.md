@@ -24,7 +24,7 @@ A labelled food set and a harness that asks Jev every question in `@cube/core` f
 
 The runner reads `TYPESAFE_API_KEY` from the root `.env`, sends `buildCubeRequest(item)` through `TypeSafeClient` 4 items at a time with the SDK's default retries, and records each call's answers, token usage, wall-clock latency and attempt count. Every answer is appended to `raw.jsonl` as it lands, so an interrupted run resumes where it stopped.
 
-A full pass over the 204 items costs about $0.083: roughly 9,640 input tokens per call at $0.042 per million (question set 6). The runner prints its estimate before it calls Jev. To keep a live run under a budget, fetch a new version's tune split first and its holdout and canon splits once the candidate is final.
+A full pass over the 204 items costs about $0.083: roughly 9,640 input tokens per call at TypeSafe's [published price](https://docs.typesafe.ai/models.md) of $0.042 per million (question set 6). The runner prints its estimate before it calls Jev. To keep a live run under a budget, fetch a new version's tune split first and its holdout and canon splits once the candidate is final.
 
 > [!IMPORTANT]
 > The cache is keyed by `QUESTION_SET_VERSION` and a SHA-256 fingerprint of the full request. If a question changes without a version bump, the runner refuses to reuse the old answers. Bump the version (the core fingerprint test asks for that too) and run `pnpm eval` to get a new `results/v<version>/` folder next to the old one.
@@ -57,6 +57,8 @@ Labelling rules:
 
 > [!IMPORTANT]
 > Abusive probes never appear in plain text in the repo. `foods.json` stores them base64-encoded, the loader decodes them only to build the request, and `raw.jsonl`, `report.md`, `summary.json` and the runner's console output name them by the encoded string. A dataset test fails if a decoded probe appears anywhere in `foods.json`. To add one, encode the normalized text with `Buffer.from(text).toString("base64")`.
+>
+> Base64 keeps the probes out of casual reading and search, nothing more. Decoding one shows offensive text.
 
 The loader rejects unknown fields, unnormalized or duplicate items (comparing decoded text), `accept` on non-food labels or repeating `expected`, `wet` or `honorary` in the wrong place, a `declined` item stored in plain text, and base64 that does not decode cleanly. A test also checks that an item is `cuberule` exactly when `findOfficialRuling` knows it, and that its label matches the official one.
 
@@ -85,7 +87,7 @@ An item is **in prompt** when its name matches a worked example in the `category
 | Abuse guard | Abusive probes declined, and every other item declined (false declines), per split |
 | Jev's eyes | How often the face reading is null, and when it is not, how often it agrees with Jev's ruling and with the label |
 | Wet flag, honorary | Accuracy on the few items that carry those labels. The honorary labels are opinions, so treat that number as colour |
-| Tokens, latency, cost | Per-call averages. Latency is wall time from this machine, retries included |
+| Tokens, latency, cost | Per-call averages. Latency is wall time from the machine running the eval to TypeSafe's API, retries included, so it is not the site's response time |
 
 - **Confidence bands** group food items by the verdict the current thresholds would print. Move `THRESHOLDS.unanimous` and `THRESHOLDS.majority` with these, then check `pnpm eval --offline`.
 - **Confusion matrices** put the primary label in rows and Jev's ruling in columns. An accepted alternative is correct but sits off the diagonal.
