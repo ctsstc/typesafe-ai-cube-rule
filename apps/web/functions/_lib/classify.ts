@@ -23,6 +23,7 @@ import {
 import { clientIp, type Env, type WaitUntil } from "./env";
 import { CACHE_IMMUTABLE, CACHE_NONE, errorResponse, jsonResponse, noContent } from "./http";
 import { createRateLimiter, type RateLimiter } from "./rate-limit";
+import { countAsk, recordRuling } from "./rulings";
 import { clientKey, requireSession } from "./session";
 import { recordInputTokens, refuseSpent, reserveJevCall, utcDay } from "./usage";
 
@@ -95,16 +96,21 @@ async function classify(
   const fillCache = (body: string) =>
     cache?.put(cacheKey, jsonResponse(body, { cacheControl: CACHE_IMMUTABLE, cache: "HIT" }));
 
+  const prefetch = request.headers.get(PREFETCH_HEADER) === "1";
   const cached = await settle(cache?.match(cacheKey));
-  if (cached) return cached;
+  if (cached) {
+    if (!prefetch) background(waitUntil, "ask count", countAsk(env, item));
+    return cached;
+  }
 
   const stored = await settle(env.CLASSIFICATIONS?.get(kvKey));
   if (stored) {
     background(waitUntil, "cache put", fillCache(stored));
+    if (!prefetch) background(waitUntil, "ask count", countAsk(env, item));
     return jsonResponse(stored, { cacheControl: CACHE_IMMUTABLE, cache: "KV" });
   }
 
-  if (request.headers.get(PREFETCH_HEADER) === "1") return noContent({});
+  if (prefetch) return noContent({});
 
   const client = await clientKey(request, env, utcDay(now));
   const session = await requireSession(request, env, now);
@@ -119,7 +125,7 @@ async function classify(
   const refused = await reserveJevCall(env, { session, client }, now);
   if (refused) return refused;
 
-  let body: string;
+  let ruling: ClassifyResponse;
   let tokens = 0;
   try {
     const client = new TypeSafeClient({
@@ -135,15 +141,17 @@ async function classify(
     tokens = inputTokens(result);
     // Anything cached here is immutable for a year, so never cache a malformed 200.
     if (!isClassifyResponse(result)) throw new UnexpectedUpstreamShape();
-    body = JSON.stringify({ model: result.model, answers: result.answers });
+    ruling = { model: result.model, answers: result.answers };
   } catch (error) {
     background(waitUntil, "token count", recordInputTokens(env, tokens, now));
     return upstreamFailure(error);
   }
 
+  const body = JSON.stringify(ruling);
   background(waitUntil, "cache put", fillCache(body));
   background(waitUntil, "kv put", env.CLASSIFICATIONS?.put(kvKey, body));
   background(waitUntil, "token count", recordInputTokens(env, tokens, now));
+  background(waitUntil, "ruling record", recordRuling(env, item, ruling, now));
   return jsonResponse(body, { cacheControl: CACHE_IMMUTABLE, cache: "MISS" });
 }
 

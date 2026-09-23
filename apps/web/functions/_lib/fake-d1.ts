@@ -35,6 +35,26 @@ export function fakeD1(): FakeD1 {
       return { success: true, results: sqlite.prepare(sql).all(...params), meta: {} };
     },
   });
-  const binding = { prepare: (sql: string) => statement(sql, []) } as unknown as D1Database;
+  type Statement = ReturnType<typeof statement>;
+  const binding = {
+    prepare: (sql: string) => statement(sql, []),
+    batch: async (statements: Statement[]) => {
+      const results = [];
+      for (const each of statements) results.push(await each.all());
+      return results;
+    },
+  } as unknown as D1Database;
   return { binding, sqlite, calls };
+}
+
+/** Plan steps that scan a table for any statement the fake has run. D1 bills every scanned row. */
+export function tableScans({ sqlite, calls }: FakeD1): string[] {
+  return [...new Set(calls)].flatMap((sql) =>
+    sqlite
+      .prepare(`EXPLAIN QUERY PLAN ${sql}`)
+      .all()
+      .map((row) => String(row.detail))
+      .filter((step) => /^SCAN (?!CONSTANT ROW)/.test(step))
+      .map((step) => `${step} in ${sql}`),
+  );
 }

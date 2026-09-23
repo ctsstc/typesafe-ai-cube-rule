@@ -467,7 +467,7 @@ describe("challenge and spend caps", () => {
     const response = await ask("sushi", env);
     expect(response.status).toBe(200);
     expect(response.headers.get("X-Cube-Cache")).toBe("KV");
-    expect(d1.calls).toEqual([]);
+    expect(d1.calls).toEqual([expect.stringMatching(/^UPDATE rulings SET asks = asks \+ 1\b/)]);
   });
 
   it("answers a miss without a cookie with 401 challenge_required", async () => {
