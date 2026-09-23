@@ -6,6 +6,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+v1.2: "The docket", public lists that make the site feel lived in without showing who asked.
+
+> [!IMPORTANT]
+> Run `pnpm migrate:remote` before `pnpm deploy:pages`. Migrations `0006_rulings.sql` and `0007_listing_checks.sql` add the `rulings`, `blocklist` and `switches` tables. Both are additive, so the deployment live now keeps working against the new schema. Question set 7 retires every cached ruling, so each food costs one Jev call again the first time it is asked.
+
+### Added
+
+- **The docket.** A section between the gallery and How Jev rules with a strip of Latest rulings and cards for Most debated, Jev vs the canon and Friendship-ending. Entries are food links that rule through the normal flow, honorary rulings carry an "Honorary" marker, and no entry shows a time. "N new foods ruled in the last hour." appears only when enough listable foods arrived, and reads "50+" at the cap, so a quiet hour shows nothing. A list shorter than three entries is hidden, except Jev vs the canon, which shows from one because Jev agrees with every canon ruling in the eval. The section loads as its own chunk once the reader nears it, and only renders while it lands below what the reader is looking at, so a hash link or a fast scroll never pushes a section out of view.
+- **`GET /api/lists?v=<QUESTION_SET_VERSION>`.** Serves the four lists (8 entries each at most) and the activity count from D1, cached for 120 seconds at the edge and in the browser. It needs no session, answers `409 stale_client` for another question set, and answers `{ "enabled": false }` for the kill switch, a missing database or any D1 error, never a 500.
+- **Recording.** Every Jev ruling is recorded in the `rulings` table with Jev's pick, the official ruling, confidence, runner-up, debate level, the scores behind the listing bars, a capped ask count and when it was first seen. No IP, session or client key is stored. An item is listed only after 2 separate asks: the Jev call, then any edge cache or KV hit, hover prefetch hits included. A cache or KV hit also records a ruling whose record failed. Once an item has 2 asks its hits write nothing.
+- **`person_kind`, question set 7.** A new Choice asks whether an item names nobody, a public figure or a private person. It only feeds the public lists. The eval grows to 251 items with 51 person probes, 16 of them invented full names inside food phrases (16 live calls, $0.0068). Tune is 123/125, holdout 79/81, canon 45/45, and no private person or abusive probe would be listed.
+- **Listing gates** in `@cube/core` (`publicListing`, `listingScores`, `listingBar`, `hasPersonalInfo`, `toListEntry`) and the lists wire contract (`ListsResponse`, `ListEntry`, `listsUrl`, `LISTS_ACTIVITY_CAP`).
+- **`pnpm recent`.** An owner-only view of recorded rulings with their status and, with `--flagged`, declined and hidden ones and their scores. `--block` and `--unblock` edit the blocklist, `--lists off|on` hides every list without a deploy, and `--prune [--yes]` counts, then deletes in batches of 2,000, rulings from other question sets.
+- **Kill switches.** `PUBLIC_LISTS` in `wrangler.jsonc` and a D1 switch that `pnpm recent --lists off` flips. `ACTIVITY_THRESHOLD` (default 5, at most 50) sets when the activity line appears.
+- `dev:mock` serves `/api/lists`, and `CUBE_MOCK_LISTS=dissent|partial|empty|disabled|error` shows the other states. The default mock uses Jev's real picks for canon items, so Jev vs the canon is hidden there as it usually will be in production.
+- The eval report sweeps each person bar on its own and counts how many listed items each public list could hold.
+
+### Changed
+
+- **About** says what the public lists show, that a food needs two asks, that the lists never show who asked or a time, and that pattern rules and Jev's reading screen out private people, contact details and abusive text without catching everything. About now loads in its own chunk with How Jev rules, and `bundle.test.ts` fails the build if the initial JS passes 90,000 bytes gzipped.
+- **The blocklist** is checked every time the lists are read, so blocking and unblocking take effect within about 4 minutes and need no deploy.
+- **The deploy runbook** covers the public lists, the kill switches, `pnpm recent`, the measured D1 writes and storage per ruling, what happens when the database fills up, and the Functions requests the lists cost. Its curl walkthrough reads the current question set instead of hard-coding one.
+- The README describes the 17 questions, the docket and the question set 7 eval.
+
+### Fixed
+
+- Setting `DAILY_CALL_LIMIT` to `"0"`, the documented kill switch, no longer turns `pnpm check` red and stops the deploy. The same holds for `PUBLIC_LISTS` set to `"off"`.
+
+### Security
+
+- **Nothing abusive or private is listed.** Declined and nonsense rulings are never listed. An item is hidden when it contains a phone number, email address, handle, URL or domain, spelled-out forms included ("jsmith [at] acme [dot] org", "eight six seven five three oh nine", "acme . com"). It is also hidden when Jev gives it a 0.05 chance or more of naming a private person, or is under 0.9 sure it names nobody or a public figure, which catches invented full names next to a dish. Any item Jev scores 0.05 or more on `is_abusive` is hidden unless cuberule.com has ruled on it.
+- **Rechecked on every read.** `/api/lists` applies today's personal info rules and the current bars to every stored row, so tightening a threshold also hides rulings recorded before it. The browser drops malformed, declined or personal entries again before rendering.
+- Declined text appears only in `pnpm recent --flagged`, in the owner's terminal.
+
 ## [1.1.2] - 2026-09-23
 
 ### Fixed
