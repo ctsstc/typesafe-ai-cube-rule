@@ -179,7 +179,10 @@ pnpm deploy:pages
 It then builds the SPA with the sitekey, swaps the real ids into `wrangler.jsonc`, runs `wrangler pages deploy dist --project-name cube-rule-oracle --branch main` from `apps/web`, and restores the committed `wrangler.jsonc`.
 
 > [!IMPORTANT]
-> Run `pnpm migrate:remote` before `pnpm deploy:pages` whenever `apps/web/migrations/` has a new file, such as 0006 and 0007, which add the `rulings`, `blocklist` and `switches` tables for the public lists. Migrations are additive, so the deployment still live keeps working against the new schema. The deploy refuses to run until they are applied.
+> Run `pnpm migrate:remote` before `pnpm deploy:pages` whenever `apps/web/migrations/` has a new file, such as 0006 and 0007, which add the `rulings`, `blocklist` and `switches` tables for the public lists. The deploy refuses to run until they are applied. Migrations 0001 to 0007 are additive, so the deployment still live keeps working against the new schema.
+
+> [!WARNING]
+> Migration 0008 is not additive. It drops and recreates the list indexes, which a v1.2 Function reads by name, so from `pnpm migrate:remote` until the deploy finishes `/api/lists` answers `enabled: false` and the docket is hidden. Rulings are still served and recorded. Run `pnpm deploy:pages` straight after the migration.
 
 > [!IMPORTANT]
 > Deploy from `apps/web`, never with `wrangler pages deploy apps/web/dist` from the repo root. Wrangler looks for `functions/` in its working directory. From the root it would upload the SPA without the API.
@@ -260,7 +263,7 @@ Every Jev call costs money, so the Function only calls Jev on a full cache miss,
 
 The in-code limiter is a speed bump, not a quota: each location runs many isolates and they restart often. The D1 caps are the real limits, because D1 is one database with serialized writes.
 
-D1 on the Free plan allows 100,000 rows written and 5 million rows read a day, with limits resetting at 00:00 UTC. A Jev call for a new item writes up to 12 rows, counting index rows, and one that records an item again up to 15 (see [D1 budget](#d1-budget)), so 1,000 calls stay under about 18,000 writes. Starting a session also deletes expired session rows and past days' client rows. Migration 0003 indexes `sessions.exp` and `clients.day`, so that cleanup reads only the rows it deletes instead of scanning both tables on every human check; `functions/_lib/usage.test.ts` fails if any spend-cap statement goes back to a table scan. Each index costs one extra row write when a session or client row is created. If D1 itself hits its daily limit, the spend check fails and new rulings are refused until midnight UTC, which is the safe direction.
+D1 on the Free plan allows 100,000 rows written and 5 million rows read a day, with limits resetting at 00:00 UTC. A Jev call writes up to 16 rows, counting index rows (see [D1 budget](#d1-budget)), so 1,000 calls stay under about 16,000 writes. Starting a session also deletes expired session rows and past days' client rows. Migration 0003 indexes `sessions.exp` and `clients.day`, so that cleanup reads only the rows it deletes instead of scanning both tables on every human check; `functions/_lib/usage.test.ts` fails if any spend-cap statement goes back to a table scan. Each index costs one extra row write when a session or client row is created. If D1 itself hits its daily limit, the spend check fails and new rulings are refused until midnight UTC, which is the safe direction.
 
 Other levers:
 
@@ -297,14 +300,16 @@ The SPA shows four short lists and an activity line from `GET /api/lists?v=<QUES
 | --- | --- |
 | `latest` | The newest rulings. The response carries no timestamps. |
 | `mostDebated` | Lowest Jev confidence first, leaving out unanimous verdicts (confidence at or above `THRESHOLDS.unanimous`). |
-| `jevDissents` | "Jev vs the canon": cuberule.com's official ruling differs from Jev's own pick. Jev's most confident first. Usually empty: Jev agrees with all 45 canon rulings in the question set 7 eval, so the SPA shows this card from a single entry. |
+| `honoraryCourt` | "Honorary court": honorary rulings on things that are not food, Jev's most confident first. |
 | `friendshipEnding` | Highest debate level first, newest first within a level, leaving out Settled. |
 
-`activity` is `{ "newFoodsLastHour": n }` only when at least `ACTIVITY_THRESHOLD` (default 5, at most 50) listable rulings were first seen in the last hour, and `null` otherwise, so a quiet hour shows nothing rather than a small number. It counts only rulings that passed the listing gates when they were recorded, never declined, nonsense or hidden ones, through the `rulings_activity` index. It stops counting at 50 (`LISTS_ACTIVITY_CAP` in `@cube/core`), and the SPA shows 50 as "50+". Honorary (not food) rulings appear in the lists like foods.
+`activity` is `{ "newFoodsLastHour": n }` only when at least `ACTIVITY_THRESHOLD` (default 5, at most 50) listable rulings were first seen in the last hour, and `null` otherwise, so a quiet hour shows nothing rather than a small number. It counts only rulings that passed the listing gates when they were recorded, never declined, nonsense or hidden ones, through the `rulings_activity` index. It stops counting at 50 (`LISTS_ACTIVITY_CAP` in `@cube/core`), and the SPA shows 50 as "50+". Honorary (not food) rulings also appear in the other lists like foods. The SPA shows every list that has at least one entry, and hides the section only when all four are empty.
+
+Up to v1.2 the third list was `jevDissents`, "Jev vs the canon". It never had an entry, because Jev agrees with all 45 canon rulings in the question set 7 eval: most canon names are worked examples in its questions. A tab still running a v1.2 SPA rejects the renamed response and hides the docket until it reloads.
 
 ### What gets recorded and what gets listed
 
-After each successful Jev call the Function records the ruling in the `rulings` table (migrations 0006 and 0007) in the background, so the write never delays or fails the ruling. A failure is logged as `classify: ruling record failed`, and the next edge cache or KV hit for that item records it from the stored ruling, so the item is not lost to the lists. A row holds the item, Jev's pick, the official ruling, confidence, runner-up, wetness, debate level, the four scores behind the person and abuse bars (`listingScores`), whether it passed the listing gates and why not, a capped ask count and the time it was first seen. It holds no IP, session or client key.
+After each successful Jev call the Function records the ruling in the `rulings` table (migrations 0006 to 0008) in the background, so the write never delays or fails the ruling. A failure is logged as `classify: ruling record failed`, and the next edge cache or KV hit for that item records it from the stored ruling, so the item is not lost to the lists. A row holds the item, Jev's pick, the official ruling, confidence, runner-up, wetness, debate level, the four scores behind the person and abuse bars (`listingScores`), whether it passed the listing gates and why not, a capped ask count and the time it was first seen. It holds no IP, session or client key.
 
 `publicListing` in `packages/core/src/public.ts` decides whether a ruling may be listed when it is recorded. It is never listed when:
 
@@ -313,9 +318,11 @@ After each successful Jev call the Function records the ruling in the `rulings` 
 - Jev gives at least a 0.05 chance that it names a private person (`THRESHOLDS.publicPrivatePerson`), or is under 0.9 sure that it names nobody or a public figure (`THRESHOLDS.publicPersonSure`)
 - Jev scores it abusive at 0.05 or more (`THRESHOLDS.publicAbusive`), unless cuberule.com has ruled on it
 
-A listed ruling appears only once it has been asked for at least `MIN_ASKS` (2) separate times. Browsers keep a ruling for a year, so the asks that reach the Function roughly count distinct browsers. The Jev call is the first ask. Each edge cache or KV hit adds one, a hover prefetch hit included: the browser then keeps that ruling for a year too, so a visitor who hovers a link and clicks it still counts once. A prefetch miss never counts, and mock rulings are never recorded. Each ask is one upsert that stops at `MIN_ASKS`, so once an item is public its hits write nothing.
+A listed ruling is public from its first ask: `MIN_ASKS` is 1, so the Jev call that first rules on an item is enough. In v1.2 it was 2, so a second browser had to ask for the same food, and at the site's traffic almost nothing ever showed. The person, abuse and personal info gates, the blocklist and the kill switch remain the safeguards.
 
-`/api/lists` then reads only rows that are listed, asked at least twice, not on the blocklist and from the current question set. It checks every row again against today's personal info rules and the current person and abuse bars, and drops any that fail. Tightening a bar in `THRESHOLDS` therefore hides stored rulings on the next refresh. Loosening one affects only rulings recorded afterwards, because a row hidden when it was recorded is never read. It needs no session or human check.
+The row keeps an ask count that stops at `MIN_ASKS`. The Jev call is the first ask. Each edge cache or KV hit adds one, a hover prefetch hit included, while a prefetch miss never counts and mock rulings are never recorded. Each ask is one upsert that stops at `MIN_ASKS`, so at 1 every hit on a recorded item writes nothing. Raising `MIN_ASKS` again needs a migration that recreates the list indexes with the new literal, as 0008 did.
+
+`/api/lists` then reads only rows that are listed, not on the blocklist and from the current question set. It checks every row again against today's personal info rules and the current person and abuse bars, and drops any that fail. Tightening a bar in `THRESHOLDS` therefore hides stored rulings on the next refresh. Loosening one affects only rulings recorded afterwards, because a row hidden when it was recorded is never read. It needs no session or human check.
 
 ### Caching and the kill switch
 
@@ -331,7 +338,7 @@ A listed ruling appears only once it has been asked for at least `MIN_ASKS` (2) 
 `pnpm recent` shows the recorded rulings from the production D1. Like `pnpm spend`, it runs wrangler with `-c wrangler.production.jsonc` and the account from the root `.env`. It needs no TypeSafe key.
 
 ```sh
-pnpm recent                        # newest 30 listed rulings, with asks and status
+pnpm recent                        # newest 30 listed rulings, with their status
 pnpm recent --flagged              # adds declined and hidden rulings, the reason and the scores
 pnpm recent --limit 100            # up to 500
 pnpm recent --block "my boss"      # hide an item from the lists
@@ -343,11 +350,30 @@ pnpm recent --prune --yes          # delete up to 2,000 of them
 pnpm recent --local ...            # the same against the pnpm dev database
 ```
 
-Status reads `public`, `waiting, 1 of 2 asks`, `blocked`, `hidden:` with the reason `publicListing` gave when the ruling was recorded, or `hidden now:` when the row fails today's personal info rules or bars, which `/api/lists` checks on every read. `--flagged` adds the `Private`, `Sure` (the higher of the none and public readings) and `Abusive` scores, so you can see which rows a new bar would hide. It prints declined text as typed, so keep that output to your own terminal. It is the only place anyone sees declined rulings.
+Status reads `public`, `blocked`, `hidden:` with the reason `publicListing` gave when the ruling was recorded, or `hidden now:` when the row fails today's personal info rules or bars, which `/api/lists` checks on every read. `--flagged` adds the `Private`, `Sure` (the higher of the none and public readings) and `Abusive` scores, so you can see which rows a new bar would hide. It prints declined text as typed, so keep that output to your own terminal. It is the only place anyone sees declined rulings.
 
 `--block`, `--unblock`, `--lists` and `--prune --yes` are the only writes. The item goes through the app's `normalizeItem` first, so `pnpm recent --block "My Boss!"` blocks `my boss`, the same string the lists hold. The lists check the blocklist every time they are read, so blocking hides the item from every list within about 4 minutes, needs no deploy, and unblocking always brings it back.
 
-`--prune` counts the rulings from question sets other than the current one, which the lists never read. With `--yes` it deletes up to 2,000 of them per run. Deleting a public row writes up to 6 rows, counting index rows, so one run stays under about 12,000 of the 100,000 writes a day. Run it again, on another day if the count is large, until it reports nothing left.
+`--prune` counts the rulings from question sets other than the current one, which the lists never read. With `--yes` it deletes up to 2,000 of them per run. Deleting a public row writes up to 7 rows, counting index rows, so one run stays under about 14,000 of the 100,000 writes a day. Run it again, on another day if the count is large, until it reports nothing left.
+
+### Seeding and backfill
+
+`pnpm seed:docket` fills the lists from rulings that already exist, so the docket is not empty on a quiet day. It is a dry run by default: it lists the KV keys (one list operation per 1,000 keys), looks up the candidate items and today's `usage` row in D1, prints the plan and writes nothing. Run it after `pnpm migrate:remote` and `pnpm deploy:pages`, so the live Function lists a ruling from its first ask.
+
+```sh
+pnpm seed:docket                        # plan the seed
+pnpm seed:docket --apply                # write it
+pnpm seed:docket --backfill             # also plan re-asking older foods, with the Jev calls and dollars
+pnpm seed:docket --backfill --apply     # ask Jev, then write both
+pnpm seed:docket --local ...            # the same against the pnpm dev D1 and KV (--persist-to <dir> too)
+```
+
+- **Seed.** The eval rulings in `eval/results/v<QUESTION_SET_VERSION>/raw.jsonl` from `CUBE_MODEL` and the current questions that `publicListing` lists: 188 of 251 for question set 7. Encoded abusive probes are never written, and nothing the gates hide is written anywhere. Each is recorded by the Function's own `recordRuling` with `first_seen` at its eval fetch time, and stored in KV as `v<QUESTION_SET_VERSION>:<item>`, so clicking one is a KV hit with no human check or Jev call.
+- **Backfill.** `--backfill` takes the foods under earlier question sets in KV (`v6:<item>` and older), leaves out those already recorded for the current set or covered by the seed, and asks Jev about each with the current questions, about $0.0004 a call. It stops before its estimate passes `--max-usd` (default 0.05). Each answer is recorded as the Function records a Jev call, listed or not, so `pnpm recent --flagged` shows the hidden ones, stored in KV, and added with its input tokens to today's `usage` row for `pnpm spend`. KV keeps no creation date, so `first_seen` is 00:00 UTC of the day it runs.
+
+It refuses to write when the KV writes would pass 900 minus today's `usage.calls` (see [D1 budget](#d1-budget)), when an eval ruling was fetched less than an hour ago or a backfill runs before 01:00 UTC (either would count as new foods in the last hour), or when the backfill's estimate passes `--max-usd`.
+
+Running it again is safe: items already in D1 are skipped, and KV values are written only where missing. D1 goes first, in one `wrangler d1 execute --file` that D1 applies whole or not at all, then one `wrangler kv bulk put`. If KV fails, a rerun stores the missing eval rulings; a backfilled food keeps its row and gets a KV value when someone next asks for it. The generated files live in a temporary directory that is deleted afterwards. Remote commands take the account and ids from the root `.env` like `pnpm spend`, and print wrangler errors with the ids redacted.
 
 ### D1 budget
 
@@ -355,23 +381,26 @@ Measured against wrangler's local D1, which counts rows the way D1 bills them. I
 
 | Request | Rows read | Rows written | How often |
 | --- | --- | --- | --- |
-| Jev call, first one of a new session and client | up to 5 | 12 | At most `DAILY_CALL_LIMIT` Jev calls a day |
-| Jev call, later in the same session | up to 7 | 9 | |
-| Jev call with the human check off | up to 4 | 5 | |
-| (of those, recording a new ruling) | 0 | 3, or 2 for a hidden one | |
-| (a Jev call that records an item again, when two data centers race or KV writes ran out) | 0 | 5, or 6 for a Jev vs the canon row, when it is the item's second ask. 1 for a hidden item. 0 once the item has 2 asks | |
-| Hit that makes an item public (its second ask) | up to 1 | 4, or 5 for a Jev vs the canon row | Once per item |
-| Second ask of a hidden item | up to 1 | 1 | Once per item |
-| Hit for an item whose record failed | up to 1 | 3, or 2 for a hidden one | Once per item |
-| Any later hit, prefetch hits included | up to 1 | 0 | At most 100,000 Functions requests a day |
+| Jev call, first one of a new session and client | up to 5 | 15, or 16 for an honorary ruling | At most `DAILY_CALL_LIMIT` Jev calls a day |
+| Jev call, later in the same session | up to 7 | 12, or 13 for an honorary ruling | |
+| Jev call with the human check off | up to 4 | 8, or 9 for an honorary ruling | |
+| (of those, recording a new ruling) | 0 | 6: the row, `rulings_first_seen`, `rulings_activity` and the three list indexes. 7 for an honorary ruling, which `rulings_honorary` also holds. 2 for a hidden one | |
+| (a Jev call that records an item again, when two data centers race or KV writes ran out) | 0 | 0 | |
+| Hit for an item whose record failed | up to 1 | 6, 7 for an honorary ruling, or 2 for a hidden one | Once per item |
+| Any other hit, prefetch hits included | up to 1 | 0 | At most 100,000 Functions requests a day |
 | Prefetch miss | 0 | 0 | |
 | Lists refresh, empty table | up to 4 | 0 | Once per data center per 120 seconds |
-| Lists refresh, 1,000 rulings on file | about 81 (30 for the lists, 50 for the activity count, 1 for the switch) | 0 | |
+| Lists refresh, 1,000 rulings on file | about 83 (32 for the four lists, 50 for the activity count, 1 for the switch) | 0 | |
 | `pnpm recent`, 30 rows | about 36 to 41 | 0 | By hand |
 | `pnpm recent --block`, `--unblock` or `--lists` | up to 3 | 1 | By hand |
-| `pnpm recent --prune --yes` | the rows it counts, then the rows it deletes | up to 12,000 per run | By hand |
+| `pnpm recent --prune --yes` | the rows it counts, then the rows it deletes | up to 14,000 per run | By hand |
+| Migration 0008 | about 7 per ruling on file | 3 per listed ruling, 4 per listed honorary one | Once |
+| Seeding the 188 listed question set 7 eval rulings | 0 | about 1,160: 6 per ruling, 7 for each of the 29 honorary ones | Once |
+| Backfilling foods from earlier question sets | 0 | 6 per food, 7 for an honorary one, 2 for a hidden one | Once |
 
-At the default limit of 1,000 Jev calls a day, writes top out around 18,000 of the 100,000 a day, plus the session cleanup described in [Rate limiting and spend](#rate-limiting-and-spend): 12,000 for the calls themselves and up to 6,000 more if every new item reached its second ask the same day. That ceiling holds whether the second ask comes from a hit or a repeat Jev call, because each item takes it once. Hits read 1 row each, so the Functions request cap bounds them at 100,000 reads. A lists refresh reads at most about 81 rows, so reads stay under 5 million until about 60,000 refreshes a day. That would take about 85 data centers, each serving the lists to someone every 2 minutes, all day. `functions/_lib/rulings.test.ts`, `functions/_lib/lists.test.ts` and `scripts/recent.test.mjs` fail if a recording, list, `pnpm recent` listing or prune statement falls back to a table scan. Only `--blocklist` reads its whole (small) table.
+At the default limit of 1,000 Jev calls a day, writes top out around 16,000 of the 100,000 a day, plus the session cleanup described in [Rate limiting and spend](#rate-limiting-and-spend). One ask lists a ruling, so hits and repeat Jev calls for a recorded item write nothing. Hits read 1 row each, so the Functions request cap bounds them at 100,000 reads. A lists refresh reads at most about 83 rows, so reads stay under 5 million until about 60,000 refreshes a day. That would take about 85 data centers, each serving the lists to someone every 2 minutes, all day. `functions/_lib/rulings.test.ts`, `functions/_lib/lists.test.ts` and `scripts/recent.test.mjs` fail if a recording, list, `pnpm recent` listing or prune statement falls back to a table scan. Only `--blocklist` reads its whole (small) table.
+
+KV on the Free plan allows 1,000 writes and 1,000 list operations a day, and every Jev call writes one entry. A one-off KV write such as the seed must fit beside the day's Jev calls: keep today's `usage.calls` plus the one-off writes under 900.
 
 Storage per 1,000 rulings, indexes included, measured in SQLite with random names:
 
@@ -382,7 +411,7 @@ Storage per 1,000 rulings, indexes included, measured in SQLite with random name
 | 30 characters | 224 KB | 300 KB | 375 KB |
 | 60 characters (the maximum) | 333 KB | 459 KB | 590 KB |
 
-The table is `WITHOUT ROWID`, so every index repeats the item, and a public row sits in up to six places. At 1,000 new rulings every day, typical food names grow the database by about 60 to 100 MB a year, and 60 character names that all go public by about 215 MB a year, against 500 MB per database. Rows from other question sets are never read by the lists, and `pnpm recent --prune` deletes them.
+The table is `WITHOUT ROWID`, so every index repeats the item, and a public row sits in six places, seven for an honorary ruling. At 1,000 new rulings every day, typical food names grow the database by about 60 to 100 MB a year, and 60 character names that all go public by about 215 MB a year, against 500 MB per database. Rows from other question sets are never read by the lists, and `pnpm recent --prune` deletes them.
 
 > [!WARNING]
 > Once the database reaches 500 MB, every write fails. The spend check then throws, so every new ruling is refused with a 500 until rows are deleted. Cached rulings keep working. Watch **D1 > cube-rule-oracle > Metrics** for the database size, and prune old question sets well before it gets close.
