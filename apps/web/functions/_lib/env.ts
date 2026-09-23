@@ -5,6 +5,8 @@ export interface Env {
   TURNSTILE_SECRET_KEY?: string;
   SESSION_SECRET?: string;
   DAILY_CALL_LIMIT?: string;
+  PUBLIC_LISTS?: string;
+  ACTIVITY_THRESHOLD?: string;
 }
 
 export type WaitUntil = (promise: Promise<unknown>) => void;

@@ -17,7 +17,11 @@
   "vars": {
     // Jev calls allowed per UTC day, about $0.0004 each. "0" stops every new ruling. Keep it at or
     // under the Free plan's 1,000 KV writes a day, or later rulings go unstored and get billed again.
-    "DAILY_CALL_LIMIT": "1000"
+    "DAILY_CALL_LIMIT": "1000",
+    // "off" empties /api/lists on the next deploy. Any value but "on" counts as off.
+    "PUBLIC_LISTS": "on",
+    // New rulings in the last hour before the lists show an activity line.
+    "ACTIVITY_THRESHOLD": "5"
   },
   "dev": { "port": 8788 }
 }
