@@ -144,6 +144,13 @@ describe("renderReport", () => {
     expect(text).toContain("## Abuse guard");
   });
 
+  it("counts what each list could hold from one ask, Honorary court included", () => {
+    expect(report).toMatch(
+      /- \*\*Items each list could hold,\*\* from one ask: latest \d+, mostDebated \d+, honoraryCourt \d+, friendshipEnding \d+\./,
+    );
+    expect(report).not.toMatch(/asked twice|jevDissents/);
+  });
+
   it("uses no em or en dashes", () => {
     const dashes = [0x2013, 0x2014].map((code) => String.fromCodePoint(code));
     expect(dashes.filter((dash) => report.includes(dash))).toEqual([]);

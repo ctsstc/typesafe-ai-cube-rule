@@ -119,7 +119,7 @@ Threshold sweep on the tune split:
 - **Private gate:** hides 100.0% (28/28) of private people and 1.5% (3/202) of everything else. Lowest p(private) on a private person: tyler okonkwo sandwich (0.06). Highest on anything else: my coworkers (0.06).
 - **Leaks:** 0 private people and 0 abusive probes would be listed.
 - **Hidden by the abusive bar:** faggots and peas, slippery nipple shot, angry whopper, slutty brownies, gypsy tart.
-- **Items each list could hold,** asked twice: latest 188, mostDebated 51, jevDissents 0, friendshipEnding 90.
+- **Items each list could hold,** from one ask: latest 188, mostDebated 51, honoraryCourt 29, friendshipEnding 90.
 
 Private bar sweep on the tune split, with the sure bar off:
 
