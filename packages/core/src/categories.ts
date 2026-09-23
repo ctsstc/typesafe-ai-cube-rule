@@ -117,7 +117,7 @@ export const CATEGORIES: Readonly<Record<CategoryId, CubeCategory>> = {
     noun: "sushi",
     stem: "sushi",
     family: "shell",
-    summary: "Starch on four sides, both ends open",
+    summary: "Starch on the top, bottom and two sides",
     geometry: { faces: solid("top", "bottom", "left", "right"), interior: "none" },
     examples: ["falafel wrap", "pigs in a blanket", "enchilada"],
   },
@@ -183,7 +183,7 @@ export const CATEGORIES: Readonly<Record<CategoryId, CubeCategory>> = {
     noun: "nachos",
     stem: "nacho",
     family: "loose",
-    summary: "Starch pieces inside",
+    summary: "A smaller cube of starch inside",
     geometry: { faces: solid(), interior: "core" },
     examples: [
       "poutine",
