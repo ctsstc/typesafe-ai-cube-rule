@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { About } from "./components/About";
 import { AnnouncerProvider } from "./components/Announcer";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { FoodForm } from "./components/FoodForm";
@@ -36,12 +35,19 @@ function announceShown(Section: ComponentType): ComponentType<ShownProps> {
   };
 }
 
-// Below the fold and mostly text, so it stays out of the initial bundle.
+// Below the fold and mostly text, so they stay out of the initial bundle.
 const HowJevRules = lazy(() =>
   import("./components/HowJevRules").then(
     (m) => ({ default: announceShown(m.HowJevRules) }),
     () => ({ default: announceShown(() => null) }),
   ),
+);
+const About = lazy(
+  (): Promise<{ default: ComponentType }> =>
+    import("./components/About").then(
+      (m) => ({ default: m.About }),
+      () => ({ default: () => null }),
+    ),
 );
 
 function titleFor(state: OracleState): string {
@@ -124,8 +130,8 @@ export function App() {
     return () => window.removeEventListener("popstate", onPop);
   }, [rule, reset]);
 
-  // How Jev rules renders late, above About, and the display font can still move things. Browsers
-  // without scroll anchoring keep the old offset, so a hash in the first URL waits for both.
+  // How Jev rules and About render late, and the display font can still move things. Browsers
+  // without scroll anchoring keep the old offset, so a hash in the first URL waits for all of them.
   useEffect(() => {
     const hash = pendingHash.current;
     if (!sectionsShown || !hash) return;
@@ -214,10 +220,18 @@ export function App() {
             )}
           </div>
           <Gallery onPick={submit} />
-          <Suspense fallback={<section id="how-jev-rules" className="jev container" />}>
+          {/* One boundary, so onShown fires only once About has rendered too. */}
+          <Suspense
+            fallback={
+              <>
+                <section id="how-jev-rules" className="jev container" />
+                <section id="about" className="about container" />
+              </>
+            }
+          >
             <HowJevRules onShown={showSections} />
+            <About />
           </Suspense>
-          <About />
         </main>
       </ErrorBoundary>
       <Footer model={model} />
