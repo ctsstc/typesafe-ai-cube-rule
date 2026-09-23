@@ -3,15 +3,11 @@
   "name": "cube-rule-oracle",
   "pages_build_output_dir": "./dist",
   "compatibility_date": "2026-09-22",
-  // Uncomment after `wrangler kv namespace create CLASSIFICATIONS` (see docs/deploy.md).
-  // Local dev binds it anyway through `--kv CLASSIFICATIONS` in scripts/pages-dev.sh.
-  // "kv_namespaces": [{ "binding": "CLASSIFICATIONS", "id": "<namespace id>" }],
+  "kv_namespaces": [{ "binding": "CLASSIFICATIONS", "id": "00000000000000000000000000000000" }],
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "cube-rule-oracle",
-      // Placeholder until `wrangler d1 create cube-rule-oracle` (see docs/deploy.md).
-      // Local dev works with it; scripts/deploy.sh refuses to ship it.
       "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "migrations"
     }
