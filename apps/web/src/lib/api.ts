@@ -9,7 +9,12 @@ import {
   SESSION_PATH,
 } from "@cube/core";
 
-export type RulingErrorCode = ClassifyErrorCode | "offline" | "network" | "challenge_skipped";
+export type RulingErrorCode =
+  | ClassifyErrorCode
+  | "offline"
+  | "network"
+  | "challenge_skipped"
+  | "over_capacity";
 
 export class RulingError extends Error {
   constructor(
@@ -80,6 +85,14 @@ function failure(res: Response, body: unknown): RulingError {
   return new RulingError(code, parseRetryAfter(res.headers.get("retry-after")));
 }
 
+const NOT_JSON = Symbol("not JSON");
+
+// Once the Free plan's daily Functions requests run out, Pages fails open and answers /api/* with
+// the SPA's index.html and a 200, so a success that is not JSON means the API is over capacity.
+function isHtml(res: Response): boolean {
+  return /\bhtml\b/i.test(res.headers.get("content-type") ?? "");
+}
+
 async function request(item: string, prefetch = false): Promise<Classified | null> {
   const url = classifyUrl(item);
   const started = performance.now();
@@ -87,9 +100,10 @@ async function request(item: string, prefetch = false): Promise<Classified | nul
   if (prefetch) headers[PREFETCH_HEADER] = "1";
   const res = await send(url, { headers });
   if (prefetch && res.status === 204) return null;
-  const body: unknown = await res.json().catch(() => null);
+  const body: unknown = await res.json().catch(() => NOT_JSON);
   const latencyMs = Math.round(performance.now() - started);
   if (!res.ok) throw failure(res, body);
+  if (body === NOT_JSON || isHtml(res)) throw new RulingError("over_capacity");
   if (!isClassifyResponse(body)) throw new RulingError("internal");
   const cache = CACHE_HEADERS.map((name) => res.headers.get(name)).find(Boolean) ?? null;
   return { response: body, latencyMs, cache, fromBrowserCache: servedFromBrowserCache(url) };

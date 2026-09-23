@@ -150,7 +150,7 @@ Read the local counters with `pnpm exec wrangler d1 execute cube-rule-oracle --l
 
    Rotating it (run the same command again) signs everyone out of their session. They pass a fresh check on their next new food.
 
-8. In the dashboard, under **Workers & Pages > cube-rule-oracle > Settings > Runtime > Fail open / closed**, choose **Fail open**. If the Free plan's daily Functions allowance runs out, the site keeps loading. The API breaks until midnight UTC instead of the whole site.
+8. In the dashboard, under **Workers & Pages > cube-rule-oracle > Settings > Runtime > Fail open / closed**, choose **Fail open**. If the Free plan's daily Functions allowance runs out, the site keeps loading. The API breaks until midnight UTC instead of the whole site: Pages then answers `/api/*` with the SPA's `index.html` and a 200, which the SPA recognizes and shows as "The oracle is swamped." Foods already in the visitor's browser cache keep working.
 
 ## Deploying
 
@@ -254,7 +254,7 @@ Every Jev call costs money, so the Function only calls Jev on a full cache miss,
 | Per-session cap (D1) | 60 Jev calls per session | `401 challenge_required` |
 | Per-client cap (D1) | 150 Jev calls per IP address per UTC day | `429 client_limit` with `Retry-After` until midnight UTC |
 | Daily cap (D1) | `DAILY_CALL_LIMIT`, default 1000 per UTC day | `503 daily_limit` with `Retry-After` until midnight UTC |
-| Free plan request cap | 100,000 Functions requests a day, shared with Workers | Cloudflare's own error until midnight UTC |
+| Free plan request cap | 100,000 Functions requests a day, shared with Workers | With Fail open, `index.html` with a 200 until midnight UTC, shown as "The oracle is swamped." |
 
 The in-code limiter is a speed bump, not a quota: each location runs many isolates and they restart often. The D1 caps are the real limits, because D1 is one database with serialized writes.
 

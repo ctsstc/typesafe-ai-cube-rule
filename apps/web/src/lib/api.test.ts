@@ -76,6 +76,25 @@ describe("classify", () => {
     expect((await failure("taco")).code).toBe("upstream_busy");
   });
 
+  it.each([
+    ["the SPA shell", "<!doctype html><html><body>Cube Rule Oracle</body></html>", "text/html"],
+    ["an HTML page with a JSON-looking body", "{}", "text/html; charset=utf-8"],
+    ["a body that is not JSON", "Service temporarily unavailable", "text/plain"],
+  ])("reads %s on a 200 as over capacity, never a ruling", async (_label, body, type) => {
+    const fetchMock = vi.fn(async () => new Response(body, { headers: { "content-type": type } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const error = await failure("taco");
+    expect(error.code).toBe("over_capacity");
+    expect(error.retryAfter).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(cachedClassified("taco")).toBeUndefined();
+  });
+
+  it("keeps a JSON ruling sent without a JSON content type", async () => {
+    vi.stubGlobal("fetch", async () => new Response(JSON.stringify(mockCubeResponse("taco"))));
+    await expect(classify("taco")).resolves.toMatchObject({ response: { model: "mock" } });
+  });
+
   it("rejects a success body that is not a ruling", async () => {
     vi.stubGlobal("fetch", async () => json({ hello: "world" }));
     expect((await failure("taco")).code).toBe("internal");
@@ -324,6 +343,21 @@ describe("classify behind the human check", () => {
     release.current();
     await pending;
     expect(isChecking()).toBe(false);
+  });
+
+  it("drops a prefetch that gets the SPA shell, so a pick asks again", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response("<!doctype html>", { headers: { "content-type": "text/html" } }),
+      )
+      .mockResolvedValueOnce(ruling("taco"));
+    prefetch("taco");
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(cachedClassified("taco")).toBeUndefined();
+    await expect(classify("taco")).resolves.toMatchObject({ cache: "MISS" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(solve).not.toHaveBeenCalled();
   });
 
   it("never starts a human check for a prefetch", async () => {

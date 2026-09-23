@@ -309,6 +309,12 @@ export function errorCopy(code: RulingErrorCode, retryAfter: number | null): Err
         body: "Give it a moment and try again.",
         action: "retry",
       };
+    case "over_capacity":
+      return {
+        title: "The oracle is swamped.",
+        body: "Too many people are asking at once. Foods you've already looked up on this device may still work. Try again later.",
+        action: "retry",
+      };
     case "timeout":
       return {
         title: "Jev is thinking unusually hard.",

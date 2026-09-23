@@ -36,6 +36,7 @@ export function ErrorPanel({ error, onRetry, onEdit, level = 3 }: ErrorPanelProp
       ? OfflineIcon
       : error.code === "timeout" ||
           error.code === "rate_limited" ||
+          error.code === "over_capacity" ||
           error.code === "daily_limit" ||
           error.code === "client_limit"
         ? ClockIcon

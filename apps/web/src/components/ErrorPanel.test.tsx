@@ -52,6 +52,14 @@ describe("ErrorPanel", () => {
     expect(onEdit).not.toHaveBeenCalled();
   });
 
+  it("offers a retry when the API is over capacity", async () => {
+    const { onRetry } = show(new RulingError("over_capacity"));
+    expect(screen.getByText("The oracle is swamped.")).toBeInTheDocument();
+    expect(screen.getByText(/already looked up on this device may still work/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
   it.each(["not_found", "method_not_allowed"] as const)("treats %s as our fault", (code) => {
     show(new RulingError(code));
     expect(screen.getByText("Something broke on our side.")).toBeInTheDocument();
