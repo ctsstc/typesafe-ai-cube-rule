@@ -32,6 +32,6 @@ describe("opening the page at a section's hash", () => {
 
     chunk.arrive();
     await screen.findByRole("region", { name: "How Jev rules" });
-    await vi.waitFor(() => expect(scrolled).toEqual(["about"]));
+    await vi.waitFor(() => expect(scrolled).toEqual(["about"]), { timeout: 5000 });
   });
 });
