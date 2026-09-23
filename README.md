@@ -24,14 +24,17 @@ Name any food and get a ruling. The [Cube Rule](https://cuberule.com/) sorts foo
 flowchart LR
   spa[Browser: React SPA] -- "GET /api/classify?food=hot+dog" --> fn[Cloudflare Pages Function]
   fn -- "hit" --> cache[(Edge cache, then KV)]
-  fn -- "miss: Turnstile session and D1 spend caps" --> jev[Jev: 16 typed questions]
+  fn -- "miss: Turnstile session and D1 spend caps" --> jev[Jev: 17 typed questions]
   fn -- "raw answers" --> spa
+  spa -- "GET /api/lists" --> fn
+  fn -- "public lists" --> d1[(D1 rulings)]
 ```
 
-- **One request, 16 typed questions.** Jev is a System One model: it returns probabilities, never text. Each new food is one request carrying 4 Choice questions (is it food, which cube, which cube if it were food, what kind of starch), 11 yes or no Nouls (is it abusive, is it wet, eight readings of where the starch sits, does it depend how it's served) and 1 Score (how hard people argue about it).
+- **One request, 17 typed questions.** Jev is a System One model: it returns probabilities, never text. Each new food is one request carrying 5 Choice questions (is it food, which cube, which cube if it were food, what kind of starch, does it name a person and a famous one), 11 yes or no Nouls (is it abusive, is it wet, eight readings of where the starch sits, does it depend how it's served) and 1 Score (how hard people argue about it).
 - **Raw answers, mapped in code.** The Function returns Jev's raw answers and the browser turns them into a ruling with `toCubeResult` from `packages/core`. Every sentence on the card is a template written ahead of time and filled in from those numbers, so copy and threshold changes never need new inference.
 - **Canon wins.** Foods cuberule.com has already ruled on show the official ruling, and Jev's opinion appears as a dissent when it disagrees. Things that are not food get an honorary ruling, gibberish is uncubeable, and abusive text is declined without being echoed back.
 - **Cached, so repeats are usually free.** A ruling is keyed by food and question set version and kept in the browser, Cloudflare's edge cache and KV. A food someone already asked about usually never reaches Jev.
+- **Public lists, screened.** "The docket" lists foods people asked about at least twice: the latest rulings, the most debated, Jev vs the canon and the friendship-ending ones, with honorary rulings for things that are not food. Declined rulings never appear. Pattern rules and Jev's person reading keep out private people's names, phone numbers, email addresses, links and handles, and a kill switch and a blocklist sit behind `pnpm recent`.
 - **A human check and spend caps guard the bill.** A new food needs a session cookie from a Cloudflare Turnstile check, which usually runs unseen. Before each Jev call, D1 counts it against the session (60), the client IP for the UTC day (150, stored only as a keyed hash) and the whole day (1,000 by default). The Function fails closed.
 
 [docs/question-design.md](docs/question-design.md) explains the questions and thresholds, and [docs/ux-spec.md](docs/ux-spec.md) covers the interface.
@@ -50,7 +53,7 @@ Open http://localhost:5173. `pnpm dev` runs Vite on 5173 and the Pages Function 
 
 **No key needed to start.** With `TYPESAFE_API_KEY` empty, the Function serves mock rulings: deterministic for each food and shaped exactly like live answers, but not real. The app shows a demo banner and stamps every card "Simulated". For UI work without wrangler, `pnpm --filter @cube/web dev:mock` adds trigger foods for every state, such as `mock torn`, `mock 429` and `mock timeout` (see [docs/ux-spec.md](docs/ux-spec.md#14-mock-mode)).
 
-**Live rulings need a TypeSafe account.** Create a key at https://console.typesafe.ai/keys and put it in `.env` as `TYPESAFE_API_KEY`. Each new food is one Jev call of about 9,600 input tokens, roughly $0.0004 at [TypeSafe's published price](https://docs.typesafe.ai/models.md).
+**Live rulings need a TypeSafe account.** Create a key at https://console.typesafe.ai/keys and put it in `.env` as `TYPESAFE_API_KEY`. Each new food is one Jev call of about 10,100 input tokens, roughly $0.0004 at [TypeSafe's published price](https://docs.typesafe.ai/models.md).
 
 > [!IMPORTANT]
 > The key belongs only in the root `.env` (gitignored) locally and in a Pages secret in production. It must never reach the browser bundle, a commit or a log line. `apps/web/src/bundle.test.ts` fails `pnpm check` if the bundle contains the TypeSafe API host, the SDK or any question text.
@@ -68,19 +71,21 @@ Open http://localhost:5173. `pnpm dev` runs Vite on 5173 and the Pages Function 
 | `pnpm eval` | Runs the labelled food set against Jev (see below) |
 | `pnpm deploy:pages` | Guarded production deploy. Bare `pnpm deploy` is pnpm's own command and does not run it |
 | `pnpm spend [--detail]` | Read-only Jev spend report from the production D1 counters (see [docs/deploy.md](docs/deploy.md#watching-spend)) |
+| `pnpm recent [--flagged]` | Recorded rulings behind the public lists, plus `--block`, `--unblock`, `--lists off\|on` and `--prune` (see [docs/deploy.md](docs/deploy.md#the-blocklist-and-pnpm-recent)) |
 
 ## Evaluation
 
-`eval/` holds 204 labelled items and a harness that asks Jev every question for each one, then scores Jev's own ruling. On question set 6 with `jev-1.13.0`:
+`eval/` holds 251 labelled items and a harness that asks Jev every question for each one, then scores Jev's own ruling. On question set 7 with `jev-1.13.0`:
 
 | Split | Right |
 | --- | --- |
-| Holdout, looked at only after each version was final | 60/62, or 52/54 without items the ruling questions use as worked examples |
-| Tune, which the questions were rewritten against | 95/97 |
+| Holdout, looked at only after each version was final | 79/81, or 71/73 without items the ruling questions use as worked examples |
+| Tune, which the questions were rewritten against | 123/125 |
 | Canon rulings from cuberule.com | 45/45 |
-| Abusive probes declined | 21/21, with 0 false declines among the other 183 items |
+| Abusive probes declined | 21/21, with 0 false declines among the other 230 items |
+| Private people the public lists would show | 0 of 28 |
 
-Labels outside canon are this project's reading of the site's rules. Answers are cached per question set, so `pnpm eval --offline` rescores for free, and a full live pass costs about $0.08. [docs/eval.md](docs/eval.md) explains the splits and records every tuning round.
+Labels outside canon are this project's reading of the site's rules. Answers are cached per question set, so `pnpm eval --offline` rescores for free, and a full live pass costs about $0.11. [docs/eval.md](docs/eval.md) explains the splits and records every tuning round.
 
 The site's [How Jev rules](https://cube-rule-oracle.pages.dev/#how-jev-rules) section shows these numbers, read from `eval/results/v<QUESTION_SET_VERSION>/summary.json` at build time. Bumping `QUESTION_SET_VERSION` therefore fails `pnpm build` and `pnpm check` until a complete run for the new version is committed.
 
@@ -105,10 +110,10 @@ A fork has to replace a few values that point at this project's Cloudflare accou
 
 ```text
 apps/web/                 Vite + React SPA and the Pages project
-  src/                    App shell, ruling card, CSS 3D cube, gallery, How Jev rules, about
-  functions/api/          Pages Functions: classify.ts, session.ts and a JSON 404 for other /api paths
-  functions/_lib/         Handlers, session cookie, D1 spend caps, HTTP helpers, rate limiter, tests
-  migrations/             D1 schema for the spend caps
+  src/                    App shell, ruling card, CSS 3D cube, gallery, the docket, How Jev rules, about
+  functions/api/          Pages Functions: classify.ts, session.ts, lists.ts and a JSON 404 for other /api paths
+  functions/_lib/         Handlers, session cookie, D1 spend caps, recorded rulings, public lists, tests
+  migrations/             D1 schema for the spend caps and the public lists
   public/                 _headers (CSP), _routes.json, icons, og.png
   og/                     SVG sources for the link preview card and icons
   plugins/                Vite plugins: font preload, site URL, eval stats, keyless mock API
@@ -117,7 +122,7 @@ packages/core/            @cube/core: categories, Jev questions and thresholds, 
                           normalization, official rulings, result logic, mock, wire types
 eval/                     Labelled dataset, eval harness and results per question set
 docs/                     Question design, eval, UX spec, canon audit and deploy runbook
-scripts/                  pages-dev.sh (local wrangler), dev-challenge.sh, deploy.sh and spend.mjs
+scripts/                  pages-dev.sh (local wrangler), dev-challenge.sh, deploy.sh, spend.mjs and recent.mjs
 ```
 
 ## License
