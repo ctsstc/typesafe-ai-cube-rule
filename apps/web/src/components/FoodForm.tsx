@@ -1,5 +1,12 @@
 import { normalizeItem, precheckItem } from "@cube/core";
-import { type FormEvent, type MouseEvent, type RefObject, useRef, useState } from "react";
+import {
+  type FormEvent,
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+  useRef,
+  useState,
+} from "react";
 import { prefetch } from "../lib/api";
 import { HERO_CHIPS } from "../lib/foods";
 import { foodHref } from "../lib/url";
@@ -34,16 +41,18 @@ export function usePrefetch() {
 export function FoodLink({
   item,
   label = item,
+  className = "food-chip",
   onPick,
 }: {
   readonly item: string;
-  readonly label?: string;
+  readonly label?: ReactNode;
+  readonly className?: string;
   readonly onPick: (item: string) => void;
 }) {
   const prefetch = usePrefetch();
   return (
     <a
-      className="food-chip"
+      className={className}
       href={foodHref(item)}
       onClick={(event) => {
         if (!isPlainClick(event)) return;

@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { AnnouncerProvider } from "./components/Announcer";
+import { DocketSlot } from "./components/DocketSlot";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { FoodForm } from "./components/FoodForm";
 import { Footer } from "./components/Footer";
@@ -220,6 +221,7 @@ export function App() {
             )}
           </div>
           <Gallery onPick={submit} />
+          <DocketSlot onPick={submit} />
           {/* One boundary, so onShown fires only once About has rendered too. */}
           <Suspense
             fallback={

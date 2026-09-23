@@ -87,7 +87,7 @@ describe("production bundle", () => {
     const initial = initialScripts(readFileSync(join(outDir, "index.html"), "utf8"))
       .map((path) => readFileSync(join(outDir, path), "utf8"))
       .join("\n");
-    for (const text of ["What gets sent where", "One order,"]) {
+    for (const text of ["What gets sent where", "One order,", "The docket"]) {
       expect(shipped).toContain(text);
       expect(initial).not.toContain(text);
     }
