@@ -309,16 +309,21 @@ describe("POST /api/session", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("forgets expired sessions in the background", async () => {
+  it("forgets expired sessions and past days' client counters in the background", async () => {
     const d1 = fakeD1();
     const past = Math.floor(Date.now() / 1000) - 10;
+    const today = new Date().toISOString().slice(0, 10);
     d1.sqlite.exec(
       `INSERT INTO sessions (sid, calls, exp) VALUES ('old', 3, ${past}), ('live', 1, ${past + 3600})`,
+    );
+    d1.sqlite.exec(
+      `INSERT INTO clients (key, day, calls) VALUES ('old', '2000-01-01', 3), ('live', '${today}', 1)`,
     );
     fetchMock.mockResolvedValueOnce(passed());
     expect((await call(post({ token: TOKEN }), env({ DB: d1.binding }))).status).toBe(204);
     await Promise.all(pending);
     expect(d1.sqlite.prepare("SELECT sid FROM sessions").all()).toEqual([{ sid: "live" }]);
+    expect(d1.sqlite.prepare("SELECT key FROM clients").all()).toEqual([{ key: "live" }]);
   });
 });
 

@@ -4,12 +4,19 @@ import type { Session } from "./session";
 
 export const DEFAULT_DAILY_CALL_LIMIT = 1000;
 export const SESSION_CALL_LIMIT = 60;
+export const CLIENT_DAILY_CALL_LIMIT = 150;
 
 const RESERVE_SESSION_CALL = `INSERT INTO sessions (sid, calls, exp) VALUES (?1, 1, ?3)
 ON CONFLICT (sid) DO UPDATE SET calls = calls + 1 WHERE calls < ?2
 RETURNING calls`;
 
 const REFUND_SESSION_CALL = "UPDATE sessions SET calls = calls - 1 WHERE sid = ?1 AND calls > 0";
+
+const RESERVE_CLIENT_CALL = `INSERT INTO clients (key, day, calls) VALUES (?1, ?2, 1)
+ON CONFLICT (key) DO UPDATE SET calls = calls + 1 WHERE calls < ?3
+RETURNING calls`;
+
+const REFUND_CLIENT_CALL = "UPDATE clients SET calls = calls - 1 WHERE key = ?1 AND calls > 0";
 
 // SQLite requires a WHERE on INSERT ... SELECT before ON CONFLICT. This one also makes a limit of 0
 // refuse the day's first call.
@@ -22,6 +29,10 @@ export function dailyCallLimit(env: Env): number {
   return Number.isSafeInteger(limit) && limit >= 0 ? limit : DEFAULT_DAILY_CALL_LIMIT;
 }
 
+export function utcDay(now: number): string {
+  return new Date(now).toISOString().slice(0, 10);
+}
+
 export function secondsUntilUtcMidnight(now: number): number {
   const date = new Date(now);
   const midnight = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1);
@@ -30,13 +41,20 @@ export function secondsUntilUtcMidnight(now: number): number {
 
 let reportedNoDb = false;
 
+export interface Charge {
+  readonly session: Session | null;
+  /** The client's key for today, from clientKey(). null skips the per-client cap. */
+  readonly client: string | null;
+}
+
 /**
- * Counts one Jev call against the session and the UTC day, or returns the refusal.
- * The session is charged first so an exhausted session can never spend the shared daily budget.
+ * Counts one Jev call against the session, the client and the UTC day, or returns the refusal.
+ * Narrowest first, so a spent session or client can never use up the shared daily budget. A
+ * refusal gives back what was already charged, since Jev was never asked.
  */
 export async function reserveJevCall(
   env: Env,
-  session: Session | null,
+  { session, client }: Charge,
   now: number,
 ): Promise<Response | null> {
   const db = env.DB;
@@ -59,12 +77,28 @@ export async function reserveJevCall(
         });
       }
     }
-    const day = new Date(now).toISOString().slice(0, 10);
+    const refund = async (clientCharged: boolean) => {
+      if (session) await db.prepare(REFUND_SESSION_CALL).bind(session.sid).run();
+      if (client && clientCharged) await db.prepare(REFUND_CLIENT_CALL).bind(client).run();
+    };
+    const day = utcDay(now);
+    if (client) {
+      const charged = await db
+        .prepare(RESERVE_CLIENT_CALL)
+        .bind(client, day, CLIENT_DAILY_CALL_LIMIT)
+        .first();
+      if (!charged) {
+        await refund(false);
+        console.warn("classify: client daily Jev call limit reached", { day });
+        return errorResponse("client_limit", {
+          headers: { "Retry-After": String(secondsUntilUtcMidnight(now)) },
+        });
+      }
+    }
     const limit = dailyCallLimit(env);
     const charged = await db.prepare(RESERVE_DAILY_CALL).bind(day, limit).first();
     if (!charged) {
-      // Jev was never asked, so the refusal must not use up the session as well.
-      if (session) await db.prepare(REFUND_SESSION_CALL).bind(session.sid).run();
+      await refund(true);
       console.warn("classify: daily Jev call limit reached", { day, limit });
       return errorResponse("daily_limit", {
         headers: { "Retry-After": String(secondsUntilUtcMidnight(now)) },
@@ -79,9 +113,10 @@ export async function reserveJevCall(
   }
 }
 
-export async function forgetExpiredSessions(db: D1Database, now: number): Promise<void> {
+export async function forgetExpired(db: D1Database, now: number): Promise<void> {
   await db
     .prepare("DELETE FROM sessions WHERE exp < ?1")
     .bind(Math.floor(now / 1000))
     .run();
+  await db.prepare("DELETE FROM clients WHERE day < ?1").bind(utcDay(now)).run();
 }

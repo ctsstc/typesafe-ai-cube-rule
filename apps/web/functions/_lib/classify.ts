@@ -21,8 +21,8 @@ import {
 import { clientIp, type Env, type WaitUntil } from "./env";
 import { CACHE_IMMUTABLE, CACHE_NONE, errorResponse, jsonResponse, noContent } from "./http";
 import { createRateLimiter, type RateLimiter } from "./rate-limit";
-import { requireSession } from "./session";
-import { reserveJevCall } from "./usage";
+import { clientKey, requireSession } from "./session";
+import { reserveJevCall, utcDay } from "./usage";
 
 export type { Env } from "./env";
 
@@ -110,7 +110,8 @@ async function classify(
   const wait = limiter.take(clientIp(request), now);
   if (wait > 0) return errorResponse("rate_limited", { headers: { "Retry-After": String(wait) } });
 
-  const refused = await reserveJevCall(env, session, now);
+  const client = await clientKey(request, env, utcDay(now));
+  const refused = await reserveJevCall(env, { session, client }, now);
   if (refused) return refused;
 
   let body: string;

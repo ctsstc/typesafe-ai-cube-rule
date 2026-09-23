@@ -33,10 +33,16 @@ export function ErrorPanel({ error, onRetry, onEdit }: ErrorPanelProps) {
   const Icon =
     error.code === "offline" || error.code === "network"
       ? OfflineIcon
-      : error.code === "timeout" || error.code === "rate_limited" || error.code === "daily_limit"
+      : error.code === "timeout" ||
+          error.code === "rate_limited" ||
+          error.code === "daily_limit" ||
+          error.code === "client_limit"
         ? ClockIcon
         : AlertIcon;
-  const editLabel = error.code === "daily_limit" ? "Try another food" : "Edit the food";
+  const editLabel =
+    error.code === "daily_limit" || error.code === "client_limit"
+      ? "Try another food"
+      : "Edit the food";
 
   const waitingForNetwork = error.code === "offline" && !online;
   const retryLabel =

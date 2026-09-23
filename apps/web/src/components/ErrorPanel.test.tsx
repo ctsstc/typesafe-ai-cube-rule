@@ -25,6 +25,15 @@ describe("ErrorPanel", () => {
     expect(onRetry).not.toHaveBeenCalled();
   });
 
+  it("points at other foods when this network has used up its new foods", async () => {
+    const { onEdit } = show(new RulingError("client_limit", 3 * 3600));
+    expect(screen.getByText("That's a lot of new foods for one day.")).toBeInTheDocument();
+    expect(screen.getByText(/New foods open again at .+ your time\./)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /try again/i })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Try another food" }));
+    expect(onEdit).toHaveBeenCalledOnce();
+  });
+
   it("offers a retry when the human check fails", async () => {
     const { onRetry } = show(new RulingError("challenge_required"));
     expect(screen.getByText("Couldn't confirm you're human.")).toBeInTheDocument();

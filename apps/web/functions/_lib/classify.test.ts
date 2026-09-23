@@ -15,7 +15,7 @@ import { createClassifyHandler, type Env, JEV_DEADLINE_MS } from "./classify";
 import { fakeD1 } from "./fake-d1";
 import { createRateLimiter } from "./rate-limit";
 import { issueSession, SESSION_COOKIE } from "./session";
-import { SESSION_CALL_LIMIT } from "./usage";
+import { CLIENT_DAILY_CALL_LIMIT, SESSION_CALL_LIMIT } from "./usage";
 
 const ORIGIN = "https://oracle.example";
 const KEY = "ts-test-key-do-not-leak";
@@ -526,6 +526,53 @@ describe("challenge and spend caps", () => {
       new Response(JSON.stringify(mockCubeResponse("taco"))),
     );
     expect((await ask("taco", env, undefined, prefetch)).status).toBe(200);
+  });
+
+  it("caps new rulings per client per UTC day, without spending the session or the day", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-22T20:00:00Z"));
+    const { d1, env } = guardedEnv();
+    fetchMock.mockImplementation(async () => jevOk("taco"));
+    expect((await ask("taco", env, await cookie())).status).toBe(200);
+    d1.sqlite.exec(`UPDATE clients SET calls = ${CLIENT_DAILY_CALL_LIMIT}`);
+
+    const session = await cookie();
+    const refused = await ask("pizza", env, session);
+    expect(refused.status).toBe(429);
+    expect(refused.headers.get("Retry-After")).toBe(String(4 * 3600));
+    expect((await errorBody(refused)).error.code).toBe("client_limit");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(usage(d1)).toEqual([{ day: "2026-09-22", calls: 1 }]);
+    const sessions = d1.sqlite.prepare("SELECT calls FROM sessions ORDER BY calls").all();
+    expect(sessions).toEqual([{ calls: 0 }, { calls: 1 }]);
+
+    const elsewhere = { "CF-Connecting-IP": "198.51.100.4" };
+    expect((await ask("pizza", env, session, elsewhere)).status).toBe(200);
+    vi.setSystemTime(new Date("2026-09-23T00:00:01Z"));
+    expect((await ask("sushi", env, await cookie())).status).toBe(200);
+  });
+
+  it("keys the client counter on a daily HMAC, never the raw IP", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-22T20:00:00Z"));
+    const { d1, env } = guardedEnv();
+    fetchMock.mockImplementation(async () => jevOk("taco"));
+    await ask("taco", env, await cookie());
+    vi.setSystemTime(new Date("2026-09-23T01:00:00Z"));
+    await ask("pizza", env, await cookie());
+    const rows = d1.sqlite.prepare("SELECT key, day, calls FROM clients ORDER BY day").all();
+    expect(rows).toEqual([
+      { key: expect.stringMatching(/^[\w-]{43}$/), day: "2026-09-22", calls: 1 },
+      { key: expect.stringMatching(/^[\w-]{43}$/), day: "2026-09-23", calls: 1 },
+    ]);
+    expect(rows[0]?.key).not.toBe(rows[1]?.key);
+    expect(JSON.stringify(rows)).not.toContain("203.0.113.7");
+  });
+
+  it("refunds the client too when the day refuses", async () => {
+    const { d1, env } = guardedEnv({ DAILY_CALL_LIMIT: "0" });
+    await ask("taco", env, await cookie());
+    expect(d1.sqlite.prepare("SELECT calls FROM clients").all()).toEqual([{ calls: 0 }]);
   });
 
   it("does not spend the session on refusals once the day is spent", async () => {

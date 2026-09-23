@@ -327,6 +327,12 @@ export function errorCopy(code: RulingErrorCode, retryAfter: number | null): Err
         body: `Jev has ruled on all the new foods it can today. New foods open again at ${resetTime(retryAfter)}. Foods someone has already asked about usually still work.`,
         action: "edit",
       };
+    case "client_limit":
+      return {
+        title: "That's a lot of new foods for one day.",
+        body: `Jev has ruled on as many new foods from your network today as it can. New foods open again at ${resetTime(retryAfter)}. Foods someone has already asked about usually still work.`,
+        action: "edit",
+      };
     case "stale_client":
       return {
         title: "The oracle was updated.",

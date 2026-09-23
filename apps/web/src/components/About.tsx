@@ -75,9 +75,11 @@ export function About() {
               sent to this site's <code>/api</code>. It covers up to 60 new foods.
             </li>
             <li>
-              To keep the bill in check, the server counts Jev calls per day (a date and a number)
-              and per session (the random ID, until it expires). Neither count holds your IP
-              address, what you typed, or anything else about you.
+              To keep the bill in check, the server counts Jev calls per day (a date and a number),
+              per session (the random ID, until it expires), and per IP address per day. That last
+              count is filed under a keyed hash of your IP address and the date, so the address
+              itself is never stored, and it is deleted once the day is over. No count holds what
+              you typed.
             </li>
             <li>
               Your IP address is held in memory for a minute or so to slow down floods of requests,

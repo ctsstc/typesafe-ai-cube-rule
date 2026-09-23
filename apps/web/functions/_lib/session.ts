@@ -1,7 +1,7 @@
 import { clientIp, type Env, type WaitUntil } from "./env";
 import { errorResponse, noContent } from "./http";
 import { createRateLimiter, type RateLimiter } from "./rate-limit";
-import { forgetExpiredSessions } from "./usage";
+import { forgetExpired } from "./usage";
 
 export const SESSION_COOKIE = "cube_session";
 export const SESSION_TTL_S = 3600;
@@ -125,7 +125,7 @@ async function startSession(
   const now = Date.now();
   const cookie = await issueSession(config.sessionSecret, now);
   if (env.DB) {
-    const cleanup = forgetExpiredSessions(env.DB, now);
+    const cleanup = forgetExpired(env.DB, now);
     waitUntil(
       cleanup.catch((error) => console.warn("session: cleanup failed", { error: nameOf(error) })),
     );
@@ -324,6 +324,18 @@ function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
   return diff === 0;
+}
+
+/**
+ * The key for this client's call counter on `day`: an HMAC of its IP and the day under
+ * SESSION_SECRET, so the counter never holds an IP and a day's keys cannot be linked to the next.
+ * null when challenges are off or the IP is unknown.
+ */
+export async function clientKey(request: Request, env: Env, day: string): Promise<string | null> {
+  const config = challengeConfig(env);
+  const ip = clientIp(request);
+  if (config.mode !== "on" || ip === "unknown") return null;
+  return toBase64Url(await sign(config.sessionSecret, `client:${day}:${ip}`));
 }
 
 export function sessionCookie(value: string, hostname: string): string {

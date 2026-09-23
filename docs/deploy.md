@@ -20,11 +20,12 @@ Every uncached ruling calls Jev, about $0.0004 each. Cached rulings stay free an
 3. The SPA then loads Turnstile from `challenges.cloudflare.com` (only now, never on page load), runs an interaction-only widget with the action `session`, and posts the token to `POST /api/session`.
 4. `/api/session` calls siteverify with the secret, an idempotency key and the visitor's IP, and checks `success`, that `hostname` equals the request host and that `action` is `session`. It then sets `cube_session`: `{sid, iat, exp}` signed with HMAC-SHA256 under `SESSION_SECRET`, valid for one hour, `HttpOnly; Secure; SameSite=Strict; Path=/api` (no `Secure` on localhost).
 5. The SPA retries the ruling once. A second `challenge_required` is shown as an error, never looped.
-6. Before calling Jev the Function charges D1, in this order:
+6. Before calling Jev the Function charges D1, narrowest first:
    - the session: 60 Jev calls per `sid`. A spent session gets `401 challenge_required`, so the SPA runs a fresh check and gets a new session. Charging the session first means a spent session can never use up the shared daily budget.
+   - the client: 150 Jev calls per IP address per UTC day, so one scripted client cannot spend the whole day's budget however many checks it passes. The row is keyed by `HMAC-SHA256(SESSION_SECRET, "client:" + day + ":" + ip)`, so D1 never holds an IP and a day's keys cannot be linked to the next. Past it the Function answers `429 client_limit` with `Retry-After` until midnight UTC. Skipped when challenges are off.
    - the UTC day: `DAILY_CALL_LIMIT` calls (default 1000, about $0.40 a day). Past it the Function answers `503 daily_limit` with `Retry-After` until midnight UTC, and the SPA says when new foods open again. Cached foods keep working.
 
-Each charge is one atomic `INSERT ... ON CONFLICT DO UPDATE ... WHERE calls < limit RETURNING calls`. No row back means refused.
+Each charge is one atomic `INSERT ... ON CONFLICT DO UPDATE ... WHERE calls < limit RETURNING calls`. No row back means refused, and a refusal gives back the charges already made, since Jev was never asked. A Jev call that fails after the charge stays counted, because it may still be billed.
 
 The per-session count lives in D1, not in the cookie. A stateless cookie cannot count: a client could replay its first cookie forever. With the count in D1, every Turnstile solve buys at most 60 Jev calls.
 
@@ -240,12 +241,13 @@ Every Jev call costs money, so the Function only calls Jev on a full cache miss,
 | Turnstile session | One check per hour, and again after 60 new foods | `401 challenge_required` |
 | In-code limiter | 20 Jev calls per minute per IP, per isolate. 10 session attempts per minute per IP. | `429 rate_limited` with `Retry-After` |
 | Per-session cap (D1) | 60 Jev calls per session | `401 challenge_required` |
+| Per-client cap (D1) | 150 Jev calls per IP address per UTC day | `429 client_limit` with `Retry-After` until midnight UTC |
 | Daily cap (D1) | `DAILY_CALL_LIMIT`, default 1000 per UTC day | `503 daily_limit` with `Retry-After` until midnight UTC |
 | Free plan request cap | 100,000 Functions requests a day, shared with Workers | Cloudflare's own error until midnight UTC |
 
 The in-code limiter is a speed bump, not a quota: each location runs many isolates and they restart often. The D1 caps are the real limits, because D1 is one database with serialized writes.
 
-D1 on the Free plan allows 100,000 rows written and 5 million rows read a day, with limits resetting at 00:00 UTC. A Jev call writes two rows (the session and the day), so 1,000 calls use 2,000 writes. Starting a session also deletes expired session rows. If D1 itself hits its daily limit, the spend check fails and new rulings are refused until midnight UTC, which is the safe direction.
+D1 on the Free plan allows 100,000 rows written and 5 million rows read a day, with limits resetting at 00:00 UTC. A Jev call writes three rows (the session, the client and the day), so 1,000 calls use 3,000 writes. Starting a session also deletes expired session rows and past days' client rows. If D1 itself hits its daily limit, the spend check fails and new rulings are refused until midnight UTC, which is the safe direction.
 
 Other levers:
 
