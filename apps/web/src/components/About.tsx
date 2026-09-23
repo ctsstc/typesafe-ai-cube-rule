@@ -72,6 +72,13 @@ export function About() {
               isn't asked twice. Who asked is not stored.
             </li>
             <li>
+              Once a food has been asked about at least twice, which usually means from two
+              different browsers, it may show up in the public lists on this page. The server notes
+              when each food was first asked, but the lists show only foods and rulings: never who
+              asked, and no times. Names of private people, phone numbers, email addresses, links
+              and anything flagged as abusive are screened out.
+            </li>
+            <li>
               A new food costs real money, so first Turnstile by Cloudflare checks that a person is
               asking, usually unseen. It loads only when a new food needs the check, which can be
               the moment you open a shared link to one. It sees your IP address, your browser and

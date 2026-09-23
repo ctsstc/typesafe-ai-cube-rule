@@ -38,6 +38,20 @@ describe("About: what gets sent where", () => {
     expect(text).not.toMatch(/deleted once the day is over|first request after/i);
   });
 
+  it("says what the public lists show and what they screen out", () => {
+    const text = privacyList().textContent?.replace(/\s+/g, " ") ?? "";
+    expect(text).toContain("asked about at least twice");
+    expect(text).toContain("usually means from two different browsers");
+    expect(text).toContain("may show up in the public lists on this page");
+    expect(text).toContain("The server notes when each food was first asked");
+    expect(text).toContain("never who asked, and no times");
+    expect(text).toContain(
+      "Names of private people, phone numbers, email addresses, links and anything flagged as abusive are screened out",
+    );
+    expect(text).toContain("Who asked is not stored.");
+    expect(text).not.toMatch(/anonymous|guarantee/i);
+  });
+
   it("links the Cloudflare, Turnstile and TypeSafe privacy policies", () => {
     const list = privacyList();
     const expected: [string, string][] = [
