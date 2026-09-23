@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **How Jev rules.** A new section between the gallery and About, linked from the header and footer. It opens by saying the app is unofficial, then covers what a System One model is, the 16 typed questions in one request, confidence against probability, a cost and speed receipt, how the tune, holdout and canon piles are graded (with every leak into the questions disclosed), and honest limits. It loads as its own chunk and takes every number from `eval/results/v<QUESTION_SET_VERSION>/summary.json` at build time, so the build fails if the current question set's summary is missing, incomplete or scored on another model.
+- **Credits.** The footer and About credit Cody Swartz (GitHub, LinkedIn), say the site was built with Claude Code, and link the source on GitHub.
+- **"The oracle is swamped."** When the Free plan's Functions quota runs out and Pages fails open, answering `/api/*` with the SPA's HTML, the SPA says so instead of showing a broken ruling. `dev:mock` gains `mock swamped` to show it.
+- **Spend report.** Each Jev call that reports usage adds its input tokens to the day's row and counts itself as recorded (migrations `0004_usage_input_tokens.sql` and `0005_usage_token_calls.sql`). `pnpm spend [--detail]` prints a read-only report from the production D1 counters: calls, share of the daily limit, input tokens and dollars per UTC day, then totals and the daily ceiling. Calls that recorded no tokens are estimated from the eval's average, and their day is marked `~`.
+- **Web Analytics.** The deploy runbook covers turning on Cloudflare Web Analytics, which counts page views without cookies.
+- **Open source.** An MIT license, a README for people who find the repo, and a CI workflow that runs `pnpm check` on pushes to main and on pull requests, with no secrets.
+
+### Changed
+
+- **Refusals before the human check.** A new food with no session gets `503 daily_limit` or `429 client_limit` straight away when the day or this network has already used its calls, and a spent session gets that refusal instead of a fresh check, so nobody solves a check that can only be refused. One statement reads both counters by primary key.
+- **D1 indexes.** Migration `0003_cleanup_indexes.sql` indexes `sessions.exp` and `clients.day`, so the cleanup that runs with each new session reads only the rows it deletes. A test fails if any spend-cap statement goes back to a table scan.
+- **Deploy.** `scripts/deploy.sh` also refuses to run until the GitHub repo the site links to is public. Migrations 0003 to 0005 must be applied to the remote database first.
+- **Node.** `engines` and the README ask for an even-numbered Node release from 22.13 on (`^22.13.0 || ^24.0.0 || >=26.0.0`), since the tests use `node:sqlite` and Vitest does not support 23 or 25.
+- About's privacy list says Cloudflare Web Analytics counts page views without cookies or personal data, in place of "no analytics scripts".
+- CLAUDE.md drops machine details, and `.gitignore` covers Claude Code worktrees and local settings.
+
+### Fixed
+
+- About no longer says people wrote every word on the page. The words are templates in our code, filled in from Jev's numbers.
+- Opening `/#about` or `/#how-jev-rules` directly scrolls to that section. The scroll waits for How Jev rules to render, so About lands in view on Safari before 27, which has no scroll anchoring.
+- A response whose body drops mid-download shows the network or offline panel instead of "Something broke on our side", and a body that stalls ends at the 10 second timeout instead of hanging.
+- The deploy runbook no longer tells a fork to uncomment a KV line or replace a zero placeholder, and the README names every file that pins the owner's Cloudflare account.
+
+### Security
+
+- The CSP adds only the two hosts Web Analytics needs, `https://static.cloudflareinsights.com` in `script-src` and `https://cloudflareinsights.com` in `connect-src`, and `static-headers.test.ts` now pins the remote sources each directive allows.
+
 ## [1.0.0] - 2026-09-22
 
 First production release, live at https://cube-rule-oracle.pages.dev.
