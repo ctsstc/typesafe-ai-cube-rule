@@ -308,7 +308,7 @@ Whether a ruling may be listed is decided once, by `publicListing` in `packages/
 
 - Jev declined it as abusive, or found it nonsense
 - it is on the blocklist
-- it contains personal info: a phone number (7 or more digits), an email address, an `@handle`, a URL or a domain
+- it contains personal info: a phone number (7 or more digits, counting digit words said in a row), an email address, a handle, a URL or a domain, including spelled-out forms such as `jsmith [at] acme [dot] org` or `acme . com` (`hasPersonalInfo` in `packages/core/src/public.ts`)
 - Jev gives at least a 0.15 chance that it names a private person (`THRESHOLDS.publicPrivatePerson`)
 - Jev scores it abusive at 0.05 or more (`THRESHOLDS.publicAbusive`), unless cuberule.com has ruled on it
 

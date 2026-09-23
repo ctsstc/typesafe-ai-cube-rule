@@ -24,18 +24,68 @@ export interface PublicListingOptions {
 }
 
 const MIN_PHONE_DIGITS = 7;
+// Top-level domains that are not everyday English words, for "acme . com" and "acme dot ai".
+const TLD =
+  "(com|net|org|io|co|edu|gov|uk|ai|ca|de|app|dev|xyz|info|biz|ly|tv|gg|fm|sh|nz|au|fr|es|nl|se|ch|jp|kr|br|mx|ru|pl|eu|ie|club|site|online|store|shop|blog|email|link|live|tech|website|space)";
 const PERSONAL_INFO: readonly RegExp[] = [
   /@/,
   /https?:|www\./i,
-  /[\p{L}\p{N}]\.\p{L}{2,}/u,
-  /\bdot\s*(com|net|org|io|co|edu|gov)\b/i,
+  // NFKC leaves the ideographic full stop alone.
+  /[\p{L}\p{N}][.\u3002]\p{L}{2,}/u,
+  new RegExp(`\\p{L}\\s*[.\\u3002]\\s*${TLD}\\b`, "u"),
+  new RegExp(`\\bdot\\s*${TLD}\\b`),
+  /[[({<]\s*(at|dot)\s*[\])}>]/,
+  /[\p{L}\p{N}_]+\s+at\s+[\p{L}\p{N}_-]+\s+dot\s+\p{L}{2,}/u,
   /\b(gmail|yahoo|hotmail|outlook|icloud|aol|proton(mail)?)\b/i,
+  /[\p{L}\p{N}]_|_[\p{L}\p{N}]/u,
+  /\$\p{L}/u,
+  /\b(ig|insta|instagram|snapchat|tiktok|venmo|cashapp|twitter|telegram|whatsapp|discord|onlyfans|facebook|linkedin|hmu)\b/,
 ];
 
-/** Phone numbers, emails, @handles, URLs and domains. Matches the normalized item. */
+const DIGIT_WORDS = new Set([
+  "zero",
+  "oh",
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "six",
+  "seven",
+  "eight",
+  "nine",
+]);
+const MIN_SPELLED_RUN = 3;
+
+// Digits plus digit words said in a row, so "eight six seven five three oh nine" counts as 7.
+function phoneDigits(item: string): number {
+  let digits = item.match(/\p{Nd}/gu)?.length ?? 0;
+  let run = 0;
+  let words = 0;
+  const close = () => {
+    if (run >= MIN_SPELLED_RUN) digits += words;
+    run = 0;
+    words = 0;
+  };
+  for (const token of item.split(/[\s,.-]+/)) {
+    if (DIGIT_WORDS.has(token)) {
+      run += 1;
+      words += 1;
+    } else if (/^\p{Nd}+$/u.test(token)) {
+      run += 1;
+    } else {
+      close();
+    }
+  }
+  close();
+  return digits;
+}
+
+/** Phone numbers, emails, handles, URLs and domains, plain or spelled out. Matches the normalized item. */
 export function hasPersonalInfo(item: string): boolean {
-  const digits = item.match(/\p{Nd}/gu)?.length ?? 0;
-  return digits >= MIN_PHONE_DIGITS || PERSONAL_INFO.some((pattern) => pattern.test(item));
+  return (
+    phoneDigits(item) >= MIN_PHONE_DIGITS || PERSONAL_INFO.some((pattern) => pattern.test(item))
+  );
 }
 
 /** One item per line or comma, normalized the way the app normalizes what people type. */

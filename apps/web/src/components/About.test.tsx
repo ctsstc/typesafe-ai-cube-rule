@@ -46,8 +46,9 @@ describe("About: what gets sent where", () => {
     expect(text).toContain("The server notes when each food was first asked");
     expect(text).toContain("never who asked, and no times");
     expect(text).toContain(
-      "Names of private people, phone numbers, email addresses, links and anything flagged as abusive are screened out",
+      "Pattern rules and Jev's own reading screen out names of private people, phone numbers, email addresses, links and anything flagged as abusive",
     );
+    expect(text).toContain("No screen catches everything");
     expect(text).toContain("Who asked is not stored.");
     expect(text).not.toMatch(/anonymous|guarantee/i);
   });
