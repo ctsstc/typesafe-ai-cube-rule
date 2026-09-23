@@ -1,6 +1,6 @@
 # Deploying Cube Rule Oracle
 
-The app is one Cloudflare Pages project, `cube-rule-oracle`, built from `apps/web`, shared at https://typesafe-ai-cube-rule.codyswartz.us:
+The app is one Cloudflare Pages project, `cube-rule-oracle`, built from `apps/web`, shared at https://cube-rule-oracle.pages.dev (also reachable at https://typesafe-ai-cube-rule.codyswartz.us):
 
 - `apps/web/dist`: the Vite SPA, served as free static assets.
 - `apps/web/functions/api/classify.ts`: a Pages Function for `GET /api/classify`. It holds the TypeSafe key and calls Jev.
@@ -171,13 +171,13 @@ It then builds the SPA with the sitekey and runs `wrangler pages deploy dist --p
 > [!IMPORTANT]
 > Deploy from `apps/web`, never with `wrangler pages deploy apps/web/dist` from the repo root. Wrangler looks for `functions/` and `wrangler.jsonc` in its working directory. From the root it would upload the SPA without the API.
 
-The build bakes absolute `og:url` and `og:image` URLs into `index.html` from `SITE_URL`, which defaults to `https://typesafe-ai-cube-rule.codyswartz.us`. Override it for a one-off with `SITE_URL=https://cube-rule-oracle.pages.dev pnpm deploy:pages`.
+The build bakes absolute `og:url` and `og:image` URLs into `index.html` from `SITE_URL`, which defaults to `https://cube-rule-oracle.pages.dev`, the official URL. To make the custom domain official instead, change the default in `scripts/deploy.sh`, or override it for one deploy with `SITE_URL=https://typesafe-ai-cube-rule.codyswartz.us pnpm deploy:pages`.
 
 Tail production logs with `pnpm exec wrangler pages deployment tail --project-name cube-rule-oracle`. Refused spend checks log `classify: daily Jev call limit reached` and `classify: spend check failed`. A wrong or rotated `TURNSTILE_SECRET_KEY` logs `session: siteverify refused TURNSTILE_SECRET_KEY` at error level, and visitors see "Something broke on our side" instead of a failed human check.
 
 ## Custom domain (DNS at DigitalOcean)
 
-The share URL, `typesafe-ai-cube-rule.codyswartz.us`, is a subdomain of a zone whose DNS stays at DigitalOcean. Pages accepts an external CNAME for a subdomain, so the zone does not need to move to Cloudflare.
+The custom domain, `typesafe-ai-cube-rule.codyswartz.us`, is a subdomain of a zone whose DNS stays at DigitalOcean. Pages accepts an external CNAME for a subdomain, so the zone does not need to move to Cloudflare.
 
 1. **Cloudflare first.** Attach the hostname to the Pages project. Wrangler's own login token carries the Pages scope, and this keeps it out of the terminal:
 
@@ -208,9 +208,9 @@ The share URL, `typesafe-ai-cube-rule.codyswartz.us`, is a subdomain of a zone w
 
 4. **CAA.** If `codyswartz.us` has CAA records, certificate issuance fails until they allow Cloudflare's CAs. Add `0 issue` records for `letsencrypt.org`, `pki.goog; cansignhttpexchanges=yes` and `ssl.com`. With no CAA records at all, nothing needs to change.
 
-5. Redeploy if the last deploy used another `SITE_URL`, so link previews point at the share URL.
+5. The official URL is still `cube-rule-oracle.pages.dev`. Every page carries a canonical link to it, so search engines treat the custom domain as a duplicate. Switch `SITE_URL` (see Deploying) to promote the custom domain.
 
-`_headers` sends `X-Robots-Tag: noindex` on `*.pages.dev` hosts, so search engines index only the custom domain.
+`_headers` sends `X-Robots-Tag: noindex` only on per-deploy preview hosts (`<hash>.cube-rule-oracle.pages.dev`), so search engines index the production site but not previews.
 
 ## Rollback
 

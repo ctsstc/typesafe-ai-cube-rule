@@ -9,7 +9,7 @@ readonly BRANCH="main"
 readonly DATABASE="cube-rule-oracle"
 readonly SECRETS=(TYPESAFE_API_KEY TURNSTILE_SECRET_KEY SESSION_SECRET)
 # Absolute og:url and og:image in index.html.
-SITE_URL="${SITE_URL:-https://typesafe-ai-cube-rule.codyswartz.us}"
+SITE_URL="${SITE_URL:-https://cube-rule-oracle.pages.dev}"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 web="$root/apps/web"

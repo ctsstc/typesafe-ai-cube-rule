@@ -453,6 +453,6 @@ Debate, game, X-ray, and share image load through `import()` when they land, so 
 
 ## 17. Open questions
 
-1. **Site URL.** Settled: `scripts/deploy.sh` builds with the share URL, whose DNS is a CNAME at DigitalOcean. A one-off deploy can still override `SITE_URL`.
+1. **Site URL.** Settled: `scripts/deploy.sh` builds with the official URL, `https://cube-rule-oracle.pages.dev`. The custom domain `typesafe-ai-cube-rule.codyswartz.us` (a CNAME at DigitalOcean) serves the same site. A one-off deploy can still override `SITE_URL`.
 2. **Canon accuracy.** Audited against cuberule.com on 2026-09-22 ([canon-audit.md](canon-audit.md)), and `official.test.ts` pins the table. Audit again whenever the site changes.
 3. **Privacy copy.** The about section describes the Function as of v0.1. Any new logging or storage needs the copy updated in the same change.
