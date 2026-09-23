@@ -149,7 +149,7 @@ The SPA runs `toCubeResult(item, body)` itself, so a copy or threshold change is
 
 - One request per food per session: a promise cache for in-flight requests and a settled cache that lets back and forward render synchronously.
 - A `401` runs one shared Turnstile check for every ruling that needs it, then retries each ruling once. When no ruling waits on the check any more (Back to home, a newer ruling that is cached), the card is removed and nothing is retried.
-- A response must carry every answer with the right type (`isClassifyResponse`), or it is treated as `internal`.
+- A response must carry every answer with the right type (`isClassifyResponse`), or it is treated as `internal`. A 200 whose body is HTML or not JSON at all is the client-only `over_capacity`: Pages answers `/api/*` with the SPA's `index.html` once the Functions quota runs out and it fails open.
 - A 10 second client timeout, covering the body download as well as the headers, maps to `timeout`. A rejected fetch, or a body that fails to download, maps to `offline` when `navigator.onLine` is false, otherwise `network`. An error body that is not ours falls back to the HTTP status.
 - `Retry-After` accepts seconds or an HTTP date.
 
@@ -240,6 +240,7 @@ Every simulated ruling shows a "Simulated" pill beside the eyebrow and a "SIMULA
 |---|---|---|---|
 | `rate_limited` | Too many cubes in the oven. | Jev is fielding a lot of rulings. The button below counts down to your next try. (No number in the body, so it never disagrees with the live countdown.) | disabled "Try again in {n}s" countdown, then "Try again". Never retries on its own |
 | `upstream_busy` | The oracle is overheated. | Give it a moment and try again. | Try again |
+| `over_capacity` | The oracle is swamped. | Too many people are asking at once. Foods you've already looked up on this device may still work. Try again later. (Client only: a 200 whose body is HTML or not JSON, which is what Pages sends for `/api/*` when it fails open) | Try again |
 | `upstream_error`, `internal` | Something broke on our side. | It's not you, and it's not the food. | Try again |
 | `timeout` | Jev is thinking unusually hard. | That took too long. Want to try again? | Try again |
 | `offline` | You're offline. | The cube needs the internet to rule. | disabled until the `online` event |
@@ -453,7 +454,7 @@ Crawlers do not run JavaScript, so the share text carries the food and verdict a
 ## 14. Mock mode
 
 - The Function returns `mockCubeResponse(item)` with `mock: true` and `no-store` when `TYPESAFE_API_KEY` is unset.
-- `pnpm --filter @cube/web dev:mock` serves the same mock straight from Vite, without wrangler, plus trigger foods for every state: `mock sure`, `mock leans`, `mock torn`, `mock family`, `mock baffled`, `mock 429`, `mock 502`, `mock 503`, `mock 504`, `mock 500`, `mock challenge` (401), `mock daily` (503 `daily_limit`, resets in 3 hours), `mock client` (429 `client_limit`), `mock stale` (409 `stale_client`), `mock slow` (5s), `mock timeout` (12s). `/api/session` accepts any token, so `VITE_TURNSTILE_SITE_KEY=3x00000000000000000000FF pnpm --filter @cube/web dev:mock` shows the check card for `mock challenge`. Core's own mock declines any item containing the word `slur` and treats consonant mash as nonsense.
+- `pnpm --filter @cube/web dev:mock` serves the same mock straight from Vite, without wrangler, plus trigger foods for every state: `mock sure`, `mock leans`, `mock torn`, `mock family`, `mock baffled`, `mock 429`, `mock 502`, `mock 503`, `mock 504`, `mock 500`, `mock challenge` (401), `mock daily` (503 `daily_limit`, resets in 3 hours), `mock client` (429 `client_limit`), `mock stale` (409 `stale_client`), `mock swamped` (a 200 with an HTML page, as Pages sends once the Functions quota runs out), `mock slow` (5s), `mock timeout` (12s). `/api/session` accepts any token, so `VITE_TURNSTILE_SITE_KEY=3x00000000000000000000FF pnpm --filter @cube/web dev:mock` shows the check card for `mock challenge`. Core's own mock declines any item containing the word `slur` and treats consonant mash as nonsense.
 - The UI shows the banner, the Simulated pill and caption, and `#about-mock`.
 
 ## 15. Performance budget

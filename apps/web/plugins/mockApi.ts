@@ -50,6 +50,9 @@ const RETRY_AFTER: Partial<Record<ClassifyErrorCode, string>> = {
 
 const DELAYS: Record<string, number> = { "mock slow": 5000, "mock timeout": 12000 };
 
+// What Pages sends for /api/* once the Functions quota runs out and it fails open.
+const SWAMPED = "mock swamped";
+
 export function mockApi(): Plugin {
   return {
     name: "cube:mock-api",
@@ -83,6 +86,11 @@ export function mockApi(): Plugin {
         if (item === null) {
           const code = isStaleClassifyQuery(search) ? "stale_client" : "bad_request";
           send(CLASSIFY_ERROR_CODES[code], { error: { code, message: "Not a canonical query." } });
+          return;
+        }
+        if (item === SWAMPED) {
+          res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+          res.end("<!doctype html><html><body>Cube Rule Oracle</body></html>");
           return;
         }
         const errorCode = ERRORS[item];
