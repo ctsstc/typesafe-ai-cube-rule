@@ -43,17 +43,13 @@ wrangler() {
 # Cloudflare's test sitekeys start with 1x, 2x or 3x and only mint dummy tokens a real secret rejects.
 [[ ! "$VITE_TURNSTILE_SITE_KEY" =~ ^[123]x0+[A-F]{2}$ ]] ||
   fail "VITE_TURNSTILE_SITE_KEY is a Turnstile test key; use the production sitekey."
-if grep -q '"database_id": "00000000-0000-0000-0000-000000000000"' "$web/wrangler.jsonc"; then
-  fail "apps/web/wrangler.jsonc still has the placeholder D1 database_id; see docs/deploy.md."
-fi
-# Without KV a ruling lives only in one data center's cache, so other data centers pay for it again.
-if ! grep -Eq '^[[:space:]]*"kv_namespaces"' "$web/wrangler.jsonc" ||
-  grep -Eq '^[[:space:]]*"kv_namespaces".*<namespace id>' "$web/wrangler.jsonc"; then
-  fail "apps/web/wrangler.jsonc has no CLASSIFICATIONS KV binding; see docs/deploy.md."
-fi
-
 [[ -z "$(git status --porcelain)" ]] || fail "working tree is dirty; commit or remove changes first."
 [[ "$(git branch --show-current)" == "$BRANCH" ]] || fail "production deploys run from $BRANCH only."
+
+# The committed wrangler.jsonc carries placeholder KV and D1 ids. The real ones live in the root .env
+# and go into the gitignored wrangler.production.jsonc, which every remote command below uses.
+readonly PRODUCTION_CONFIG="wrangler.production.jsonc"
+node "$root/scripts/cloudflare-config.mjs" >/dev/null || fail "could not write apps/web/$PRODUCTION_CONFIG."
 
 # The footer, About and How Jev rules link to the repo, and GitHub answers 404 while it is private.
 source_url="$(sed -n 's/^export const SOURCE_URL = "\(.*\)";$/\1/p' "$web/src/lib/links.ts")"
@@ -80,17 +76,18 @@ for secret in "${SECRETS[@]}"; do
 done
 
 # The Function refuses new rulings until the spend-cap tables exist.
-migrations="$(wrangler d1 migrations list "$DATABASE" --remote 2>&1)" ||
+migrations="$(wrangler d1 migrations list "$DATABASE" --remote -c "$PRODUCTION_CONFIG" 2>&1)" ||
   fail "could not list D1 migrations for $DATABASE; see docs/deploy.md."
 grep -q "No migrations to apply" <<<"$migrations" ||
-  fail "D1 has unapplied migrations; run 'pnpm --filter @cube/web exec wrangler d1 migrations apply $DATABASE --remote'."
+  fail "D1 has unapplied migrations; run 'pnpm migrate:remote'."
 
 pnpm check
 echo "deploy: building with SITE_URL=$SITE_URL and sitekey $VITE_TURNSTILE_SITE_KEY"
 SITE_URL="$SITE_URL" VITE_TURNSTILE_SITE_KEY="$VITE_TURNSTILE_SITE_KEY" pnpm --filter @cube/web build
 
-# Run from apps/web: wrangler finds functions/ and wrangler.jsonc relative to its cwd.
+# Run from apps/web: wrangler finds functions/ relative to its cwd.
 wrangler pages deploy dist \
+  -c "$PRODUCTION_CONFIG" \
   --project-name "$PROJECT" \
   --branch "$BRANCH" \
   --commit-hash "$(git rev-parse HEAD)" \

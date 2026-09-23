@@ -102,7 +102,7 @@ Read the local counters with `pnpm exec wrangler d1 execute cube-rule-oracle --l
    pnpm exec wrangler pages project create cube-rule-oracle --production-branch main
    ```
 
-3. Create the KV namespace that keeps rulings across data centers, then put its id in the `kv_namespaces` binding in `apps/web/wrangler.jsonc`, in place of the id already there:
+3. Create the KV namespace that keeps rulings across data centers, then put its id in the root `.env` as `CLOUDFLARE_KV_CLASSIFICATIONS_ID`:
 
    ```sh
    pnpm exec wrangler kv namespace create CLASSIFICATIONS
@@ -110,14 +110,16 @@ Read the local counters with `pnpm exec wrangler d1 execute cube-rule-oracle --l
 
    Production needs it, and `scripts/deploy.sh` refuses to run without the binding. Without KV a ruling lives only in the edge cache of the data center that asked, so a visitor elsewhere gets the human check and a second billed Jev call for the same food. Local dev binds a local namespace either way.
 
-4. Create the D1 database, put its id in place of the `database_id` in `apps/web/wrangler.jsonc`, and apply the migrations:
+4. Create the D1 database, put its id in the root `.env` as `CLOUDFLARE_D1_DATABASE_ID`, and apply the migrations from the repo root:
 
    ```sh
    pnpm exec wrangler d1 create cube-rule-oracle
-   pnpm exec wrangler d1 migrations apply cube-rule-oracle --remote
+   pnpm migrate:remote
    ```
 
-   `scripts/deploy.sh` refuses to run while a migration is unapplied. `wrangler.jsonc` is the source of truth for Pages bindings, so do not add the binding in the dashboard.
+   The committed `apps/web/wrangler.jsonc` keeps placeholder KV and D1 ids, so the real ones never enter the repo. `scripts/cloudflare-config.mjs` copies it to the gitignored `apps/web/wrangler.production.jsonc` with the ids from `.env`, and `pnpm migrate:remote`, `pnpm spend` and `scripts/deploy.sh` pass that file to wrangler with `-c`. Run any other remote wrangler command the same way (`node scripts/cloudflare-config.mjs`, then `-c wrangler.production.jsonc`). The config file is the source of truth for Pages bindings, so do not add the bindings in the dashboard.
+
+   `scripts/deploy.sh` refuses to run while a migration is unapplied.
 
 5. Store the TypeSafe key as a production secret. Wrangler prompts for the value, so it never lands in shell history:
 
@@ -161,7 +163,7 @@ pnpm deploy:pages
 `scripts/deploy.sh` refuses to run unless all of these hold:
 
 - `VITE_TURNSTILE_SITE_KEY` is set (in the environment or the root `.env`) and is not one of Cloudflare's test sitekeys
-- `apps/web/wrangler.jsonc` has a D1 `database_id` other than the all-zero placeholder and a `CLASSIFICATIONS` KV binding
+- `CLOUDFLARE_KV_CLASSIFICATIONS_ID` and `CLOUDFLARE_D1_DATABASE_ID` are set in the root `.env`, so `scripts/cloudflare-config.mjs` can write `apps/web/wrangler.production.jsonc`
 - the working tree is clean and on `main`
 - the source repo the site links to (`SOURCE_URL` in `apps/web/src/lib/links.ts`) answers 200, which GitHub only does once the repo is public
 - `CLOUDFLARE_ACCOUNT_ID` is set in the root `.env` and `wrangler whoami` lists that account (it is exported, so the deploy cannot land anywhere else)
@@ -169,18 +171,10 @@ pnpm deploy:pages
 - the remote D1 database has no unapplied migrations
 - `pnpm check` passes
 
-It then builds the SPA with the sitekey and runs `wrangler pages deploy dist --project-name cube-rule-oracle --branch main` from `apps/web`.
+It then builds the SPA with the sitekey and runs `wrangler pages deploy dist -c wrangler.production.jsonc --project-name cube-rule-oracle --branch main` from `apps/web`.
 
 > [!IMPORTANT]
-> Before the next deploy:
->
-> 1. Push `main` to https://github.com/ctsstc/typesafe-ai-cube-rule and make the repo public. The footer, About and How Jev rules link to it, and GitHub answers 404 for a private repo.
-> 2. Apply the migrations added since v1.0.0 (`0003_cleanup_indexes.sql`, `0004_usage_input_tokens.sql` and `0005_usage_token_calls.sql`) to the remote database with `pnpm exec wrangler d1 migrations apply cube-rule-oracle --remote`. Migrations are additive, so the running deployment keeps working after they land.
->
-> `scripts/deploy.sh` refuses to deploy until both are done.
-
-> [!IMPORTANT]
-> Deploy from `apps/web`, never with `wrangler pages deploy apps/web/dist` from the repo root. Wrangler looks for `functions/` and `wrangler.jsonc` in its working directory. From the root it would upload the SPA without the API.
+> Deploy from `apps/web`, never with `wrangler pages deploy apps/web/dist` from the repo root. Wrangler looks for `functions/` in its working directory. From the root it would upload the SPA without the API.
 
 The build bakes absolute `og:url` and `og:image` URLs into `index.html` from `SITE_URL`, which defaults to `https://cube-rule-oracle.pages.dev`, the official URL. To make the custom domain official instead, change the default in `scripts/deploy.sh`, or override it for one deploy with `SITE_URL=https://typesafe-ai-cube-rule.codyswartz.us pnpm deploy:pages`.
 

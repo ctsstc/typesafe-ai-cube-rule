@@ -38,4 +38,4 @@ The repo is public at https://github.com/ctsstc/typesafe-ai-cube-rule under the 
 - Bump `version` in the root `package.json` to match the tag.
 - Semver: MINOR for user-visible features, PATCH for fixes and polish. MAJOR only for a breaking change to the share links or the API contract.
 - Tag after a milestone is committed and `pnpm check` passes, not before.
-- Release order: tag, push `main` and the tag (never `--all` or `--mirror`), apply new D1 migrations with `--remote`, `pnpm deploy:pages`, then `gh release create vX.Y.Z` with that version's CHANGELOG section as the notes.
+- Release order: tag, push `main` and the tag (never `--all` or `--mirror`), apply new D1 migrations with `pnpm migrate:remote`, `pnpm deploy:pages`, then `gh release create vX.Y.Z` with that version's CHANGELOG section as the notes.

@@ -4,6 +4,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { PRODUCTION_CONFIG, writeProductionConfig } from "./cloudflare-config.mjs";
 
 const DATABASE = "cube-rule-oracle";
 // Jev's public list price (https://docs.typesafe.ai/models.md). Output tokens are free.
@@ -15,26 +16,13 @@ const WINDOW_DAYS = 30;
 const root = fileURLToPath(new URL("..", import.meta.url));
 const web = `${root}apps/web`;
 
-// Same source as scripts/deploy.sh, so the report only ever reads that account.
-export function accountIdFrom(env, dotenv) {
-  const fromFile = dotenv.match(/^CLOUDFLARE_ACCOUNT_ID=(.*)$/m)?.[1]?.trim();
-  const id = env.CLOUDFLARE_ACCOUNT_ID || fromFile || "";
-  return /^[0-9a-f]{32}$/.test(id) ? id : null;
-}
-
-function accountId() {
-  const dotenvPath = `${root}.env`;
-  const id = accountIdFrom(
-    process.env,
-    existsSync(dotenvPath) ? readFileSync(dotenvPath, "utf8") : "",
-  );
-  if (!id) {
-    console.error(
-      "spend: set CLOUDFLARE_ACCOUNT_ID in the root .env to your Cloudflare account id ('wrangler whoami' shows it).",
-    );
+function productionConfig() {
+  try {
+    return writeProductionConfig();
+  } catch (error) {
+    console.error(`spend: ${error.message}`);
     process.exit(1);
   }
-  return id;
 }
 
 export function utcDay(ms) {
@@ -178,10 +166,22 @@ function query(sql) {
   try {
     stdout = execFileSync(
       "pnpm",
-      ["exec", "wrangler", "d1", "execute", DATABASE, "--remote", "--json", "--command", sql],
+      [
+        "exec",
+        "wrangler",
+        "d1",
+        "execute",
+        DATABASE,
+        "--remote",
+        "-c",
+        PRODUCTION_CONFIG,
+        "--json",
+        "--command",
+        sql,
+      ],
       {
         cwd: web,
-        env: { ...process.env, CLOUDFLARE_ACCOUNT_ID: accountId() },
+        env: { ...process.env, CLOUDFLARE_ACCOUNT_ID: productionConfig().accountId },
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
       },

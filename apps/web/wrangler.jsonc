@@ -3,6 +3,8 @@
   "name": "cube-rule-oracle",
   "pages_build_output_dir": "./dist",
   "compatibility_date": "2026-09-22",
+  // Placeholder ids. Local dev and tests use local stand-ins; scripts/cloudflare-config.mjs writes the
+  // real ids from the root .env into the gitignored wrangler.production.jsonc for remote commands.
   "kv_namespaces": [{ "binding": "CLASSIFICATIONS", "id": "00000000000000000000000000000000" }],
   "d1_databases": [
     {

@@ -12,6 +12,7 @@ coverage/
 .dev.vars
 .dev.vars.*
 .wrangler/
+apps/web/wrangler.production.jsonc
 
 *.log
 .vite/

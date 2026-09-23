@@ -22,7 +22,8 @@
     "check": "pnpm typecheck && pnpm lint && pnpm test",
     "eval": "pnpm --filter @cube/eval start",
     "deploy:pages": "bash scripts/deploy.sh",
-    "spend": "node scripts/spend.mjs"
+    "spend": "node scripts/spend.mjs",
+    "migrate:remote": "node scripts/cloudflare-config.mjs >/dev/null && pnpm --filter @cube/web exec wrangler d1 migrations apply cube-rule-oracle --remote -c wrangler.production.jsonc"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",

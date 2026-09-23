@@ -94,7 +94,7 @@ A fork has to replace a few values that point at this project's Cloudflare accou
 
 - `scripts/deploy.sh` and `scripts/spend.mjs` only act on the Cloudflare account set as `CLOUDFLARE_ACCOUNT_ID` in your root `.env` (see `.env.example`), and refuse to run without it.
 - `apps/web/src/lib/links.ts` holds the author and source repo links, and `scripts/deploy.sh` refuses to deploy until `SOURCE_URL` answers 200.
-- `apps/web/wrangler.jsonc` holds the owner's KV namespace id and D1 database id.
+- `apps/web/wrangler.jsonc` keeps placeholder KV and D1 ids. Put your own in `.env` as `CLOUDFLARE_KV_CLASSIFICATIONS_ID` and `CLOUDFLARE_D1_DATABASE_ID`; the deploy scripts write them into a gitignored `wrangler.production.jsonc`.
 - `SITE_URL`, which fills the canonical and Open Graph URLs, defaults to https://cube-rule-oracle.pages.dev in `scripts/deploy.sh` and `apps/web/vite.config.ts`.
 
 ## For Claude Code users
