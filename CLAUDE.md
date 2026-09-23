@@ -12,12 +12,12 @@ A fun web app built on [cuberule.com](https://cuberule.com/): type any food and 
 ## Hosting
 
 - Cloudflare, not AWS. Wrangler is logged in to the owner's personal account. The AWS profiles on this machine belong to client work and must never be used for this project.
-- Pages, not Workers: the share URL is a subdomain of a domain whose DNS lives at Porkbun. Pages accepts an external CNAME (`sub.domain -> <project>.pages.dev`); Workers custom domains require the zone's nameservers to be on Cloudflare.
-- Add the custom domain in the Pages project before creating the Porkbun CNAME, or Cloudflare returns 522.
+- Pages, not Workers: the share URL is a subdomain of a domain whose DNS lives at DigitalOcean. Pages accepts an external CNAME (`sub.domain -> <project>.pages.dev`); Workers custom domains require the zone's nameservers to be on Cloudflare.
+- Add the custom domain in the Pages project before creating the DigitalOcean CNAME, or Cloudflare returns 522. See [docs/deploy.md](docs/deploy.md#custom-domain-dns-at-digitalocean).
 
 ## Commands
 
-- `pnpm dev` runs Vite (5173) and the Pages Function (8788). `pnpm preview:pages` serves the production build with the Function and `_headers`. `pnpm eval` runs the Jev eval (see `docs/eval.md`).
+- `pnpm dev` runs Vite (5173) and the Pages Function (8788). `pnpm dev:challenge` does the same with the Turnstile check on. `pnpm preview:pages` serves the production build with the Function and `_headers`. `pnpm eval` runs the Jev eval (see `docs/eval.md`).
 - Deploy with `pnpm deploy:pages`. Bare `pnpm deploy` is pnpm's own built-in command and does not run the script.
 
 ## Git workflow

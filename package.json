@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "concurrently --kill-others --names api,web --prefix-colors cyan,magenta \"pnpm dev:functions\" \"pnpm --filter @cube/web exec vite\"",
     "dev:functions": "bash scripts/pages-dev.sh",
+    "dev:challenge": "bash scripts/dev-challenge.sh",
     "preview:pages": "pnpm --filter @cube/web build && bash scripts/pages-dev.sh dist",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck && pnpm typecheck:functions",

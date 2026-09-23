@@ -50,7 +50,7 @@ Configuration:
 | `pnpm dev` | The Function on http://localhost:8788 and Vite on http://localhost:5173. Vite proxies `/api` to 8788. |
 | `pnpm dev:functions` | Only the Function (plus `apps/web/public`) on 8788. |
 | `pnpm preview:pages` | Builds the SPA, then serves `dist` and the Function together on 8788, with `_headers` and `_routes.json` applied. The closest thing to production. |
-| `bash scripts/dev-challenge.sh [mode] [--preview]` | Like `pnpm dev`, with the human check on (see below). |
+| `pnpm dev:challenge [mode] [--preview]` | Like `pnpm dev`, with the human check on (see below). |
 
 `scripts/pages-dev.sh` symlinks `apps/web/.dev.vars` to the root `.env` the first time it runs. Wrangler reads local secrets from `.dev.vars`, so the key stays in one gitignored file and Vite never reads it. With no key (or an empty one) the Function serves mock rulings marked `"mock": true` and `Cache-Control: no-store`.
 
@@ -60,7 +60,7 @@ Plain `pnpm dev` leaves `TURNSTILE_SECRET_KEY` unset, so there is no challenge. 
 
 ### Trying the human check locally
 
-`scripts/dev-challenge.sh` starts the same stack with Cloudflare's [test keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/), a random `SESSION_SECRET`, and `VITE_TURNSTILE_SITE_KEY` set for Vite:
+`pnpm dev:challenge` (`scripts/dev-challenge.sh`) starts the same stack with Cloudflare's [test keys](https://developers.cloudflare.com/turnstile/troubleshooting/testing/), a random `SESSION_SECRET`, and `VITE_TURNSTILE_SITE_KEY` set for Vite:
 
 | Mode | Sitekey | Secret | What happens |
 | --- | --- | --- | --- |
@@ -69,7 +69,7 @@ Plain `pnpm dev` leaves `TURNSTILE_SECRET_KEY` unset, so there is no challenge. 
 | `fail` | `2x00000000000000000000AB` | `2x0000000000000000000000000000000AA` | The widget fails and the SPA shows "Couldn't confirm you're human." |
 | `spent` | `1x00000000000000000000AA` | `3x0000000000000000000000000000000AA` | The widget passes, siteverify answers `timeout-or-duplicate`. |
 
-`--preview` builds `dist` and serves it with `_headers`, so the production CSP is in force. `DAILY_CALL_LIMIT=1 bash scripts/dev-challenge.sh` makes the daily cap easy to hit. Mock rulings are challenged too, so everything works without a TypeSafe key.
+`--preview` builds `dist` and serves it with `_headers`, so the production CSP is in force. `DAILY_CALL_LIMIT=1 pnpm dev:challenge` makes the daily cap easy to hit. Mock rulings are challenged too, so everything works without a TypeSafe key.
 
 Test secrets answer siteverify with `hostname: "example.com"` and no `action`, so the Function skips those two checks for the three documented test secrets only. A real secret never returns a test result.
 

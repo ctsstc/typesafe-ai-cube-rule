@@ -94,11 +94,13 @@ Single page. State lives in the query string. No router library.
 
 ### Wire contract
 
-The browser calls exactly one endpoint, built by `classifyUrl(item)` from `@cube/core`:
+The browser asks for rulings at one endpoint, built by `classifyUrl(item)` from `@cube/core`:
 
 ```
 GET /api/classify?food=<normalizeItem(x)>&v=<QUESTION_SET_VERSION>
 ```
+
+Only after a `401 challenge_required` does it load Turnstile from `challenges.cloudflare.com` and `POST /api/session` with the token, which sets the `cube_session` cookie (see [deploy.md](deploy.md#how-the-paid-path-is-protected)).
 
 The Pages Function (`apps/web/functions/api/classify.ts`) accepts only that exact canonical query and answers:
 
@@ -106,7 +108,23 @@ The Pages Function (`apps/web/functions/api/classify.ts`) accepts only that exac
 |---|---|---|
 | 200 live | `{ model, answers }`, Jev's raw answers | `public, max-age=31536000, immutable` |
 | 200 mock (no key) | `{ model: "mock", answers, mock: true }` | `no-store` |
-| 400 / 429 / 502 / 503 / 504 / 500 | `{ error: { code, message } }` with code `bad_request`, `rate_limited` (plus `Retry-After`), `upstream_error`, `upstream_busy`, `timeout`, `internal` | `no-store` |
+| 204 | none: a hover prefetch (`X-Cube-Prefetch: 1`) for a food with no stored ruling | `no-store` |
+| 4xx / 5xx | `{ error: { code, message } }`, codes below | `no-store` |
+
+| Code | Status | When |
+|---|---|---|
+| `bad_request` | 400 | Not the canonical query |
+| `challenge_required` | 401 | A new food without a valid session, or a session that used its 60 calls |
+| `not_found` | 404 | Another `/api` path |
+| `method_not_allowed` | 405 | Anything but `GET` (`POST` on `/api/session`) |
+| `stale_client` | 409 | Canonical except for `v`: a tab from another deploy |
+| `rate_limited` | 429 | The in-memory limiter, or Jev's own 429. Sends `Retry-After` |
+| `client_limit` | 429 | This IP address used its 150 new foods for the UTC day. `Retry-After` until midnight UTC |
+| `daily_limit` | 503 | `DAILY_CALL_LIMIT` reached. `Retry-After` until midnight UTC |
+| `upstream_busy` | 503 | Jev answered 503 or 529 |
+| `upstream_error` | 502 | Any other Jev failure, or siteverify refused our secret |
+| `timeout` | 504 | Jev took longer than 9 seconds |
+| `internal` | 500 | Our bug, or a missing `SESSION_SECRET` or failed spend check (fails closed) |
 
 `X-Cube-Cache` reports `MISS` (asked Jev), `HIT` (edge cache), or `KV` (stored ruling). Nerd stats shows it.
 
@@ -129,6 +147,8 @@ The SPA runs `toCubeResult(item, body)` itself, so a copy or threshold change is
 ### Client behavior (`apps/web/src/lib/api.ts`)
 
 - One request per food per session: a promise cache for in-flight requests and a settled cache that lets back and forward render synchronously.
+- A `401` runs one shared Turnstile check for every ruling that needs it, then retries each ruling once. When no ruling waits on the check any more (Back to home, a newer ruling that is cached), the card is removed and nothing is retried.
+- A response must carry every answer with the right type (`isClassifyResponse`), or it is treated as `internal`.
 - A 10 second client timeout maps to `timeout`. A rejected fetch maps to `offline` when `navigator.onLine` is false, otherwise `network`. An error body that is not ours falls back to the HTTP status.
 - `Retry-After` accepts seconds or an HTTP date.
 
@@ -223,6 +243,10 @@ Every simulated ruling shows a "Simulated" pill beside the eyebrow and a "SIMULA
 | `offline` | You're offline. | The cube needs the internet to rule. | disabled until the `online` event |
 | `network` | Couldn't reach the oracle. | Check your connection and try again. | Try again |
 | `bad_request` | That doesn't look like a food name. | Letters, numbers, spaces, and apostrophes work best. | Edit the food (focuses the input) |
+| `challenge_required` | Couldn't confirm you're human. | Cloudflare's quick check didn't go through, so Jev wasn't asked. Try again. If it keeps failing, a content blocker may be stopping challenges.cloudflare.com. | Try again |
+| `challenge_skipped` | Skipped the quick check. | Jev wasn't asked, so nothing was spent. Try again whenever you like. (Client only: "Not now", the two minute timeout, or the ruling went away) | Try again |
+| `daily_limit` | The oracle is resting until {5:00 PM}. ("until tomorrow" when the local reset falls on another day, "for today" without `Retry-After`) | Jev has ruled on all the new foods it can today. New foods open again at {time} your time. Foods someone has already asked about usually still work. | Try another food (focuses the input) |
+| `client_limit` | That's a lot of new foods for one day. | Jev has ruled on as many new foods from your network today as it can. New foods open again at {time} your time. Foods someone has already asked about usually still work. | Try another food |
 | `stale_client` | The oracle was updated. | This page is from an older version. Reload it to keep asking about new foods. | Reload the page. Sent as a 409 when `v` is another question set, and used when the human check's chunk no longer exists after a deploy |
 
 **Share bar:** "Share ruling" uses `navigator.share({ title, text, url })` and falls back to copying; a cancelled share is silent. "Copy link" shows the toast "Link copied." or, if the clipboard refuses, a read-only field with the URL selected. "Cube another" clears and focuses the input.
@@ -241,8 +265,11 @@ Six short blocks in our own words: what the Cube Rule is (credit and link to cub
 
 - The food name goes to our Pages Function and, only when no stored ruling exists, to TypeSafe's API.
 - Rulings are stored by food name in Cloudflare's cache and KV. Who asked is not stored.
-- The client IP is held in memory for about a minute for rate limiting. Our code logs neither it nor the food.
-- No accounts, cookies, or analytics. The theme choice stays in local storage.
+- A new food needs the Turnstile check first. Turnstile loads from Cloudflare only then, never on page load, and the IP address goes to Cloudflare's siteverify.
+- Passing it sets one cookie, `cube_session`, for an hour: a random ID and its start and end times, signed, and sent only to `/api`. It covers up to 60 new foods.
+- D1 counts Jev calls per day, per session ID, and per IP address per day. The last is keyed by an HMAC of the IP and the date, so no IP is stored, and past days' rows are deleted.
+- The IP is held in the in-memory rate limiter until the first request after its one minute window. Our code logs neither it nor the food.
+- No accounts and no analytics. The session cookie is the only cookie, and the theme choice stays in local storage.
 
 If the Function's storage or logging changes, this copy changes with it.
 
@@ -272,7 +299,8 @@ Pure logic in `apps/web/src/lib/`, unit tested without React:
 
 | Module | Responsibility |
 |---|---|
-| `api.ts` | Fetch, timeout, error mapping, caches, cache header, browser cache detection |
+| `api.ts` | Fetch, timeout, error mapping, caches, cache header, browser cache detection, prefetch, the shared human check and its checking state |
+| `challenge.ts` | Lazily loaded: the Turnstile script, the check card, focus in and out |
 | `copy.ts` | Bands, confidence and canon copy, stamps, chips and notes, share text, titles, hero questions, loading lines, error copy |
 | `cube.ts` | Hero angles, bake order, the cube's accessible description |
 | `examples.ts` | Gallery example to canon query |
@@ -393,7 +421,7 @@ Only `transform`, the individual transform properties, and `opacity` animate. Th
 
 Crawlers do not run JavaScript, so the share text carries the food and verdict and the preview carries the brand.
 
-**v0.1: one static card.** `index.html` has static `og:` and `twitter:` tags. `og:image` and `og:url` are absolute: the build replaces `%SITE_URL%` with `SITE_URL` (default `https://cube-rule-oracle.pages.dev`), so set it to the real subdomain when building for production. `public/og.png` (1200x630, about 58 KB) renders from `apps/web/og/og.svg` with `pnpm --filter @cube/web og`, which runs rsvg-convert with Fraunces unpacked from `@fontsource/fraunces`.
+**v0.1: one static card.** `index.html` has static `og:` and `twitter:` tags. `og:image` and `og:url` are absolute: the build replaces `%SITE_URL%` with `SITE_URL` (default `https://cube-rule-oracle.pages.dev` for a plain build). `scripts/deploy.sh` builds with `https://typesafe-ai-cube-rule.codyswartz.us` unless `SITE_URL` is set. `public/og.png` (1200x630, about 58 KB) renders from `apps/web/og/og.svg` with `pnpm --filter @cube/web og`, which runs rsvg-convert with Fraunces unpacked from `@fontsource/fraunces`.
 
 **v0.2: per-category share pages.** A post-build script writes `dist/is/{category}/index.html` with category OG tags and renders nine more cards from the same SVG. Pages serves `/is/taco/` from that file with no rewrite rules. Share links become `/is/taco/?food=hot+dog`, and the app replaces the path when the live ruling differs.
 
@@ -425,6 +453,6 @@ Debate, game, X-ray, and share image load through `import()` when they land, so 
 
 ## 17. Open questions
 
-1. **Site URL.** Set `SITE_URL` at build time once the Porkbun subdomain is live, or link previews point at the default `pages.dev` host.
+1. **Site URL.** Settled: `scripts/deploy.sh` builds with the share URL, whose DNS is a CNAME at DigitalOcean. A one-off deploy can still override `SITE_URL`.
 2. **Canon accuracy.** Audited against cuberule.com on 2026-09-22 ([canon-audit.md](canon-audit.md)), and `official.test.ts` pins the table. Audit again whenever the site changes.
 3. **Privacy copy.** The about section describes the Function as of v0.1. Any new logging or storage needs the copy updated in the same change.

@@ -8,9 +8,11 @@ Name any food and get a ruling. The Oracle asks TypeSafe's Jev model where the s
 ## How it works
 
 1. The browser normalizes what you typed and requests `GET /api/classify?food=<item>&v=<question set>`.
-2. A Cloudflare Pages Function holds the TypeSafe key and sends one request to Jev, a System One model. Jev does not write text. It answers 16 typed questions (Choice, Score and Noul) with probabilities: is this food, which cube, what starch, is it wet, which faces are starch, and so on.
-3. The Function returns Jev's raw answers. The browser turns them into a ruling card with `toCubeResult` from `@cube/core`, so copy and threshold changes never need new inference.
-4. Rulings are cached by food name and question set version: in the Cloudflare edge cache, optionally in KV, and in the browser. Repeat foods rarely reach Jev, and a new question set starts a fresh cache.
+2. A Cloudflare Pages Function answers a food someone already asked about from its cache: the edge cache, then KV. The browser keeps its own copy too. Repeat foods never reach Jev, and a new question set starts a fresh cache.
+3. A new food needs a `cube_session` cookie. Without one the Function answers `401`, and the browser runs a Cloudflare Turnstile check (usually invisible), trades the token at `POST /api/session` for a signed cookie that lasts an hour, and asks again.
+4. Before calling Jev the Function counts the call in D1 against the session (60), the client IP address for the UTC day (150, stored only as a keyed hash) and the whole day (`DAILY_CALL_LIMIT`, 1000 by default).
+5. The Function holds the TypeSafe key and sends one request to Jev, a System One model. Jev does not write text. It answers 16 typed questions (Choice, Score and Noul) with probabilities: is this food, which cube, what starch, is it wet, which faces are starch, and so on.
+6. The Function returns Jev's raw answers, and the browser turns them into a ruling card with `toCubeResult` from `@cube/core`, so copy and threshold changes never need new inference.
 
 Foods that cuberule.com has already ruled on show a canon badge, and Jev's opinion appears as a dissent if it disagrees. Things that are not food get an honorary ruling ("If it were food, it would definitely be a quiche"). Gibberish is uncubeable, and abusive text is declined without being echoed back.
 
@@ -41,6 +43,7 @@ For UI work without wrangler, `pnpm --filter @cube/web dev:mock` serves the same
 | --- | --- |
 | `pnpm dev` | Vite on 5173 and the Function on 8788 |
 | `pnpm dev:functions` | Only the Function on 8788 |
+| `pnpm dev:challenge [pass\|fail\|interactive\|spent] [--preview]` | Like `pnpm dev`, with the Turnstile check on using Cloudflare's test keys (see [docs/deploy.md](docs/deploy.md#trying-the-human-check-locally)) |
 | `pnpm preview:pages` | Builds the SPA, then serves `dist` and the Function together on 8788 with the production headers. The closest thing to production |
 | `pnpm build` | Builds `apps/web/dist` |
 | `pnpm check` | Typecheck, Biome lint and every Vitest project. Run it before committing |
@@ -50,14 +53,15 @@ For UI work without wrangler, `pnpm --filter @cube/web dev:mock` serves the same
 
 ## Evaluation
 
-`eval/` holds 156 labelled items (45 canon rulings from cuberule.com, 82 consensus foods and 29 probes) and a harness that asks Jev every question for each one and scores Jev's own ruling. Answers are cached per question set, so rerunning is free.
+`eval/` holds 204 labelled items (45 canon rulings from cuberule.com, 82 consensus foods and 77 probes, including 21 abusive probes stored base64-encoded) and a harness that asks Jev every question for each one and scores Jev's own ruling. Answers are cached per question set, so rerunning is free.
 
 ```sh
-pnpm eval             # live calls for anything not cached (about $0.06 per full pass)
-pnpm eval --offline   # rescore the cache only, no key needed
+pnpm eval                                  # live calls for anything not cached (about $0.083 per full pass)
+pnpm eval --split=tune --max-usd=0.05      # fetch one split, refuse to start above a budget
+pnpm eval --offline                        # rescore the cache only, no key needed
 ```
 
-Question set 5, the current one, scores 66/67 on the tune split, 42/44 on the holdout split and 45/45 on canon. Reports live in `eval/results/v<version>/report.md`, and [docs/eval.md](docs/eval.md) explains the splits and records every tuning round. [docs/question-design.md](docs/question-design.md) explains the questions themselves.
+Question set 6, the current one, scores 95/97 on the tune split, 60/62 on the holdout split and 45/45 on canon, and the abuse guard declines 21/21 abusive probes with no false declines. Reports live in `eval/results/v<version>/report.md`, and [docs/eval.md](docs/eval.md) explains the splits and records every tuning round. [docs/question-design.md](docs/question-design.md) explains the questions themselves.
 
 ## Deploying
 
@@ -68,8 +72,9 @@ The app is one Cloudflare Pages project: the static SPA plus a Pages Function fo
 ```text
 apps/web/                 Vite + React SPA and the Pages project
   src/                    App shell, ruling card, CSS 3D cube, gallery, about
-  functions/api/          Pages Function: classify.ts and a JSON 404 for other /api paths
-  functions/_lib/         Handler, HTTP helpers, rate limiter and their tests
+  functions/api/          Pages Functions: classify.ts, session.ts and a JSON 404 for other /api paths
+  functions/_lib/         Handlers, session cookie, D1 spend caps, HTTP helpers, rate limiter, tests
+  migrations/             D1 schema for the spend caps
   public/                 _headers (CSP), _routes.json, icons, og.png
   og/                     SVG sources for the link preview card and icons
   plugins/                Vite plugins: font preload, site URL, keyless mock API
@@ -77,6 +82,6 @@ apps/web/                 Vite + React SPA and the Pages project
 packages/core/            @cube/core: categories, Jev questions and thresholds, input
                           normalization, official rulings, result logic, mock, wire types
 eval/                     Labelled dataset, eval harness and results per question set
-docs/                     Question design, eval, UX spec and deploy runbook
-scripts/                  pages-dev.sh (local wrangler) and deploy.sh
+docs/                     Question design, eval, UX spec, canon audit and deploy runbook
+scripts/                  pages-dev.sh (local wrangler), dev-challenge.sh and deploy.sh
 ```
