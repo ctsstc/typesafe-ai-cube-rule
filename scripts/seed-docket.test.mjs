@@ -491,14 +491,16 @@ describe("askJev", () => {
 });
 
 describe("rowsPerRuling", () => {
-  it("counts the table row and every index on rulings from the migrations", async () => {
+  it("counts the table row and every index a one-ask ruling can enter", async () => {
     const db = fakeD1();
-    const { n } = db.sqlite
-      .prepare(
-        "SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'index' AND tbl_name = 'rulings'",
-      )
-      .get();
-    expect(await rowsPerRuling()).toBe(1 + n);
+    const indexes = db.sqlite
+      .prepare("SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'rulings'")
+      .all()
+      .map((row) => String(row.sql));
+    const v12 = indexes.filter((sql) => /asks >= 2\b/.test(sql));
+    expect(v12).toHaveLength(4);
+    expect(await rowsPerRuling()).toBe(1 + indexes.length - v12.length);
+    expect(await rowsPerRuling()).toBe(7);
     expect(startOfUtcDay(NOW)).toBe(Date.parse("2026-09-23T00:00:00Z"));
   });
 });

@@ -37,15 +37,15 @@ WHERE question_set = ?1 AND ${PUBLIC}${where} AND ${NOT_BLOCKED}
 ORDER BY ${order} LIMIT ${LIST_LENGTH}`;
 
 export const LIST_QUERIES: Readonly<Record<ListName, string>> = {
-  latest: list("rulings_latest", "", "first_seen DESC"),
+  latest: list("rulings_latest1", "", "first_seen DESC"),
   mostDebated: list(
-    "rulings_debated",
+    "rulings_debated1",
     ` AND confidence < ${THRESHOLDS.unanimous}`,
     "confidence ASC",
   ),
   honoraryCourt: list("rulings_honorary", " AND kind = 'honorary'", "confidence DESC"),
   friendshipEnding: list(
-    "rulings_heat",
+    "rulings_heat1",
     " AND debate_level > 0",
     "debate_level DESC, first_seen DESC",
   ),

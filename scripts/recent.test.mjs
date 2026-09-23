@@ -13,6 +13,7 @@ import {
   PRUNE_BATCH,
   parseOptions,
   pruneStatements,
+  ROWS_PER_DELETE,
   report,
   statements,
   status,
@@ -53,6 +54,15 @@ function database() {
   db.exec("UPDATE rulings SET question_set = '6' WHERE item = 'stale'");
   return db;
 }
+
+it("budgets a prune delete for a row in the table and every index", () => {
+  const { n } = database()
+    .prepare(
+      "SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'index' AND tbl_name = 'rulings'",
+    )
+    .get();
+  expect(ROWS_PER_DELETE).toBe(1 + Number(n));
+});
 
 const run = (db, options) =>
   statements(options, { now: NOW, questionSet: "7" }).map((sql) => db.prepare(sql).all());
@@ -395,7 +405,9 @@ describe("report", () => {
     );
     expect(
       formatPrune({ yes: true }, [[{ question_set: "6", rulings: PRUNE_BATCH + 5 }]], CONTEXT),
-    ).toContain("Run it again for the other 5");
+    ).toContain(
+      "Run it again for the other 5, one batch at a time: each batch writes up to about 22,000 rows",
+    );
     expect(formatPrune({ yes: true }, [[]], CONTEXT)).toBe(
       "No rulings from other question sets than 7 in the local D1.",
     );

@@ -478,7 +478,10 @@ async function sqlite() {
   }
 }
 
-/** The most rows one new ruling writes: the table row plus one for each index on rulings. */
+/**
+ * The most rows one new ruling writes: the table row plus each index on rulings, leaving out
+ * indexes that need more asks than a new row has.
+ */
 export async function rowsPerRuling() {
   const { DatabaseSync } = await sqlite();
   const migrations = `${web}/migrations/`;
@@ -488,13 +491,13 @@ export async function rowsPerRuling() {
     .sort()) {
     db.exec(readFileSync(`${migrations}${file}`, "utf8"));
   }
-  const { n } = db
-    .prepare(
-      "SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'index' AND tbl_name = 'rulings'",
-    )
-    .get();
+  const indexes = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'rulings'")
+    .all()
+    .map((row) => String(row.sql ?? ""));
   db.close();
-  return 1 + Number(n);
+  const enters = (sql) => Number(/\basks >= (\d+)/.exec(sql)?.[1] ?? 0) <= MIN_ASKS;
+  return 1 + indexes.filter(enters).length;
 }
 
 function readApiKey() {

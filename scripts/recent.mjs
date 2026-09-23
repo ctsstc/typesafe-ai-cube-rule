@@ -126,7 +126,9 @@ export function statements(options, { now, questionSet = QUESTION_SET_VERSION })
 }
 
 // Mirrors /api/lists, which applies the current bars to every stored row.
-// A public row takes up to 7 row writes to delete, so a batch stays well inside 100,000 a day.
+// Deleting a row writes up to 11 rows (the table and every index), so a batch stays well inside
+// 100,000 a day.
+export const ROWS_PER_DELETE = 11;
 export const PRUNE_BATCH = 2000;
 
 /** Deletes for `pnpm recent --prune --yes`, from the counts its first statement returned. */
@@ -272,7 +274,7 @@ export function formatPrune(options, [counts = []], { questionSet, source }) {
   const left = total - deleted;
   return [
     found,
-    `Deleted ${deleted}.${left > 0 ? ` Run it again for the other ${left}, one batch at a time: each batch writes up to about ${PRUNE_BATCH * 7} rows, counting index rows, of D1's 100,000 a day.` : ""}`,
+    `Deleted ${deleted}.${left > 0 ? ` Run it again for the other ${left}, one batch at a time: each batch writes up to about ${(PRUNE_BATCH * ROWS_PER_DELETE).toLocaleString("en-US")} rows, counting index rows, of D1's 100,000 a day.` : ""}`,
   ].join("\n");
 }
 

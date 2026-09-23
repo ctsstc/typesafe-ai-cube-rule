@@ -478,4 +478,23 @@ describe("D1 statements", () => {
     expect(new Set(d1.calls).size).toBe(LIST_NAMES.length + 2);
     expect(tableScans(d1)).toEqual([]);
   });
+
+  // The v1.2 Function's list reads, which a Pages rollback runs against the migrated schema.
+  it.each([
+    ["rulings_latest", "", "first_seen DESC"],
+    ["rulings_debated", ` AND confidence < ${THRESHOLDS.unanimous}`, "confidence ASC"],
+    ["rulings_dissents", " AND official <> category", "confidence DESC"],
+    ["rulings_heat", " AND debate_level > 0", "debate_level DESC, first_seen DESC"],
+  ])("still answers v1.2's read through %s after every migration", (index, where, order) => {
+    const d1 = fakeD1();
+    seed(d1, { item: "hot dog", official: "taco", asks: 2 }, { item: "pizza", asks: 1 });
+    const rows = d1.sqlite
+      .prepare(
+        `SELECT item FROM rulings INDEXED BY ${index}
+WHERE question_set = ?1 AND listed = 1 AND asks >= 2${where}
+ORDER BY ${order} LIMIT ${LIST_LENGTH}`,
+      )
+      .all(QUESTION_SET_VERSION);
+    expect(rows.map((row) => row.item)).toEqual(["hot dog"]);
+  });
 });

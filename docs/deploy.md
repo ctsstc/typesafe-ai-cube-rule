@@ -179,10 +179,7 @@ pnpm deploy:pages
 It then builds the SPA with the sitekey, swaps the real ids into `wrangler.jsonc`, runs `wrangler pages deploy dist --project-name cube-rule-oracle --branch main` from `apps/web`, and restores the committed `wrangler.jsonc`.
 
 > [!IMPORTANT]
-> Run `pnpm migrate:remote` before `pnpm deploy:pages` whenever `apps/web/migrations/` has a new file, such as 0006 and 0007, which add the `rulings`, `blocklist` and `switches` tables for the public lists. The deploy refuses to run until they are applied. Migrations 0001 to 0007 are additive, so the deployment still live keeps working against the new schema.
-
-> [!WARNING]
-> Migration 0008 is not additive. It drops and recreates the list indexes, which a v1.2 Function reads by name, so from `pnpm migrate:remote` until the deploy finishes `/api/lists` answers `enabled: false` and the docket is hidden. Rulings are still served and recorded. Run `pnpm deploy:pages` straight after the migration.
+> Run `pnpm migrate:remote` before `pnpm deploy:pages` whenever `apps/web/migrations/` has a new file, such as 0008, which adds the one-ask list indexes. The deploy refuses to run until they are applied. Every migration so far is additive, 0008 included: it leaves v1.2's list indexes in place, so the deployment still live keeps reading its lists until the deploy.
 
 > [!IMPORTANT]
 > Deploy from `apps/web`, never with `wrangler pages deploy apps/web/dist` from the repo root. Wrangler looks for `functions/` in its working directory. From the root it would upload the SPA without the API.
@@ -235,6 +232,8 @@ Every production deployment is a rollback target. In **Workers & Pages > cube-ru
 To roll forward again, deploy a fixed commit with `pnpm deploy:pages`, or roll back to the newer deployment in the same list.
 
 D1 migrations do not roll back with a deployment. Keep them additive so an older deployment still runs against the newer schema. A deployment from before the public lists answers `/api/lists` with a JSON 404 and stops recording rulings. The rows already recorded stay put.
+
+A rollback to v1.2 still reads its lists, because migration 0008 added the one-ask indexes beside v1.2's instead of replacing them. v1.2 lists only rows with two asks and shows a list from three entries, so rulings first recorded under v1.3, the seed included, wait there for a second ask, and its docket may stay hidden. A later migration that drops v1.2's four indexes (`rulings_latest`, `rulings_debated`, `rulings_heat` and `rulings_dissents`) ends that: after it, a v1.2 rollback answers `/api/lists` with `enabled: false` and hides the docket. Ship it only once v1.2 is no longer a rollback target.
 
 ## Caching
 
@@ -320,7 +319,7 @@ After each successful Jev call the Function records the ruling in the `rulings` 
 
 A listed ruling is public from its first ask: `MIN_ASKS` is 1, so the Jev call that first rules on an item is enough. In v1.2 it was 2, so a second browser had to ask for the same food, and at the site's traffic almost nothing ever showed. The person, abuse and personal info gates, the blocklist and the kill switch remain the safeguards.
 
-The row keeps an ask count that stops at `MIN_ASKS`. The Jev call is the first ask. Each edge cache or KV hit adds one, a hover prefetch hit included, while a prefetch miss never counts and mock rulings are never recorded. Each ask is one upsert that stops at `MIN_ASKS`, so at 1 every hit on a recorded item writes nothing. Raising `MIN_ASKS` again needs a migration that recreates the list indexes with the new literal, as 0008 did.
+The row keeps an ask count that stops at `MIN_ASKS`. The Jev call is the first ask. Each edge cache or KV hit adds one, a hover prefetch hit included, while a prefetch miss never counts and mock rulings are never recorded. Each ask is one upsert that stops at `MIN_ASKS`, so at 1 every hit on a recorded item writes nothing. Changing `MIN_ASKS` needs a migration that adds list indexes with the new literal under new names, as 0008 did, keeping the old ones while a deployment that reads them is a rollback target.
 
 `/api/lists` then reads only rows that are listed, not on the blocklist and from the current question set. It checks every row again against today's personal info rules and the current person and abuse bars, and drops any that fail. Tightening a bar in `THRESHOLDS` therefore hides stored rulings on the next refresh. Loosening one affects only rulings recorded afterwards, because a row hidden when it was recorded is never read. It needs no session or human check.
 
@@ -354,7 +353,7 @@ Status reads `public`, `blocked`, `hidden:` with the reason `publicListing` gave
 
 `--block`, `--unblock`, `--lists` and `--prune --yes` are the only writes. The item goes through the app's `normalizeItem` first, so `pnpm recent --block "My Boss!"` blocks `my boss`, the same string the lists hold. The lists check the blocklist every time they are read, so blocking hides the item from every list within about 4 minutes, needs no deploy, and unblocking always brings it back.
 
-`--prune` counts the rulings from question sets other than the current one, which the lists never read. With `--yes` it deletes up to 2,000 of them per run. Deleting a public row writes up to 7 rows, counting index rows, so one run stays under about 14,000 of the 100,000 writes a day. Run it again, on another day if the count is large, until it reports nothing left.
+`--prune` counts the rulings from question sets other than the current one, which the lists never read. With `--yes` it deletes up to 2,000 of them per run. Deleting a row writes up to 11 rows, the table row and all ten indexes (a row with two asks from v1.2 also sits in v1.2's four), so one run stays under about 22,000 of the 100,000 writes a day. Run it again, on another day if the count is large, until it reports nothing left.
 
 ### Seeding and backfill
 
@@ -393,8 +392,8 @@ Measured against wrangler's local D1, which counts rows the way D1 bills them. I
 | Lists refresh, 1,000 rulings on file | about 83 (32 for the four lists, 50 for the activity count, 1 for the switch) | 0 | |
 | `pnpm recent`, 30 rows | about 36 to 41 | 0 | By hand |
 | `pnpm recent --block`, `--unblock` or `--lists` | up to 3 | 1 | By hand |
-| `pnpm recent --prune --yes` | the rows it counts, then the rows it deletes | up to 14,000 per run | By hand |
-| Migration 0008 | about 7 per ruling on file | 3 per listed ruling, 4 per listed honorary one | Once |
+| `pnpm recent --prune --yes` | the rows it counts, then the rows it deletes | up to 22,000 per run | By hand |
+| Migration 0008 | about 6 per ruling on file | 3 per listed ruling, 4 per listed honorary one | Once |
 | `pnpm seed:docket --apply`, the 188 listed question set 7 eval rulings | up to 1 per candidate, for the lookup | about 1,160: 6 per ruling, 7 for each of the 29 honorary ones | Once |
 | `pnpm seed:docket --backfill --apply`, foods from earlier question sets | up to 1 per food | 6 per food, 7 for an honorary one, 2 for a hidden one, plus today's `usage` row | Once |
 
