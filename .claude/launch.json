@@ -18,6 +18,12 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": ["scripts/dev-challenge.sh", "interactive", "--preview"],
       "port": 8788
+    },
+    {
+      "name": "web-mock",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@cube/web", "dev:mock"],
+      "port": 5173
     }
   ]
 }
