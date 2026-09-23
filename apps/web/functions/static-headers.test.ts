@@ -26,6 +26,9 @@ function csp(): Map<string, string[]> {
   );
 }
 
+const TURNSTILE = "https://challenges.cloudflare.com";
+const TURNSTILE_DIRECTIVES = ["script-src", "frame-src"];
+
 describe("public/_headers", () => {
   it("keeps the CSP free of unsafe sources", () => {
     const policy = csp();
@@ -34,11 +37,20 @@ describe("public/_headers", () => {
     for (const [directive, sources] of policy) {
       expect(sources, directive).not.toContain("'unsafe-inline'");
       expect(sources, directive).not.toContain("'unsafe-eval'");
-      expect(
-        sources.filter((s) => /^https?:/.test(s)),
-        directive,
-      ).toEqual([]);
+      expect(sources, directive).not.toContain("*");
+      const remote = sources.filter((s) => /^(https?:|wss?:|\*\.|[\w-]+\.[\w.-]+)/.test(s));
+      expect(remote, directive).toEqual(
+        TURNSTILE_DIRECTIVES.includes(directive) ? [TURNSTILE] : [],
+      );
     }
+  });
+
+  it("lets only Turnstile load its script and challenge frame", () => {
+    const policy = csp();
+    expect(policy.get("script-src")).toContain(TURNSTILE);
+    expect(policy.get("frame-src")).toEqual([TURNSTILE]);
+    expect(policy.get("connect-src")).toEqual(["'self'"]);
+    expect(policy.get("object-src")).toEqual(["'none'"]);
   });
 
   it("allows every inline script in index.html by hash", () => {
