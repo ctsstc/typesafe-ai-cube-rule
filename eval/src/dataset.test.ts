@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
 import { CATEGORIES, CATEGORY_IDS, findOfficialRuling } from "@cube/core";
 import { describe, expect, it } from "vitest";
 import {
+  DATASET_PATH,
+  decodeItem,
   exampleKey,
   fnv1a,
   labelItems,
@@ -75,6 +78,17 @@ describe("foods.json", () => {
     for (const item of guarded) expect(item.expected, item.item).not.toMatch(/not_food|nonsense/);
   });
 
+  it("stores every abusive probe base64-encoded and never in plain text", () => {
+    const raw = readFileSync(DATASET_PATH, "utf8");
+    const declined = items.filter((item) => item.expected === "declined");
+    expect(declined.length).toBeGreaterThanOrEqual(15);
+    for (const item of declined) {
+      expect(item.encoded, item.key).toBe(true);
+      expect(raw.includes(`"${item.key}"`), item.key).toBe(true);
+      expect(raw.includes(item.item), item.key).toBe(false);
+    }
+  });
+
   it("splits the non-canon items about 60/40", () => {
     const open = items.filter((item) => item.split !== "canon");
     const tune = open.filter((item) => item.split === "tune").length / open.length;
@@ -85,12 +99,12 @@ describe("foods.json", () => {
 
 describe("splitOf", () => {
   it("puts cuberule items in canon regardless of hash", () => {
-    expect(splitOf({ item: "hot dog", source: "cuberule" })).toBe("canon");
+    expect(splitOf({ key: "hot dog", source: "cuberule" })).toBe("canon");
   });
 
   it("depends only on the item name", () => {
-    const a = splitOf({ item: "gyro", source: "consensus" });
-    expect(splitOf({ item: "gyro", source: "probe" })).toBe(a);
+    const a = splitOf({ key: "gyro", source: "consensus" });
+    expect(splitOf({ key: "gyro", source: "probe" })).toBe(a);
     const [gyro] = labelItems(
       parseDataset([{ item: "gyro", expected: "taco", source: "consensus", note: "x" }]),
     );
@@ -104,8 +118,17 @@ describe("splitOf", () => {
   });
 });
 
+const encode = (text: string) => Buffer.from(text, "utf8").toString("base64");
+
 describe("parseDataset", () => {
   const base = { item: "gyro", expected: "taco", source: "consensus", note: "n" };
+  const declined = {
+    item: encode("rude text"),
+    expected: "declined",
+    encoded: true,
+    source: "probe",
+    note: "n",
+  };
 
   it.each([
     ["an unnormalized item", { ...base, item: "Gyro" }],
@@ -118,6 +141,11 @@ describe("parseDataset", () => {
     ["wet on a non-food label", { ...base, expected: "nonsense", wet: true }],
     ["honorary on a food", { ...base, honorary: "taco" }],
     ["an item the precheck rejects", { ...base, item: "1234" }],
+    ["a declined item in plain text", { ...base, expected: "declined" }],
+    ["an encoded item that is not declined", { ...base, item: encode("gyro"), encoded: true }],
+    ["encoded set to false", { ...base, expected: "declined", encoded: false }],
+    ["invalid base64", { ...base, item: "not base64!", expected: "declined", encoded: true }],
+    ["encoded text that is not normalized", { ...declined, item: encode("Rude Text") }],
   ])("rejects %s", (_label, raw) => {
     expect(() => parseDataset([raw])).toThrow();
   });
@@ -127,9 +155,22 @@ describe("parseDataset", () => {
   });
 
   it("keeps optional fields only when present", () => {
-    expect(parseDataset([base])).toEqual([base]);
+    expect(parseDataset([base])).toEqual([{ ...base, key: "gyro" }]);
     const full = { ...base, accept: ["sushi"], tags: ["name_bias"], wet: false };
-    expect(parseDataset([full])).toEqual([full]);
+    expect(parseDataset([full])).toEqual([{ ...full, key: "gyro" }]);
+  });
+
+  it("decodes encoded items and keys them by their encoded form", () => {
+    expect(parseDataset([declined])).toEqual([
+      { ...declined, key: declined.item, item: "rude text" },
+    ]);
+    expect(decodeItem(declined.item)).toBe("rude text");
+    expect(decodeItem("not base64!")).toBeNull();
+  });
+
+  it("rejects an encoded duplicate of a plain item", () => {
+    const twin = { ...declined, item: encode("gyro") };
+    expect(() => parseDataset([base, twin])).toThrow(/twice/);
   });
 });
 

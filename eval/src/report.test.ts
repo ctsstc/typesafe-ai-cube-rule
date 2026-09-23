@@ -50,6 +50,7 @@ function outcome(
   };
   return scoreItem(
     {
+      key: item,
       item,
       expected,
       source: "consensus",
@@ -68,16 +69,15 @@ const outcomes = [
   outcome("hot dog", "taco", "taco", { source: "cuberule", split: "canon" }),
   outcome("tamale", "calzone", "sushi", { split: "holdout" }),
 ];
-const summary = summarize(outcomes, {
+const meta = {
   questionSetVersion: "2",
   model: "jev-1.13.0",
   fingerprint: "0123456789abcdef",
   datasetSize: 4,
-});
-const report = renderReport(summary, outcomes, {
-  first: "2026-09-22T00:00:00Z",
-  last: "2026-09-22T00:01:00Z",
-});
+};
+const fetched = { first: "2026-09-22T00:00:00Z", last: "2026-09-22T00:01:00Z" };
+const summary = summarize(outcomes, meta);
+const report = renderReport(summary, outcomes, fetched);
 
 describe("renderReport", () => {
   it("has every section", () => {
@@ -87,6 +87,7 @@ describe("renderReport", () => {
       "## Confidence bands",
       "## Confusion matrix: tune",
       "## Confusion matrix: canon",
+      "## Abuse guard",
       "## Probes",
       "## Honorary rulings",
       "## Failures: tune",
@@ -107,6 +108,39 @@ describe("renderReport", () => {
 
   it("keeps holdout failures inside the collapsed details", () => {
     expect(report.indexOf("| tamale |")).toBeGreaterThan(report.indexOf("<details>"));
+  });
+
+  it("names an encoded probe only by its key", () => {
+    const answers = { ...mockCubeResponse("x").answers, is_abusive: { type: "noul", noul: 0.4 } };
+    const probe = scoreItem(
+      {
+        key: "cHJvYmUgdGV4dA==",
+        item: "probe text",
+        expected: "declined",
+        source: "probe",
+        note: "n",
+        split: "tune",
+        inPrompt: [],
+        encoded: true,
+      },
+      {
+        item: "cHJvYmUgdGV4dA==",
+        version: "2",
+        fingerprint: "f",
+        model: "jev-1.13.0",
+        answers: answers as CubeAnswers,
+        usage: { input_tokens: 1, output_tokens: 1 },
+        latencyMs: 1,
+        attempts: 1,
+        requestId: null,
+        fetchedAt: "2026-09-22T00:00:00.000Z",
+      },
+    );
+    const all = [...outcomes, probe];
+    const text = renderReport(summarize(all, { ...meta, datasetSize: 5 }), all, fetched);
+    expect(text).toContain("cHJvYmUgdGV4dA==");
+    expect(text).not.toContain("probe text");
+    expect(text).toContain("## Abuse guard");
   });
 
   it("uses no em or en dashes", () => {

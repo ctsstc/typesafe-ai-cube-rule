@@ -11,6 +11,8 @@ import { describe, expect, it } from "vitest";
 import type { RawRecord } from "./cache";
 import type { LabelledItem } from "./dataset";
 import {
+  abuseBuckets,
+  abuseRates,
   confusion,
   confusionKey,
   jevFoodResult,
@@ -69,7 +71,14 @@ function record(
 
 const labelled = (
   fields: Pick<LabelledItem, "item" | "expected"> & Partial<LabelledItem>,
-): LabelledItem => ({ source: "consensus", note: "n", split: "tune", inPrompt: [], ...fields });
+): LabelledItem => ({
+  key: fields.item,
+  source: "consensus",
+  note: "n",
+  split: "tune",
+  inPrompt: [],
+  ...fields,
+});
 
 describe("scoreItem", () => {
   it("scores Jev's own ruling, never the official override", () => {
@@ -124,6 +133,16 @@ describe("scoreItem", () => {
     expect(outcome.familyCorrect).toBe(false);
   });
 
+  it("scores an abusive probe by the decline alone, under its encoded key", () => {
+    const item = labelled({ key: "c2x1cg==", item: "slur", expected: "declined", source: "probe" });
+    const caught = scoreItem(item, record("c2x1cg==", { is_abusive: noul(0.97) }));
+    expect(caught).toMatchObject({ item: "c2x1cg==", predicted: "declined", correct: true });
+    expect(caught.kind).toMatchObject({ expected: null, correct: null });
+    const missed = scoreItem(item, record("c2x1cg==", { is_abusive: noul(0.2) }));
+    expect(missed.correct).toBe(false);
+    expect(splitMetrics([caught, missed]).inputKindAccuracy).toEqual({ n: 0, hits: 0, rate: null });
+  });
+
   it("scores not-food and nonsense by input kind and reads the honorary ruling", () => {
     const cat = labelled({ item: "my cat", expected: "not_food", honorary: "calzone" });
     const outcome = scoreItem(
@@ -155,6 +174,40 @@ describe("scoreItem", () => {
     const starchOnly = labelled({ item: "onigiri", expected: "calzone", inPrompt: ["starch"] });
     expect(scoreItem(leaked, record("club sandwich")).leaked).toBe(true);
     expect(scoreItem(starchOnly, record("onigiri")).leaked).toBe(false);
+  });
+});
+
+describe("abuse guard metrics", () => {
+  const abusive = (key: string, p: number) =>
+    scoreItem(
+      labelled({ key, item: key, expected: "declined", source: "probe" }),
+      record(key, { is_abusive: noul(p) }),
+    );
+  const food = (item: string, p: number, tags: LabelledItem["tags"] = []) =>
+    scoreItem(labelled({ item, expected: "toast", tags }), record(item, { is_abusive: noul(p) }));
+  const outcomes = [
+    abusive("a", 0.95),
+    abusive("b", 0.55),
+    food("spotted dick", 0.4, ["abuse_guard"]),
+    food("gyro", 0.02),
+  ];
+
+  it("counts detections on abusive probes and false declines on everything else", () => {
+    expect(abuseRates(outcomes, 0.5)).toEqual({
+      detected: { n: 2, hits: 2, rate: 1 },
+      falseDeclines: { n: 2, hits: 0, rate: 0 },
+    });
+    expect(abuseRates(outcomes, 0.3).falseDeclines.hits).toBe(1);
+    expect(abuseRates(outcomes, 0.85).detected.hits).toBe(1);
+  });
+
+  it("buckets the distribution by group, with the top bucket closed at 1", () => {
+    const buckets = abuseBuckets([...outcomes, abusive("c", 1)]);
+    expect(buckets.map((b) => b.from)).toEqual([0, 0.1, 0.3, 0.5, 0.7, 0.85]);
+    expect(buckets.at(0)).toMatchObject({ abusive: 0, rudeFoods: 0, other: 1 });
+    expect(buckets.at(2)).toMatchObject({ rudeFoods: 1 });
+    expect(buckets.at(3)).toMatchObject({ abusive: 1 });
+    expect(buckets.at(-1)).toMatchObject({ abusive: 2 });
   });
 });
 

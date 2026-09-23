@@ -10,27 +10,47 @@ import {
   serializeRaw,
   staleRecords,
 } from "./cache";
-import { type LabelledItem, loadDataset } from "./dataset";
+import { type LabelledItem, loadDataset, SPLITS, type Split } from "./dataset";
 import { describeFailure, renderReport } from "./report";
-import { scoreItem, summarize } from "./score";
+import { PRICE_PER_MILLION_INPUT_USD, scoreItem, summarize } from "./score";
 
 const CONCURRENCY = 4;
+const FALLBACK_INPUT_TOKENS = 10_000;
 const FLAGS = ["--fresh", "--offline"] as const;
 type Flag = (typeof FLAGS)[number];
 
-function parseFlags(argv: readonly string[]): ReadonlySet<Flag> {
+interface Options {
+  readonly flags: ReadonlySet<Flag>;
+  readonly splits: ReadonlySet<Split> | null;
+  readonly maxUsd: number | null;
+}
+
+function parseArgs(argv: readonly string[]): Options {
   const flags = new Set<Flag>();
+  let splits: Set<Split> | null = null;
+  let maxUsd: number | null = null;
   for (const arg of argv) {
     if (arg === "--") continue;
-    if (!(FLAGS as readonly string[]).includes(arg)) {
-      throw new Error(`Unknown argument ${arg}. Accepted: ${FLAGS.join(", ")}`);
+    const [name, value] = arg.split("=", 2);
+    if (name === "--split" && value) {
+      const names = value.split(",");
+      const unknown = names.filter((n) => !(SPLITS as readonly string[]).includes(n));
+      if (unknown.length > 0) throw new Error(`Unknown split ${unknown.join(", ")}`);
+      splits = new Set(names as Split[]);
+    } else if (name === "--max-usd" && value && Number.isFinite(Number(value))) {
+      maxUsd = Number(value);
+    } else if ((FLAGS as readonly string[]).includes(arg)) {
+      flags.add(arg as Flag);
+    } else {
+      throw new Error(
+        `Unknown argument ${arg}. Accepted: ${FLAGS.join(", ")}, --split=<${SPLITS.join("|")},...>, --max-usd=<n>`,
+      );
     }
-    flags.add(arg as Flag);
   }
   if (flags.has("--fresh") && flags.has("--offline")) {
     throw new Error("--fresh refetches everything, so it cannot run --offline");
   }
-  return flags;
+  return { flags, splits, maxUsd };
 }
 
 async function eachWithLimit<T>(
@@ -45,7 +65,7 @@ async function eachWithLimit<T>(
   await Promise.all(Array.from({ length: Math.min(limit, queue.length) }, worker));
 }
 
-async function fetchRecord(item: string, fingerprint: string): Promise<RawRecord> {
+async function fetchRecord({ key, item }: LabelledItem, fingerprint: string): Promise<RawRecord> {
   let attempts = 0;
   const client = new TypeSafeClient({
     fetch: (input, init) => {
@@ -56,7 +76,7 @@ async function fetchRecord(item: string, fingerprint: string): Promise<RawRecord
   const started = performance.now();
   const { data, requestId } = await client.systemOne(buildCubeRequest(item)).withResponse();
   return {
-    item,
+    item: key,
     version: QUESTION_SET_VERSION,
     fingerprint,
     model: data.model,
@@ -76,8 +96,9 @@ function errorSummary(error: unknown): string {
 }
 
 async function main(): Promise<void> {
-  const flags = parseFlags(process.argv.slice(2));
+  const { flags, splits, maxUsd } = parseArgs(process.argv.slice(2));
   const items = loadDataset();
+  const wanted = splits ? items.filter((item) => splits.has(item.split)) : items;
   const fingerprint = requestFingerprint();
   const dir = resultsDir(QUESTION_SET_VERSION);
   const rawPath = new URL("raw.jsonl", dir);
@@ -95,46 +116,59 @@ async function main(): Promise<void> {
   for (const record of stale) cache.delete(record.item);
 
   const todo: LabelledItem[] = flags.has("--fresh")
-    ? items
-    : items.filter((item) => !cache.has(item.item));
+    ? wanted
+    : wanted.filter((item) => !cache.has(item.key));
   const errors: string[] = [];
+  const cachedTokens = [...cache.values()].map((r) => r.usage.input_tokens);
+  const perCallTokens =
+    cachedTokens.length > 0
+      ? cachedTokens.reduce((sum, t) => sum + t, 0) / cachedTokens.length
+      : FALLBACK_INPUT_TOKENS;
+  const estimateUsd = (todo.length * perCallTokens * PRICE_PER_MILLION_INPUT_USD) / 1e6;
 
   if (todo.length > 0 && flags.has("--offline")) {
     console.log(
       `Offline: ${todo.length} items have no cached answer and will be reported missing.`,
     );
   } else if (todo.length > 0) {
+    if (maxUsd !== null && estimateUsd > maxUsd) {
+      throw new Error(
+        `${todo.length} calls would cost about $${estimateUsd.toFixed(4)}, over --max-usd=${maxUsd}. Narrow the run with --split.`,
+      );
+    }
     if (!process.env.TYPESAFE_API_KEY?.trim()) {
       throw new Error(
         `${todo.length} items need a live call but TYPESAFE_API_KEY is not set. Add it to the root .env, or run with --offline to score the cache.`,
       );
     }
     console.log(
-      `Fetching ${todo.length} of ${items.length} items from ${CUBE_MODEL} (question set v${QUESTION_SET_VERSION}), ${CONCURRENCY} at a time.`,
+      `Fetching ${todo.length} of ${items.length} items from ${CUBE_MODEL} (question set v${QUESTION_SET_VERSION}), ${CONCURRENCY} at a time, about $${estimateUsd.toFixed(4)}.`,
     );
     let done = 0;
-    await eachWithLimit(todo, CONCURRENCY, async ({ item }) => {
+    await eachWithLimit(todo, CONCURRENCY, async (item) => {
       try {
         const record = await fetchRecord(item, fingerprint);
-        cache.set(item, record);
+        cache.set(item.key, record);
         appendFileSync(rawPath, serializeRaw([record]));
         done += 1;
         console.log(
-          `[${done}/${todo.length}] ${item}: ${record.latencyMs} ms, ${record.usage.input_tokens} input tokens`,
+          `[${done}/${todo.length}] ${item.key}: ${record.latencyMs} ms, ${record.usage.input_tokens} input tokens`,
         );
       } catch (error) {
-        errors.push(`${item}: ${errorSummary(error)}`);
-        console.error(`FAILED ${item}: ${errorSummary(error)}`);
+        errors.push(`${item.key}: ${errorSummary(error)}`);
+        console.error(`FAILED ${item.key}: ${errorSummary(error)}`);
       }
     });
   } else {
-    console.log(`All ${items.length} items are cached for question set v${QUESTION_SET_VERSION}.`);
+    console.log(
+      `All ${wanted.length} requested items are cached for question set v${QUESTION_SET_VERSION}.`,
+    );
   }
 
   writeFileSync(rawPath, serializeRaw(cache.values()));
 
   const scored = items.flatMap((item) => {
-    const record = cache.get(item.item);
+    const record = cache.get(item.key);
     return record ? [{ record, outcome: scoreItem(item, record) }] : [];
   });
   const outcomes = scored.map((s) => s.outcome);
@@ -172,10 +206,14 @@ async function main(): Promise<void> {
     ].join("\n"),
   );
 
-  if (errors.length > 0 || summary.missing > 0) {
-    console.error(
-      `${errors.length} fetch errors, ${summary.missing} items missing from the report.`,
+  const missingWanted = wanted.filter((item) => !cache.has(item.key)).length;
+  if (summary.missing > missingWanted) {
+    console.log(
+      `${summary.missing - missingWanted} items outside --split have no cached answer yet.`,
     );
+  }
+  if (errors.length > 0 || missingWanted > 0) {
+    console.error(`${errors.length} fetch errors, ${missingWanted} requested items missing.`);
     process.exitCode = 1;
   }
 }

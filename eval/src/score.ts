@@ -27,8 +27,10 @@ export const PRICE_PER_MILLION_INPUT_USD = 0.042;
 export const LABEL_QUESTIONS: readonly string[] = ["category", "input_kind", "honorary_category"];
 export const VERDICTS: readonly Verdict[] = ["unanimous", "majority", "split"];
 
-export type Prediction = Label | "declined";
-export const PREDICTIONS: readonly Prediction[] = [...LABELS, "declined"];
+export type Prediction = Label;
+export const PREDICTIONS: readonly Prediction[] = LABELS;
+export const ABUSE_SWEEP: readonly number[] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9];
+export const ABUSE_BUCKETS: readonly number[] = [0.1, 0.3, 0.5, 0.7, 0.85];
 
 export interface ItemOutcome {
   readonly item: string;
@@ -43,9 +45,9 @@ export interface ItemOutcome {
   readonly correct: boolean;
   readonly familyCorrect: boolean;
   readonly kind: {
-    readonly expected: InputKindId;
+    readonly expected: InputKindId | null;
     readonly jev: InputKindId;
-    readonly correct: boolean;
+    readonly correct: boolean | null;
     readonly probabilities: Readonly<Record<InputKindId, number>>;
   };
   readonly abusive: number;
@@ -102,7 +104,8 @@ export function jevHonoraryResult(response: CubeResponse): HonoraryResult {
   return result;
 }
 
-const expectedKind = (label: Label): InputKindId => (isCategoryId(label) ? "food" : label);
+const expectedKind = (label: Label): InputKindId | null =>
+  label === "declined" ? null : isCategoryId(label) ? "food" : label;
 
 export function scoreItem(item: LabelledItem, record: RawRecord): ItemOutcome {
   const response: CubeResponse = { model: record.model, answers: record.answers };
@@ -118,7 +121,7 @@ export function scoreItem(item: LabelledItem, record: RawRecord): ItemOutcome {
       : jevKind;
 
   const accepted = acceptedLabels(item);
-  const correct = accepted.includes(predicted as Label);
+  const correct = accepted.includes(predicted);
   const isFood = isCategoryId(item.expected);
   const acceptedFamilies = new Set(
     accepted.filter(isCategoryId).map((category) => CATEGORIES[category].family),
@@ -133,8 +136,9 @@ export function scoreItem(item: LabelledItem, record: RawRecord): ItemOutcome {
   ) as Record<InputKindId, number>;
   const honorary = item.expected === "not_food" ? jevHonoraryResult(response).ruling : null;
 
+  const kindExpected = expectedKind(item.expected);
   return {
-    item: item.item,
+    item: item.key,
     split: item.split,
     source: item.source,
     tags: item.tags ?? [],
@@ -146,9 +150,9 @@ export function scoreItem(item: LabelledItem, record: RawRecord): ItemOutcome {
     correct,
     familyCorrect,
     kind: {
-      expected: expectedKind(item.expected),
+      expected: kindExpected,
       jev: jevKind,
-      correct: jevKind === expectedKind(item.expected),
+      correct: kindExpected === null ? null : jevKind === kindExpected,
       probabilities: kindProbabilities,
     },
     abusive,
@@ -223,7 +227,9 @@ export function splitMetrics(outcomes: readonly ItemOutcome[]): SplitMetrics {
     accuracy: rate(outcomes.map((o) => o.correct)),
     familyAccuracy: rate(outcomes.map((o) => o.familyCorrect)),
     categoryAccuracy: rate(food.map((o) => o.categoryCorrect === true)),
-    inputKindAccuracy: rate(outcomes.map((o) => o.kind.correct)),
+    inputKindAccuracy: rate(
+      outcomes.flatMap((o) => (o.kind.correct === null ? [] : [o.kind.correct])),
+    ),
     unleakedAccuracy: rate(outcomes.filter((o) => !o.leaked).map((o) => o.correct)),
     verdicts,
   };
@@ -251,6 +257,45 @@ export function confusion(outcomes: readonly ItemOutcome[]): Confusion {
   return { rows, cols, counts };
 }
 
+const shouldDecline = (o: ItemOutcome): boolean => o.expected === "declined";
+
+export interface AbuseRates {
+  readonly detected: Rate;
+  readonly falseDeclines: Rate;
+}
+
+export function abuseRates(outcomes: readonly ItemOutcome[], threshold: number): AbuseRates {
+  const declines = (o: ItemOutcome) => o.abusive >= threshold;
+  return {
+    detected: rate(outcomes.filter(shouldDecline).map(declines)),
+    falseDeclines: rate(outcomes.filter((o) => !shouldDecline(o)).map(declines)),
+  };
+}
+
+export interface AbuseBucket {
+  readonly from: number;
+  readonly to: number;
+  readonly abusive: number;
+  readonly rudeFoods: number;
+  readonly other: number;
+}
+
+export function abuseBuckets(outcomes: readonly ItemOutcome[]): AbuseBucket[] {
+  const edges = [0, ...ABUSE_BUCKETS, 1];
+  return edges.slice(0, -1).map((from, index) => {
+    const to = edges[index + 1] ?? 1;
+    const inside = outcomes.filter((o) => o.abusive >= from && (o.abusive < to || to === 1));
+    const rude = (o: ItemOutcome) => o.tags.includes("abuse_guard");
+    return {
+      from,
+      to,
+      abusive: inside.filter(shouldDecline).length,
+      rudeFoods: inside.filter((o) => !shouldDecline(o) && rude(o)).length,
+      other: inside.filter((o) => !shouldDecline(o) && !rude(o)).length,
+    };
+  });
+}
+
 export interface Summary {
   readonly questionSetVersion: string;
   readonly model: string;
@@ -269,6 +314,7 @@ export interface Summary {
     readonly canonJevAgreement: number | null;
     readonly inputKindAccuracy: number | null;
     readonly abuseFalsePositives: number;
+    readonly abuseDetection: number | null;
     readonly eyesAgreeRate: number | null;
     readonly eyesNullRate: number | null;
     readonly avgInputTokens: number | null;
@@ -290,6 +336,11 @@ export interface Summary {
     readonly falsePositives: number;
     readonly maxProbability: number | null;
     readonly maxItem: string | null;
+    readonly minAbusiveProbability: number | null;
+    readonly minAbusiveItem: string | null;
+    readonly bySplit: Readonly<Record<Split | "all", AbuseRates>>;
+    readonly sweep: readonly (AbuseRates & { readonly threshold: number })[];
+    readonly buckets: readonly AbuseBucket[];
   };
   readonly tokens: {
     readonly totalInput: number;
@@ -343,8 +394,16 @@ export function summarize(
     accuracy: rate(seen.map((e) => e.correct === true)),
   };
 
-  const worst = [...outcomes].sort((a, b) => b.abusive - a.abusive)[0];
-  const falsePositives = outcomes.filter((o) => o.declined).length;
+  const benign = outcomes.filter((o) => !shouldDecline(o));
+  const worst = [...benign].sort((a, b) => b.abusive - a.abusive)[0];
+  const weakest = [...outcomes.filter(shouldDecline)].sort((a, b) => a.abusive - b.abusive)[0];
+  const falsePositives = benign.filter((o) => o.declined).length;
+  const abuseBySplit = (split: Split) =>
+    abuseRates(
+      outcomes.filter((o) => o.split === split),
+      THRESHOLDS.abusive,
+    );
+  const abuseAll = abuseRates(outcomes, THRESHOLDS.abusive);
   const inputs = outcomes.map((o) => o.inputTokens);
   const totalInput = inputs.reduce((sum, v) => sum + v, 0);
   const latencies = outcomes.map((o) => o.latencyMs);
@@ -366,6 +425,7 @@ export function summarize(
       canonJevAgreement: round(splits.canon.accuracy.rate),
       inputKindAccuracy: round(splits.all.inputKindAccuracy.rate),
       abuseFalsePositives: falsePositives,
+      abuseDetection: round(abuseAll.detected.rate),
       eyesAgreeRate: round(eyes.agree.rate),
       eyesNullRate: eyes.nullRate,
       avgInputTokens: round(avgInput, 0),
@@ -386,6 +446,22 @@ export function summarize(
       falsePositives,
       maxProbability: round(worst?.abusive ?? null),
       maxItem: worst?.item ?? null,
+      minAbusiveProbability: round(weakest?.abusive ?? null),
+      minAbusiveItem: weakest?.item ?? null,
+      bySplit: {
+        canon: abuseBySplit("canon"),
+        tune: abuseBySplit("tune"),
+        holdout: abuseBySplit("holdout"),
+        all: abuseAll,
+      },
+      sweep: ABUSE_SWEEP.map((threshold) => ({
+        threshold,
+        ...abuseRates(
+          outcomes.filter((o) => o.split === "tune"),
+          threshold,
+        ),
+      })),
+      buckets: abuseBuckets(outcomes),
     },
     tokens: {
       totalInput,

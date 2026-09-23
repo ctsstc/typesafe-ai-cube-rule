@@ -7,7 +7,7 @@ import {
   precheckItem,
 } from "@cube/core";
 
-export const LABELS = [...CATEGORY_IDS, "not_food", "nonsense"] as const;
+export const LABELS = [...CATEGORY_IDS, "not_food", "nonsense", "declined"] as const;
 export type Label = (typeof LABELS)[number];
 
 export const SOURCES = ["cuberule", "consensus", "probe"] as const;
@@ -23,6 +23,7 @@ export const TUNE_PERCENT = 60;
 export const DATASET_PATH = new URL("../data/foods.json", import.meta.url);
 
 export interface EvalItem {
+  readonly key: string;
   readonly item: string;
   readonly expected: Label;
   readonly accept?: readonly CategoryId[];
@@ -31,6 +32,7 @@ export interface EvalItem {
   readonly tags?: readonly Tag[];
   readonly wet?: boolean;
   readonly honorary?: CategoryId;
+  readonly encoded?: true;
 }
 
 export interface LabelledItem extends EvalItem {
@@ -49,9 +51,15 @@ export function fnv1a(text: string): number {
   return hash >>> 0;
 }
 
-export function splitOf({ item, source }: Pick<EvalItem, "item" | "source">): Split {
+export function splitOf({ key, source }: Pick<EvalItem, "key" | "source">): Split {
   if (source === "cuberule") return "canon";
-  return fnv1a(item) % 100 < TUNE_PERCENT ? "tune" : "holdout";
+  return fnv1a(key) % 100 < TUNE_PERCENT ? "tune" : "holdout";
+}
+
+// Abusive probes sit in foods.json as base64 so the repo never shows their text.
+export function decodeItem(encoded: string): string | null {
+  const text = Buffer.from(encoded, "base64").toString("utf8");
+  return Buffer.from(text, "utf8").toString("base64") === encoded ? text : null;
 }
 
 // Strip parentheticals before normalizeItem, which cuts at 60 characters and can orphan a "(".
@@ -103,17 +111,31 @@ function parseItem(raw: unknown, index: number): EvalItem {
     "tags",
     "wet",
     "honorary",
+    "encoded",
   ]);
-  const extra = Object.keys(raw).filter((key) => !known.has(key));
+  const extra = Object.keys(raw).filter((field) => !known.has(field));
   if (extra.length > 0) fail(index, `unknown fields ${extra.join(", ")}`);
-  const { item, expected, accept, source, note, tags, wet, honorary } = raw as Record<
-    string,
-    unknown
-  >;
+  const {
+    item: key,
+    expected,
+    accept,
+    source,
+    note,
+    tags,
+    wet,
+    honorary,
+    encoded,
+  } = raw as Record<string, unknown>;
 
-  if (typeof item !== "string" || item.length === 0) fail(index, "item must be a string");
-  if (item !== normalizeItem(item)) fail(index, `"${item}" is not normalized`);
-  if (precheckItem(item)) fail(index, `"${item}" never reaches Jev (precheck)`);
+  if (typeof key !== "string" || key.length === 0) fail(index, "item must be a string");
+  if (encoded !== undefined && encoded !== true) fail(index, "encoded must be true when present");
+  if ((encoded === true) !== (expected === "declined")) {
+    fail(index, "declined items, and only they, must be encoded");
+  }
+  const item = encoded ? decodeItem(key) : key;
+  if (item === null || item.length === 0) fail(index, `"${key}" is not valid base64 text`);
+  if (item !== normalizeItem(item)) fail(index, `"${key}" is not normalized`);
+  if (precheckItem(item)) fail(index, `"${key}" never reaches Jev (precheck)`);
   if (!isOneOf(LABELS, expected)) fail(index, `bad expected ${String(expected)}`);
   if (!isOneOf(SOURCES, source)) fail(index, `bad source ${String(source)}`);
   if (typeof note !== "string" || note.length === 0) fail(index, "note is required");
@@ -137,6 +159,7 @@ function parseItem(raw: unknown, index: number): EvalItem {
   }
 
   return {
+    key,
     item,
     expected,
     source,
@@ -145,6 +168,7 @@ function parseItem(raw: unknown, index: number): EvalItem {
     ...(tags === undefined ? {} : { tags: tags as Tag[] }),
     ...(wet === undefined ? {} : { wet }),
     ...(honorary === undefined ? {} : { honorary }),
+    ...(encoded === true ? { encoded } : {}),
   };
 }
 
@@ -152,8 +176,8 @@ export function parseDataset(json: unknown): EvalItem[] {
   if (!Array.isArray(json)) throw new Error("foods.json must be an array");
   const items = json.map(parseItem);
   const seen = new Set<string>();
-  for (const { item } of items) {
-    if (seen.has(item)) throw new Error(`foods.json lists "${item}" twice`);
+  for (const { key, item } of items) {
+    if (seen.has(item)) throw new Error(`foods.json lists "${key}" twice`);
     seen.add(item);
   }
   return items;

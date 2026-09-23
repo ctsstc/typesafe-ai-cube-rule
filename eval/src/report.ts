@@ -65,7 +65,7 @@ function renderFailures(outcomes: readonly ItemOutcome[]): string {
       p2(predictionProbability(o)),
       `${p2(o.ruling.confidence)} ${o.ruling.verdict}`,
       topThree(o),
-      o.kind.correct
+      o.kind.correct !== false
         ? o.kind.jev
         : `${o.kind.jev} (food ${p2(o.kind.probabilities.food)}, not_food ${p2(o.kind.probabilities.not_food)}, nonsense ${p2(o.kind.probabilities.nonsense)})`,
       o.note,
@@ -124,6 +124,39 @@ function renderProbes(outcomes: readonly ItemOutcome[]): string {
       o.correct ? "yes" : "**no**",
     ]),
   );
+}
+
+function renderAbuse(summary: Summary): string {
+  const { abuse } = summary;
+  const splits: readonly (Split | "all")[] = ["tune", "holdout", "canon", "all"];
+  const range = (from: number, to: number) => (to === 1 ? `${from} to 1` : `${from} to < ${to}`);
+  return [
+    `Abusive probes are stored base64-encoded and listed here by their encoded form. A probe counts as detected when \`is_abusive\` >= ${abuse.threshold}. A false decline is any other item at or above it.`,
+    table(
+      ["Split", "Detected", "False declines"],
+      splits.map((name) => [
+        name,
+        pct(abuse.bySplit[name].detected),
+        pct(abuse.bySplit[name].falseDeclines),
+      ]),
+    ),
+    `Lowest on an abusive probe: ${abuse.minAbusiveItem ?? "n/a"} (${abuse.minAbusiveProbability ?? "n/a"}). Highest on an item that should get a ruling: ${abuse.maxItem ?? "n/a"} (${abuse.maxProbability ?? "n/a"}).`,
+    "Threshold sweep on the tune split:",
+    table(
+      ["Threshold", "Detected", "False declines"],
+      abuse.sweep.map((row) => [String(row.threshold), pct(row.detected), pct(row.falseDeclines)]),
+    ),
+    "`is_abusive` distribution over every split. Rude-sounding foods are the `abuse_guard` items:",
+    table(
+      ["is_abusive", "Abusive probes", "Rude-sounding foods", "Everything else"],
+      abuse.buckets.map((b) => [
+        range(b.from, b.to),
+        String(b.abusive),
+        String(b.rudeFoods),
+        String(b.other),
+      ]),
+    ),
+  ].join("\n\n");
 }
 
 function renderHonorary(outcomes: readonly ItemOutcome[]): string {
@@ -189,7 +222,7 @@ export function renderReport(
     renderSplitTable(summary),
     [
       `- **Canon agreement:** ${pct(summary.splits.canon.accuracy)}`,
-      `- **Abuse false positives:** ${abuse.falsePositives} declined at is_abusive >= ${abuse.threshold}. Highest: ${abuse.maxItem ?? "n/a"} (${abuse.maxProbability ?? "n/a"}).`,
+      `- **Abuse guard:** detected ${pct(abuse.bySplit.all.detected)} of abusive probes at is_abusive >= ${abuse.threshold}, with ${abuse.falsePositives} false declines. Highest on an item that should get a ruling: ${abuse.maxItem ?? "n/a"} (${abuse.maxProbability ?? "n/a"}).`,
       `- **Jev's eyes** (food items): null on ${eyes.nullRate === null ? "n/a" : `${(eyes.nullRate * 100).toFixed(1)}%`} of ${eyes.n}. When not null, they agree with Jev's ruling ${pct(eyes.agree)} and match the label ${pct(eyes.accuracy)}.`,
       `- **Wet flag** (labelled items): ${pct(summary.wet)}`,
       `- **Honorary category** (labelled not-food items): ${pct(summary.honorary)}`,
@@ -205,8 +238,10 @@ export function renderReport(
     renderConfusion(confusion(inSplit("tune"))),
     "## Confusion matrix: canon",
     renderConfusion(confusion(inSplit("canon"))),
+    "## Abuse guard",
+    renderAbuse(summary),
     "## Probes",
-    "Name-bias, abuse-guard, reading, not-food and nonsense probes from every split.",
+    "Name-bias, abuse-guard, abusive, reading, not-food and nonsense probes from every split.",
     renderProbes(outcomes),
     "## Honorary rulings",
     renderHonorary(outcomes),
