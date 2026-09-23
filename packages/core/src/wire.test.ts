@@ -173,7 +173,7 @@ const lists = (patch: Partial<ListsResponse> = {}): ListsResponse => ({
   enabled: true,
   questionSetVersion: QUESTION_SET_VERSION,
   activity: { newFoodsLastHour: 12 },
-  lists: { latest: [entry], mostDebated: [entry], jevDissents: [entry], friendshipEnding: [] },
+  lists: { latest: [entry], mostDebated: [entry], honoraryCourt: [entry], friendshipEnding: [] },
   ...patch,
 });
 
@@ -184,11 +184,12 @@ describe("isListsResponse", () => {
     expect(isListsResponse(disabledListsResponse())).toBe(true);
     expect(disabledListsResponse()).toMatchObject({ enabled: false, activity: null });
     expect(Object.values(disabledListsResponse().lists).every((l) => l.length === 0)).toBe(true);
+    expect(Object.keys(disabledListsResponse().lists)).toEqual([...LIST_NAMES]);
   });
 
   it("names the four lists", () => {
     expectTypeOf<ListName>().toEqualTypeOf<
-      "latest" | "mostDebated" | "jevDissents" | "friendshipEnding"
+      "latest" | "mostDebated" | "honoraryCourt" | "friendshipEnding"
     >();
     expect(Object.keys(lists().lists)).toEqual([...LIST_NAMES]);
   });
@@ -196,7 +197,14 @@ describe("isListsResponse", () => {
   it.each([
     ["null", null],
     ["an array", []],
-    ["a missing list", { ...lists(), lists: { latest: [], mostDebated: [], jevDissents: [] } }],
+    ["a missing list", { ...lists(), lists: { latest: [], mostDebated: [], honoraryCourt: [] } }],
+    [
+      "the v1.2 shape, from a tab or edge copy older than the rename",
+      {
+        ...lists(),
+        lists: { latest: [entry], mostDebated: [], jevDissents: [], friendshipEnding: [] },
+      },
+    ],
     ["a list that is not an array", { ...lists(), lists: { ...lists().lists, latest: {} } }],
     ["no enabled flag", { ...lists(), enabled: "yes" }],
     ["no version", { ...lists(), questionSetVersion: 7 }],

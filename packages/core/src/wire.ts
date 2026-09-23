@@ -85,7 +85,7 @@ export function isListsQuery(rawSearch: string): boolean {
   return rawSearch.replace(/^\?/, "") === listsQuery();
 }
 
-export const LIST_NAMES = ["latest", "mostDebated", "jevDissents", "friendshipEnding"] as const;
+export const LIST_NAMES = ["latest", "mostDebated", "honoraryCourt", "friendshipEnding"] as const;
 export type ListName = (typeof LIST_NAMES)[number];
 
 export interface ListEntry {
@@ -115,7 +115,7 @@ export function disabledListsResponse(): ListsResponse {
     enabled: false,
     questionSetVersion: QUESTION_SET_VERSION,
     activity: null,
-    lists: { latest: [], mostDebated: [], jevDissents: [], friendshipEnding: [] },
+    lists: { latest: [], mostDebated: [], honoraryCourt: [], friendshipEnding: [] },
   };
 }
 

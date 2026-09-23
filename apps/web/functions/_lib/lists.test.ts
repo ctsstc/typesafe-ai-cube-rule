@@ -163,19 +163,15 @@ describe("GET /api/lists", () => {
   it("serves the four lists from public rows only", async () => {
     const d1 = fakeD1();
     const ago = (seconds: number) => NOW_S - seconds;
+    const honorary = { kind: "honorary", debate_level: 0 };
     seed(
       d1,
-      { item: "new", first_seen: ago(100), confidence: 0.4 },
+      { item: "new", first_seen: ago(100), confidence: 0.4, asks: 1 },
       { item: "blaze", first_seen: ago(200), confidence: 0.5, debate_level: 3, runner_up: "taco" },
       { item: "hot dog", first_seen: ago(300), confidence: 0.9, debate_level: 2, official: "taco" },
       { item: "sandwich", first_seen: ago(400), confidence: 0.65, official: "sandwich" },
-      {
-        item: "a cat",
-        first_seen: ago(500),
-        kind: "honorary",
-        category: "calzone",
-        debate_level: 0,
-      },
+      { item: "a cat", first_seen: ago(500), category: "calzone", ...honorary },
+      { item: "a canoe", first_seen: ago(550), category: "taco", confidence: 0.97, ...honorary },
       {
         item: "unanimous",
         first_seen: ago(600),
@@ -183,12 +179,21 @@ describe("GET /api/lists", () => {
         debate_level: 0,
       },
       { item: "old", first_seen: ago(9000), confidence: 0.7 },
-      { item: "once", first_seen: ago(50), asks: 1 },
-      { item: "my boss", first_seen: ago(40), listed: 0, reason: "private_person" },
+      {
+        item: "my boss",
+        first_seen: ago(40),
+        confidence: 0.99,
+        listed: 0,
+        reason: "private_person",
+        ...honorary,
+      },
       { item: "blocked", first_seen: ago(30), confidence: 0.1 },
-      { item: "old set", first_seen: ago(20), confidence: 0.1, question_set: "1" },
+      { item: "blocked canoe", first_seen: ago(35), confidence: 0.99, ...honorary },
+      { item: "old set", first_seen: ago(20), confidence: 0.99, question_set: "1", ...honorary },
     );
-    d1.sqlite.exec("INSERT INTO blocklist (item, added_at) VALUES ('blocked', 0)");
+    d1.sqlite.exec(
+      "INSERT INTO blocklist (item, added_at) VALUES ('blocked', 0), ('blocked canoe', 0)",
+    );
 
     const response = await get({ DB: d1.binding });
     expect(response.status).toBe(200);
@@ -197,10 +202,20 @@ describe("GET /api/lists", () => {
     expect(lists.enabled).toBe(true);
     expect(lists.questionSetVersion).toBe(QUESTION_SET_VERSION);
     expect(items(lists)).toEqual({
-      latest: ["new", "blaze", "hot dog", "sandwich", "a cat", "unanimous", "old"],
+      latest: ["new", "blaze", "hot dog", "sandwich", "a cat", "a canoe", "unanimous", "old"],
       mostDebated: ["new", "blaze", "a cat", "sandwich", "old"],
-      jevDissents: ["hot dog"],
+      honoraryCourt: ["a canoe", "a cat"],
       friendshipEnding: ["blaze", "hot dog", "new", "sandwich", "old"],
+    });
+    expect(lists.lists.honoraryCourt[0]).toEqual({
+      item: "a canoe",
+      kind: "honorary",
+      category: "taco",
+      wet: false,
+      confidence: 0.97,
+      runnerUp: null,
+      official: null,
+      debateLevel: 0,
     });
     expect(lists.lists.friendshipEnding[0]).toEqual({
       item: "blaze",
@@ -354,7 +369,7 @@ describe("GET /api/lists", () => {
         enabled: false,
         questionSetVersion: QUESTION_SET_VERSION,
         activity: null,
-        lists: { latest: [], mostDebated: [], jevDissents: [], friendshipEnding: [] },
+        lists: { latest: [], mostDebated: [], honoraryCourt: [], friendshipEnding: [] },
       });
     }
     expect(d1.calls).toEqual([]);

@@ -27,7 +27,7 @@ const CACHE_LISTS = `public, max-age=${LISTS_TTL_S}`;
 
 const COLUMNS = `item, kind, category, wet, confidence, runner_up, official, debate_level,
   person_none, person_public, person_private, abusive`;
-// Must match migration 0006's partial index predicates word for word, literal included.
+// Must match migration 0008's partial index predicates word for word, literals included.
 const PUBLIC = `listed = 1 AND asks >= ${MIN_ASKS}`;
 const NOT_BLOCKED = "NOT EXISTS (SELECT 1 FROM blocklist WHERE blocklist.item = rulings.item)";
 
@@ -43,7 +43,7 @@ export const LIST_QUERIES: Readonly<Record<ListName, string>> = {
     ` AND confidence < ${THRESHOLDS.unanimous}`,
     "confidence ASC",
   ),
-  jevDissents: list("rulings_dissents", " AND official <> category", "confidence DESC"),
+  honoraryCourt: list("rulings_honorary", " AND kind = 'honorary'", "confidence DESC"),
   friendshipEnding: list(
     "rulings_heat",
     " AND debate_level > 0",

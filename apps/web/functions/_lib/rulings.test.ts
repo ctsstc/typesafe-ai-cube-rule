@@ -2,6 +2,8 @@
 import {
   type ClassifyResponse,
   classifyUrl,
+  type ListsResponse,
+  listsUrl,
   MOCK_DECLINE_TRIGGER,
   MOCK_PRIVATE_PERSON_TRIGGER,
   mockCubeResponse,
@@ -11,6 +13,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createClassifyHandler, type Env } from "./classify";
 import { type FakeD1, fakeD1, tableScans } from "./fake-d1";
+import { handleLists } from "./lists";
 import { createRateLimiter } from "./rate-limit";
 import { MIN_ASKS } from "./rulings";
 
@@ -118,25 +121,38 @@ describe("recording rulings", () => {
     ]);
   });
 
-  it("counts cache and KV hits as asks, and stops writing at MIN_ASKS", async () => {
+  it("lists a ruling from its first Jev call", async () => {
+    const d1 = fakeD1();
+    jevReturns(listable("hot dog"));
+    await ask("hot dog", { TYPESAFE_API_KEY: KEY, DB: d1.binding });
+    const response = await handleLists(
+      new Request(`${ORIGIN}${listsUrl()}`),
+      { DB: d1.binding },
+      (promise) => void pending.push(promise),
+    );
+    const { lists } = (await response.json()) as ListsResponse;
+    expect(MIN_ASKS).toBe(1);
+    expect(lists.latest.map((entry) => entry.item)).toEqual(["hot dog"]);
+  });
+
+  it("writes nothing for cache and KV hits once a ruling is recorded", async () => {
     const d1 = fakeD1();
     const kv = fakeKv();
     const cache = fakeCache();
     jevReturns(listable("pizza"));
     const env: Env = { TYPESAFE_API_KEY: KEY, DB: d1.binding, CLASSIFICATIONS: kv.binding };
     await ask("pizza", env);
+    const before = JSON.stringify(rows(d1));
+    const recorded = d1.changes.length;
     cache.clear();
     expect((await ask("pizza", env)).headers.get("X-Cube-Cache")).toBe("KV");
     expect((await ask("pizza", env)).headers.get("X-Cube-Cache")).toBe("HIT");
-    expect(rows(d1)[0]?.asks).toBe(MIN_ASKS);
-    const before = JSON.stringify(rows(d1));
-    await ask("pizza", env);
+    expect(d1.changes.slice(recorded)).toEqual([0, 0]);
     expect(JSON.stringify(rows(d1))).toBe(before);
-    expect(d1.changes.at(-1)).toBe(0);
+    expect(rows(d1)[0]?.asks).toBe(MIN_ASKS);
   });
 
-  // The browser keeps the prefetched ruling for a year, so a prefetch hit still counts one browser.
-  it("counts a prefetch hit as an ask, and never a prefetch miss", async () => {
+  it("records nothing for a prefetch miss", async () => {
     const d1 = fakeD1();
     const kv = fakeKv();
     fakeCache();
@@ -219,7 +235,7 @@ describe("recording rulings", () => {
     ]);
   });
 
-  it("counts a second Jev call for the same item as another ask", async () => {
+  it("keeps the first ruling when the same item reaches Jev again", async () => {
     const d1 = fakeD1();
     jevReturns(listable("taco"));
     const env: Env = { TYPESAFE_API_KEY: KEY, DB: d1.binding };

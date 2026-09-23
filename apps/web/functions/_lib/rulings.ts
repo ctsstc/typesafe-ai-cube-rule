@@ -9,8 +9,8 @@ import {
 } from "@cube/core";
 import type { Env } from "./env";
 
-// Migration 0006's partial indexes repeat it as a literal, so changing it needs a new migration.
-export const MIN_ASKS = 2;
+// Migration 0008's partial indexes repeat it as a literal, so changing it needs a new migration.
+export const MIN_ASKS = 1;
 
 const INSERT = `INSERT INTO rulings (question_set, item, kind, category, wet, confidence, runner_up,
   official, debate_level, person_none, person_public, person_private, abusive, listed, reason, asks,
