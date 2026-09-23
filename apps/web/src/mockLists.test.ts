@@ -15,13 +15,24 @@ describe("dev:mock /api/lists", () => {
     },
   );
 
-  it("fills every list and the activity line by default", () => {
+  // Jev's real question set 7 picks agree with every canon ruling, so Jev vs the canon stays empty.
+  it("fills every list but Jev vs the canon, and the activity line, by default", () => {
     const { body } = listsReply(core, "GET", query, undefined);
     if (!core.isListsResponse(body)) throw new Error("not a lists body");
     expect(body.enabled).toBe(true);
     expect(body.activity).toEqual({ newFoodsLastHour: 14 });
-    for (const name of core.LIST_NAMES) expect(body.lists[name].length).toBeGreaterThanOrEqual(3);
+    for (const name of core.LIST_NAMES.filter((name) => name !== "jevDissents")) {
+      expect(body.lists[name].length).toBeGreaterThanOrEqual(3);
+    }
+    expect(body.lists.jevDissents).toEqual([]);
     expect(body.lists.latest.some((entry) => entry.kind === "honorary")).toBe(true);
+  });
+
+  it("adds one dissent and a capped activity count in dissent mode", () => {
+    const { body } = listsReply(core, "GET", query, "dissent");
+    if (!core.isListsResponse(body)) throw new Error("not a lists body");
+    expect(body.lists.jevDissents.map((entry) => entry.item)).toEqual(["pumpkin pie slice"]);
+    expect(body.activity).toEqual({ newFoodsLastHour: core.LISTS_ACTIVITY_CAP });
   });
 
   it("keeps canon entries in line with cuberule.com's rulings", () => {

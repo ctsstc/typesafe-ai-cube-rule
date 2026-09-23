@@ -1,4 +1,4 @@
-import { disabledListsResponse, listsUrl } from "@cube/core";
+import { disabledListsResponse, LISTS_ACTIVITY_CAP, listsUrl } from "@cube/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { entry, FULL_LISTS, honorary, listsBody } from "../test/lists";
 import {
@@ -27,15 +27,28 @@ describe("readDocket", () => {
     expect(readDocket(listsBody())?.newFoodsLastHour).toBe(14);
   });
 
-  it(`hides a list with fewer than ${MIN_LIST_ENTRIES} entries`, () => {
-    const body = listsBody({ ...FULL_LISTS, jevDissents: FULL_LISTS.jevDissents.slice(0, 2) });
-    expect(names(body)).toEqual(["latest", "mostDebated", "friendshipEnding"]);
+  it(`hides a list with fewer than ${MIN_LIST_ENTRIES.friendshipEnding} entries`, () => {
+    const body = listsBody({
+      ...FULL_LISTS,
+      friendshipEnding: FULL_LISTS.friendshipEnding.slice(0, 2),
+    });
+    expect(names(body)).toEqual(["latest", "mostDebated", "jevDissents"]);
+  });
+
+  // Jev agrees with every canon ruling in the eval, so one dissent is already news.
+  it("shows Jev vs the canon from a single dissent", () => {
+    const body = listsBody({ ...FULL_LISTS, jevDissents: FULL_LISTS.jevDissents.slice(0, 1) });
+    expect(items(body, "jevDissents")).toEqual(["big mac"]);
+    expect(names(listsBody({ ...FULL_LISTS, jevDissents: [] }))).not.toContain("jevDissents");
   });
 
   it("hides the whole section when every list is short, empty, off or unreadable", () => {
-    const short = Object.fromEntries(
-      Object.entries(FULL_LISTS).map(([name, list]) => [name, list.slice(0, 2)]),
-    );
+    const short = {
+      ...Object.fromEntries(
+        Object.entries(FULL_LISTS).map(([name, list]) => [name, list.slice(0, 2)]),
+      ),
+      jevDissents: [],
+    };
     expect(readDocket(listsBody(short))).toBeNull();
     expect(readDocket(listsBody({}, { newFoodsLastHour: 40 }))).toBeNull();
     expect(readDocket(disabledListsResponse())).toBeNull();
@@ -92,6 +105,8 @@ describe("readDocket", () => {
     expect(readDocket(listsBody(FULL_LISTS, { newFoodsLastHour: 0 }))?.newFoodsLastHour).toBeNull();
     expect(activityLine(14)).toBe("14 new foods ruled in the last hour.");
     expect(activityLine(1)).toBe("1 new food ruled in the last hour.");
+    expect(activityLine(LISTS_ACTIVITY_CAP - 1)).toBe("49 new foods ruled in the last hour.");
+    expect(activityLine(LISTS_ACTIVITY_CAP)).toBe("50+ new foods ruled in the last hour.");
   });
 });
 

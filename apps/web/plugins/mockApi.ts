@@ -80,26 +80,25 @@ const food = (
 const honorary = (item: string, category: CategoryId, confidence: number, runnerUp: CategoryId) =>
   food(item, category, confidence, { kind: "honorary", runnerUp, debateLevel: 0 });
 
-// Newest first. Canon entries match OFFICIAL_RULINGS.
+// Newest first. Canon entries carry Jev's real question set 7 picks, which agree with every
+// OFFICIAL_RULINGS entry, so Jev vs the canon stays empty unless a mode adds a dissent.
 const DOCKET: readonly ListEntry[] = [
   food("gyro", "taco", 0.28, { runnerUp: "sushi", debateLevel: 2 }),
   honorary("canoe", "taco", 0.41, "sushi"),
-  food("big mac", "sandwich", 0.71, { runnerUp: "cake", official: "cake", debateLevel: 3 }),
-  food("ramen", "nachos", 0.66, {
-    wet: true,
-    runnerUp: "salad",
-    official: "nachos",
-    debateLevel: 2,
-  }),
+  food("big mac", "cake", 1, { official: "cake" }),
+  food("ramen", "nachos", 0.99, { wet: true, official: "nachos" }),
   honorary("santa claus", "calzone", 0.47, "sushi"),
-  food("hot dog", "taco", 0.93, { official: "taco", debateLevel: 3 }),
-  food("cheesecake", "cake", 0.52, { runnerUp: "quiche", official: "quiche", debateLevel: 2 }),
+  food("hot dog", "taco", 1, { official: "taco", debateLevel: 3 }),
+  food("cheesecake", "quiche", 0.99, { official: "quiche", debateLevel: 2 }),
   food("quesadilla", "sandwich", 0.36, { runnerUp: "taco", debateLevel: 3 }),
   food("pop tart", "calzone", 0.88, { official: "calzone" }),
-  food("enchilada", "taco", 0.45, { runnerUp: "sushi", official: "sushi" }),
-  food("burrito", "calzone", 0.9, { official: "calzone" }),
-  food("poutine", "nachos", 0.84, { official: "nachos" }),
+  food("enchilada", "sushi", 0.99, { official: "sushi", debateLevel: 0 }),
+  food("burrito", "calzone", 1, { official: "calzone" }),
+  food("fish taco", "taco", 0.62, { runnerUp: "toast", debateLevel: 2 }),
 ];
+
+// Question set 4 read a pumpkin pie slice as taco, against the canon's toast.
+const DISSENT = food("pumpkin pie slice", "taco", 0.47, { runnerUp: "toast", official: "toast" });
 
 const LIST_LENGTH = 8;
 
@@ -134,7 +133,14 @@ const listsError = (core: Core, code: ClassifyErrorCode): Reply => ({
   body: { error: { code, message: `Simulated ${code}.` } },
 });
 
-export const MOCK_LISTS_MODES = ["full", "partial", "empty", "disabled", "error"] as const;
+export const MOCK_LISTS_MODES = [
+  "full",
+  "dissent",
+  "partial",
+  "empty",
+  "disabled",
+  "error",
+] as const;
 
 /** What /api/lists answers. `CUBE_MOCK_LISTS` picks the mode, and anything else means full. */
 export function listsReply(
@@ -154,6 +160,15 @@ export function listsReply(
       return {
         status: 200,
         body: { ...base, activity: null, lists: lists(DOCKET.slice(0, 3)) },
+      };
+    case "dissent":
+      return {
+        status: 200,
+        body: {
+          ...base,
+          activity: { newFoodsLastHour: core.LISTS_ACTIVITY_CAP },
+          lists: lists([DISSENT, ...DOCKET]),
+        },
       };
     case "empty":
       return { status: 200, body: { ...base, activity: null, lists: lists([]) } };

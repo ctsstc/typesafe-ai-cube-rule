@@ -297,7 +297,7 @@ The SPA shows four short lists and an activity line from `GET /api/lists?v=<QUES
 | --- | --- |
 | `latest` | The newest rulings. The response carries no timestamps. |
 | `mostDebated` | Lowest Jev confidence first, leaving out unanimous verdicts (confidence at or above `THRESHOLDS.unanimous`). |
-| `jevDissents` | "Jev vs the canon": cuberule.com's official ruling differs from Jev's own pick. Jev's most confident first. |
+| `jevDissents` | "Jev vs the canon": cuberule.com's official ruling differs from Jev's own pick. Jev's most confident first. Usually empty: Jev agrees with all 45 canon rulings in the question set 7 eval, so the SPA shows this card from a single entry. |
 | `friendshipEnding` | Highest debate level first, newest first within a level, leaving out Settled. |
 
 `activity` is `{ "newFoodsLastHour": n }` only when at least `ACTIVITY_THRESHOLD` (default 5, at most 50) listable rulings were first seen in the last hour, and `null` otherwise, so a quiet hour shows nothing rather than a small number. It counts only rulings that passed the listing gates when they were recorded, never declined, nonsense or hidden ones, through the `rulings_activity` index. It stops counting at 50 (`LISTS_ACTIVITY_CAP` in `@cube/core`), and the SPA shows 50 as "50+". Honorary (not food) rulings appear in the lists like foods.

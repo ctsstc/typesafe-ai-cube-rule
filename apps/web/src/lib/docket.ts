@@ -6,6 +6,7 @@ import {
   hasPersonalInfo,
   isListEntry,
   LIST_NAMES,
+  LISTS_ACTIVITY_CAP,
   type ListEntry,
   type ListName,
   listsUrl,
@@ -15,8 +16,16 @@ import {
   VERDICT_ADVERBS,
 } from "@cube/core";
 
-/** A list with fewer entries than this is hidden, so a quiet day never looks empty. */
-export const MIN_LIST_ENTRIES = 3;
+/**
+ * A list with fewer entries than this is hidden, so a quiet day never looks empty. Jev agrees with
+ * every canon ruling in the eval, so a single dissent is worth showing.
+ */
+export const MIN_LIST_ENTRIES: Readonly<Record<ListName, number>> = {
+  latest: 3,
+  mostDebated: 3,
+  jevDissents: 1,
+  friendshipEnding: 3,
+};
 
 const SHOWN: Readonly<Record<ListName, number>> = {
   latest: 6,
@@ -90,7 +99,7 @@ export function readDocket(body: unknown): Docket | null {
   if (body.questionSetVersion !== QUESTION_SET_VERSION) return null;
   const lists = isRecord(body.lists) ? body.lists : {};
   const shown = LIST_NAMES.map((name) => readList(name, lists[name])).filter(
-    ({ entries }) => entries.length >= MIN_LIST_ENTRIES,
+    ({ name, entries }) => entries.length >= MIN_LIST_ENTRIES[name],
   );
   if (shown.length === 0) return null;
   return { newFoodsLastHour: readActivity(body.activity), lists: shown };
@@ -154,5 +163,8 @@ export function entryDetail(name: ListName, entry: ListEntry): string {
 }
 
 export function activityLine(count: number): string {
+  // The Function stops counting at the cap, so reaching it means at least that many.
+  if (count >= LISTS_ACTIVITY_CAP)
+    return `${LISTS_ACTIVITY_CAP}+ new foods ruled in the last hour.`;
   return `${count} new ${count === 1 ? "food" : "foods"} ruled in the last hour.`;
 }

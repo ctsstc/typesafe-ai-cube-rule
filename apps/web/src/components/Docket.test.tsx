@@ -108,8 +108,8 @@ describe("The docket", () => {
       listsBody(
         {
           ...FULL_LISTS,
-          jevDissents: FULL_LISTS.jevDissents.slice(0, 2),
-          friendshipEnding: [],
+          jevDissents: [],
+          friendshipEnding: FULL_LISTS.friendshipEnding.slice(0, 2),
         },
         null,
       ),
