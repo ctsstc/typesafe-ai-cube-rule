@@ -1,12 +1,16 @@
 import { classifyUrl, mockCubeResponse } from "@cube/core";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import {
   CLIENT_TIMEOUT_MS,
   classify,
   clearClassifyCache,
   parseRetryAfter,
   RulingError,
+  SESSION_URL,
 } from "./api";
+import { solveChallenge } from "./challenge";
+
+vi.mock("./challenge", () => ({ solveChallenge: vi.fn() }));
 
 const json = (body: unknown, init: ResponseInit = {}) =>
   new Response(JSON.stringify(body), {
@@ -43,6 +47,8 @@ describe("classify", () => {
 
   it.each([
     [400, "bad_request"],
+    [404, "not_found"],
+    [405, "method_not_allowed"],
     [429, "rate_limited"],
     [502, "upstream_error"],
     [503, "upstream_busy"],
@@ -98,6 +104,132 @@ describe("classify", () => {
     const pending = failure("taco");
     await vi.advanceTimersByTimeAsync(CLIENT_TIMEOUT_MS);
     expect((await pending).code).toBe("timeout");
+  });
+});
+
+describe("classify behind the human check", () => {
+  const SITE_KEY = "1x00000000000000000000AA";
+  const solve = solveChallenge as Mock<typeof solveChallenge>;
+  const challenge = () =>
+    json({ error: { code: "challenge_required", message: "check first" } }, { status: 401 });
+  const ruling = (item: string) =>
+    json(mockCubeResponse(item), { headers: { "x-cube-cache": "MISS", "cf-cache-status": "HIT" } });
+  const sessionOk = () => new Response(null, { status: 204 });
+
+  type Call = [url: string, init?: RequestInit];
+  let fetchMock: Mock<(...args: Call) => Promise<Response>>;
+  const urls = () => fetchMock.mock.calls.map(([url, init]) => `${init?.method ?? "GET"} ${url}`);
+
+  beforeEach(() => {
+    clearClassifyCache();
+    solve.mockReset();
+    solve.mockResolvedValue("XXXX.DUMMY.TOKEN.XXXX");
+    vi.stubEnv("VITE_TURNSTILE_SITE_KEY", SITE_KEY);
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("runs one challenge, starts a session, then retries once", async () => {
+    fetchMock
+      .mockResolvedValueOnce(challenge())
+      .mockResolvedValueOnce(sessionOk())
+      .mockResolvedValueOnce(ruling("taco"));
+
+    const result = await classify("taco");
+    expect(result.response.model).toBe("mock");
+    expect(result.cache).toBe("MISS");
+    expect(solve).toHaveBeenCalledExactlyOnceWith(SITE_KEY);
+    expect(urls()).toEqual([
+      `GET ${classifyUrl("taco")}`,
+      `POST ${SESSION_URL}`,
+      `GET ${classifyUrl("taco")}`,
+    ]);
+    const init = fetchMock.mock.calls[1]?.[1];
+    expect(JSON.parse(String(init?.body))).toEqual({ token: "XXXX.DUMMY.TOKEN.XXXX" });
+    expect(new Headers(init?.headers).get("content-type")).toBe("application/json");
+  });
+
+  it("does not loop when the retry is challenged again", async () => {
+    fetchMock
+      .mockResolvedValueOnce(challenge())
+      .mockResolvedValueOnce(sessionOk())
+      .mockResolvedValueOnce(challenge());
+    const error = await failure("taco");
+    expect(error.code).toBe("challenge_required");
+    expect(solve).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("reports a failed widget as challenge_required without posting a session", async () => {
+    fetchMock.mockResolvedValueOnce(challenge());
+    solve.mockRejectedValueOnce(new Error("error 600010"));
+    expect((await failure("taco")).code).toBe("challenge_required");
+    expect(urls()).toEqual([`GET ${classifyUrl("taco")}`]);
+  });
+
+  it("surfaces a rejected session without retrying the ruling", async () => {
+    fetchMock.mockResolvedValueOnce(challenge()).mockResolvedValueOnce(
+      json(
+        { error: { code: "rate_limited", message: "slow" } },
+        {
+          status: 429,
+          headers: { "retry-after": "30" },
+        },
+      ),
+    );
+    const error = await failure("taco");
+    expect(error.code).toBe("rate_limited");
+    expect(error.retryAfter).toBe(30);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("cannot solve a challenge without a sitekey in the build", async () => {
+    vi.stubEnv("VITE_TURNSTILE_SITE_KEY", "");
+    fetchMock.mockResolvedValueOnce(challenge());
+    expect((await failure("taco")).code).toBe("challenge_required");
+    expect(solve).not.toHaveBeenCalled();
+  });
+
+  it("shares one challenge between rulings that miss together", async () => {
+    let release = () => {};
+    solve.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve("XXXX.DUMMY.TOKEN.XXXX");
+        }),
+    );
+    fetchMock.mockImplementation(async (url) => {
+      if (url === SESSION_URL) return sessionOk();
+      const sessions = fetchMock.mock.calls.filter(([u]) => u === SESSION_URL).length;
+      if (sessions === 0) return challenge();
+      return ruling(url.includes("taco") ? "taco" : "pizza");
+    });
+
+    const both = Promise.all([classify("taco"), classify("pizza")]);
+    await vi.waitFor(() => expect(solve).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    release();
+    await both;
+    expect(solve).toHaveBeenCalledTimes(1);
+    expect(urls().filter((u) => u.startsWith("POST"))).toHaveLength(1);
+  });
+
+  it("keeps the reset time from a daily_limit refusal", async () => {
+    fetchMock.mockResolvedValueOnce(
+      json(
+        { error: { code: "daily_limit", message: "resting" } },
+        {
+          status: 503,
+          headers: { "retry-after": "5400" },
+        },
+      ),
+    );
+    const error = await failure("taco");
+    expect(error.code).toBe("daily_limit");
+    expect(error.retryAfter).toBe(5400);
+    expect(solve).not.toHaveBeenCalled();
   });
 });
 

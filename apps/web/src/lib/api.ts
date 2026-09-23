@@ -6,6 +6,7 @@ import {
 } from "@cube/core";
 
 export const CLIENT_TIMEOUT_MS = 10_000;
+export const SESSION_URL = "/api/session";
 
 export type RulingErrorCode = ClassifyErrorCode | "offline" | "network";
 
@@ -69,31 +70,75 @@ function servedFromBrowserCache(url: string): boolean {
   }
 }
 
-async function request(item: string): Promise<Classified> {
-  const url = classifyUrl(item);
+async function send(url: string, init: RequestInit): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS);
-  const started = performance.now();
-  let res: Response;
   try {
-    res = await fetch(url, { signal: controller.signal, headers: { accept: "application/json" } });
+    return await fetch(url, { ...init, signal: controller.signal });
   } catch {
     if (controller.signal.aborted) throw new RulingError("timeout");
     throw new RulingError(navigator.onLine === false ? "offline" : "network");
   } finally {
     clearTimeout(timer);
   }
+}
+
+function failure(res: Response, body: unknown): RulingError {
+  const code = isClassifyErrorBody(body)
+    ? body.error.code
+    : (STATUS_CODES[res.status] ?? "internal");
+  return new RulingError(code, parseRetryAfter(res.headers.get("retry-after")));
+}
+
+async function request(item: string): Promise<Classified> {
+  const url = classifyUrl(item);
+  const started = performance.now();
+  const res = await send(url, { headers: { accept: "application/json" } });
   const body: unknown = await res.json().catch(() => null);
   const latencyMs = Math.round(performance.now() - started);
-  if (!res.ok) {
-    const code = isClassifyErrorBody(body)
-      ? body.error.code
-      : (STATUS_CODES[res.status] ?? "internal");
-    throw new RulingError(code, parseRetryAfter(res.headers.get("retry-after")));
-  }
+  if (!res.ok) throw failure(res, body);
   if (!isClassifyResponse(body)) throw new RulingError("internal");
   const cache = CACHE_HEADERS.map((name) => res.headers.get(name)).find(Boolean) ?? null;
   return { response: body, latencyMs, cache, fromBrowserCache: servedFromBrowserCache(url) };
+}
+
+async function startSession(): Promise<void> {
+  const sitekey: unknown = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+  if (typeof sitekey !== "string" || !sitekey) throw new RulingError("challenge_required");
+  let token: string;
+  try {
+    const { solveChallenge } = await import("./challenge");
+    token = await solveChallenge(sitekey);
+  } catch {
+    throw new RulingError(navigator.onLine === false ? "offline" : "challenge_required");
+  }
+  const res = await send(SESSION_URL, {
+    method: "POST",
+    headers: { accept: "application/json", "content-type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  if (!res.ok) throw failure(res, await res.json().catch(() => null));
+}
+
+let session: Promise<void> | null = null;
+
+// Rulings that miss together share one challenge.
+function ensureSession(): Promise<void> {
+  session ??= startSession().finally(() => {
+    session = null;
+  });
+  return session;
+}
+
+async function requestWithSession(item: string): Promise<Classified> {
+  try {
+    return await request(item);
+  } catch (error) {
+    if (!(error instanceof RulingError) || error.code !== "challenge_required") throw error;
+  }
+  await ensureSession();
+  // One retry only: a second challenge_required surfaces as an error instead of looping.
+  return request(item);
 }
 
 const inflight = new Map<string, Promise<Classified>>();
@@ -102,7 +147,7 @@ const settled = new Map<string, Classified>();
 export function classify(item: string): Promise<Classified> {
   const cached = inflight.get(item);
   if (cached) return cached;
-  const pending = request(item);
+  const pending = requestWithSession(item);
   inflight.set(item, pending);
   pending.then(
     (value) => settled.set(item, value),

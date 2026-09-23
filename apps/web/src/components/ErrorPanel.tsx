@@ -33,9 +33,10 @@ export function ErrorPanel({ error, onRetry, onEdit }: ErrorPanelProps) {
   const Icon =
     error.code === "offline" || error.code === "network"
       ? OfflineIcon
-      : error.code === "timeout" || error.code === "rate_limited"
+      : error.code === "timeout" || error.code === "rate_limited" || error.code === "daily_limit"
         ? ClockIcon
         : AlertIcon;
+  const editLabel = error.code === "daily_limit" ? "Try another food" : "Edit the food";
 
   const waitingForNetwork = error.code === "offline" && !online;
   const retryLabel =
@@ -55,7 +56,7 @@ export function ErrorPanel({ error, onRetry, onEdit }: ErrorPanelProps) {
       {copy.action === "edit" ? (
         <button type="button" className="button button--secondary" onClick={onEdit}>
           <PencilIcon />
-          Edit the food
+          {editLabel}
         </button>
       ) : (
         <button
