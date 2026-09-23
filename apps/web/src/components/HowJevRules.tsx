@@ -269,7 +269,9 @@ export function HowJevRules() {
                 </td>
               </tr>
               <tr>
-                <th scope="row">Holdout, without the {holdoutNamed} named in the questions</th>
+                <th scope="row">
+                  Holdout, without the {holdoutNamed} named in the ruling questions
+                </th>
                 <td>
                   <Scored tally={holdout.notInPrompt} />
                 </td>

@@ -34,7 +34,11 @@ describe("How Jev rules", () => {
 
     const row = within(region).getByRole("row", { name: /^Holdout\s/ });
     expect(row).toHaveTextContent(`${rate} (${holdout.all.hits} of ${holdout.all.n})`);
-    const strict = within(region).getByRole("row", { name: /^Holdout, without/ });
+    const named = holdout.all.n - holdout.notInPrompt.n;
+    // Only the ruling questions count as a leak in summary.json, so the label must say so.
+    const strict = within(region).getByRole("row", {
+      name: new RegExp(`^Holdout, without the ${named} named in the ruling questions`),
+    });
     expect(strict).toHaveTextContent(`(${holdout.notInPrompt.hits} of ${holdout.notInPrompt.n})`);
     expect(region).toHaveTextContent(
       `${holdout.sure.hits} of ${holdout.sure.n} rulings we would print as Definitely were right`,
