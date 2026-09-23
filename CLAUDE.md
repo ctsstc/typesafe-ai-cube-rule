@@ -36,5 +36,6 @@ The repo is public at https://github.com/ctsstc/typesafe-ai-cube-rule under the 
 - Tag releases with annotated semver tags: `git tag -a vX.Y.Z -m "vX.Y.Z: <summary>"`.
 - Every tag gets a matching entry in `CHANGELOG.md` (Keep a Changelog format), committed before tagging.
 - Bump `version` in the root `package.json` to match the tag.
-- Semver: MINOR for user-visible features, PATCH for fixes and polish. Stay on `0.x` until the first real deploy with a live API key; that deploy becomes `v1.0.0`.
+- Semver: MINOR for user-visible features, PATCH for fixes and polish. MAJOR only for a breaking change to the share links or the API contract.
 - Tag after a milestone is committed and `pnpm check` passes, not before.
+- Release order: tag, push `main` and the tag (never `--all` or `--mirror`), apply new D1 migrations with `--remote`, `pnpm deploy:pages`, then `gh release create vX.Y.Z` with that version's CHANGELOG section as the notes.
