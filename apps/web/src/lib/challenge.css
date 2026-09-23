@@ -15,6 +15,9 @@
 .challenge[data-state="interactive"] {
   display: grid;
   gap: var(--space-3);
+  max-height: calc(100dvh - 2 * var(--gutter));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: var(--space-5) var(--space-4) var(--space-4);
   color: var(--text);
   background: var(--surface);
