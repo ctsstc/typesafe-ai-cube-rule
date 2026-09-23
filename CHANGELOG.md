@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- **Privacy notes.** About's "What gets sent where" now matches what is collected. It says foods go in the page address, so they land in browser history and shared links. Stored rulings have no expiry date. Turnstile can load as soon as a shared link to a new food opens, and it sees the IP, browser and page address, food included. Old spend counters are deleted only when someone next passes the check, and a database restore can bring them back for up to 30 days. The rate limiter holds an IP only after a new food or a check. `cube_session` is the only cookie this site sets, and Turnstile's frame may keep its own. Web Analytics strips `?food=`. The list links the Cloudflare, Turnstile and TypeSafe privacy policies. The deploy runbook and UX spec match it, and a new About test pins the key facts.
+
 ## [1.1.0] - 2026-09-23
 
 ### Added

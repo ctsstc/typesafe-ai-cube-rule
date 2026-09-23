@@ -285,14 +285,16 @@ Six short blocks in our own words: what the Cube Rule is (credit and link to cub
 **What gets sent where** must match the Function:
 
 - The food name goes to our Pages Function and, only when no stored ruling exists, to TypeSafe's API.
-- Rulings are stored by food name in Cloudflare's cache and KV. Who asked is not stored.
-- A new food needs the Turnstile check first. Turnstile loads from Cloudflare only then, never on page load, and the IP address goes to Cloudflare's siteverify.
-- Passing it sets one cookie, `cube_session`, for an hour: a random ID and its start and end times, signed, and sent only to `/api`. It covers up to 60 new foods.
-- D1 counts Jev calls per day, per session ID, and per IP address per day. The last is keyed by an HMAC of the IP and the date, so no IP is stored, and past days' rows are deleted.
-- The IP is held in the in-memory rate limiter until the first request after its one minute window. Our code logs neither it nor the food.
-- No accounts and no ads. Cloudflare Web Analytics counts page views without cookies or personal data. The session cookie is the only cookie, and the theme choice stays in local storage.
+- Every ruling puts the food in the page address with `history.pushState` (`/?food=`), so foods land in browser history and in shared links. `/api/classify` responses are cacheable in the browser for a year. A declined or unechoable food is replaced with `/`.
+- Rulings are stored by food name in KV with no expiration and in each data center's cache for up to a year. Who asked is not stored.
+- A new food needs the Turnstile check first. Turnstile loads only on a `401 challenge_required`, which happens during page load when a shared link names a food nobody has asked about. Its frame gets the page URL, food included, from `api.js`, plus the IP and browser signals, and siteverify gets the IP too. The [Turnstile privacy addendum](https://www.cloudflare.com/turnstile-privacy-policy/) says Cloudflare may use its signals to improve bot detection.
+- Passing it sets one cookie, `cube_session`, for an hour: a random ID and its start and end times, signed, and sent only to `/api`. It covers up to 60 new foods. It is the only cookie this site sets; Turnstile's frame may keep its own on `challenges.cloudflare.com`.
+- D1 counts Jev calls per day, per session ID, and per IP address per day. The last is keyed by an HMAC of the IP and the date, so no IP is stored. Expired session rows and earlier days' client rows are deleted only when someone next passes the check (`forgetExpired` in `startSession`), and [D1 Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/) can restore them for up to 30 days. The daily `usage` row is kept and holds no personal data.
+- The in-memory rate limiter holds the IP only when a new food has passed the session check, or on `POST /api/session`. It is dropped when that isolate next runs `take()` after the one minute window, when the map passes 10,000 keys, or when the isolate stops. Our code logs neither it nor the food. The [live log stream](https://developers.cloudflare.com/pages/functions/debugging-and-logging/) shows request URLs and headers while someone tails it and is not stored.
+- No accounts and no ads. Cloudflare Web Analytics counts page views without cookies. Its beacon strips the query before sending, so `?food=` never reaches it; it sends the path, the referrer, browser and OS versions and timings. [Cloudflare says](https://developers.cloudflare.com/web-analytics/about/) it collects no personal data. The theme choice stays in local storage, and only once a visitor picks one.
+- The list links [Cloudflare's privacy policy](https://www.cloudflare.com/privacypolicy/), the Turnstile addendum and [TypeSafe's privacy policy](https://typesafe.ai/legal/privacy-policy), which says TypeSafe does not train on Input but keeps data with no fixed end.
 
-If the Function's storage or logging changes, this copy changes with it.
+If the Function's storage or logging changes, this copy changes with it. `components/About.test.tsx` pins the key facts.
 
 ### 7.7 Settle the debate (v0.2)
 
@@ -461,7 +463,7 @@ Crawlers do not run JavaScript, so the share text carries the food and verdict a
 
 | Metric | Budget | v0.1 |
 |---|---|---|
-| Initial JS | 90 KB gzip | about 86 KB (React plus the app); about 89 KB at v1.1, with How Jev rules in its own 4.5 KB chunk |
+| Initial JS | 90 KB gzip | about 86 KB (React plus the app); about 89 KB at v1.1, with How Jev rules in its own 4.5 KB chunk; 89.95 KB with the fuller privacy list, so the next addition needs its own chunk |
 | CSS | 12 KB gzip | about 7.3 KB |
 | Display font | 40 KB woff2, preloaded | 36.6 KB |
 | Above-the-fold images | none | none (CSS cube, inline SVG icons) |
@@ -479,4 +481,4 @@ How Jev rules already loads through `import()`. Debate, game, X-ray, and share i
 
 1. **Site URL.** Settled: `scripts/deploy.sh` builds with the official URL, `https://cube-rule-oracle.pages.dev`. The custom domain `typesafe-ai-cube-rule.codyswartz.us` (a CNAME at DigitalOcean) serves the same site. A one-off deploy can still override `SITE_URL`.
 2. **Canon accuracy.** Audited against cuberule.com on 2026-09-22 ([canon-audit.md](canon-audit.md)), and `official.test.ts` pins the table. Audit again whenever the site changes.
-3. **Privacy copy.** The about section describes the Function as of v0.1. Any new logging or storage needs the copy updated in the same change.
+3. **Privacy copy.** The about section tracks the Function, Turnstile and Web Analytics as they are now (see 7.6). Any new logging or storage needs the copy updated in the same change.

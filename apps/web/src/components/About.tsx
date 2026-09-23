@@ -60,45 +60,64 @@ export function About() {
           <h3>What gets sent where</h3>
           <ul>
             <li>
-              The food name you type goes from your browser to this site's server, which runs on
-              Cloudflare Pages. If nobody has asked about that food before, the server sends the
-              name, and only the name, to TypeSafe's API.
+              The food you type goes to this site's server on Cloudflare Pages. If nobody has asked
+              about it before, the server sends the name, and only the name, to TypeSafe's API.
             </li>
             <li>
-              Each ruling is stored by food name in Cloudflare, so the next person who asks gets the
-              same answer instantly and Jev usually isn't asked twice. Who asked is not stored.
+              Foods also go in the page address (<code>/?food=</code>), so they land in your browser
+              history and links you share, and your browser may cache rulings for a year.
             </li>
             <li>
-              Asking Jev about a new food costs real money, so before the first one, Turnstile by
-              Cloudflare checks that a person is asking. It usually runs unseen and now and then
-              asks for a click. It loads from Cloudflare only at that moment, never when the page
-              opens, and foods someone already asked about usually don't trigger it.
+              Rulings are stored by food name in Cloudflare with no expiry date, so Jev usually
+              isn't asked twice. Who asked is not stored.
             </li>
             <li>
-              Passing the check sets one cookie, <code>cube_session</code>, for an hour. It holds a
-              random ID and its start and end times, signed so it can't be forged, and it is only
-              sent to this site's <code>/api</code>. It covers up to 60 new foods.
+              A new food costs real money, so first Turnstile by Cloudflare checks that a person is
+              asking, usually unseen. It loads only when a new food needs the check, which can be
+              the moment you open a shared link to one. It sees your IP address, your browser and
+              the page address, food included. Cloudflare's{" "}
+              <a href="https://www.cloudflare.com/turnstile-privacy-policy/" rel="noopener">
+                Turnstile privacy addendum
+              </a>{" "}
+              says it may also use signals like your IP address and browser to improve its bot
+              detection.
             </li>
             <li>
-              To keep the bill in check, the server counts Jev calls per day (a date and a number),
-              per session (the random ID, until it expires), and per IP address per day. That last
-              count is filed under a keyed hash of your IP address and the date, so the address
-              itself is never stored, and it is deleted once the day is over. No count holds what
-              you typed.
+              Passing the check sets one cookie, <code>cube_session</code>, for an hour: a random ID
+              and its start and end times, signed and sent only to this site's <code>/api</code>. It
+              covers up to 60 new foods. It's the only cookie this site sets, though Turnstile's
+              frame may keep its own on Cloudflare's domain.
             </li>
             <li>
-              Your IP address is held in the server's memory to slow down floods of requests. It is
-              dropped at the first request after its one minute window ends, or when that server
-              instance stops. It is also passed to Cloudflare when you take the check. Our code
-              doesn't log it or what you typed.
+              To cap the bill, the server counts Jev calls per day, per session and per IP address
+              per day, the last under a keyed hash so the address itself is never stored. Expired
+              counts are deleted the next time anyone passes the check, though Cloudflare's database
+              restore can bring them back for up to 30 days. No count holds what you typed.
             </li>
             <li>
-              No accounts and no ads. Cloudflare Web Analytics counts page views without cookies and
-              without collecting personal data.
+              A new food or a check also holds your IP address in the server's memory to slow floods
+              of requests, until that server instance next checks the limit after its one minute
+              window, or stops. Our code logs neither it nor what you typed. Cloudflare's live log
+              shows both while we have it open, and that log isn't saved.
             </li>
-            <li>The session cookie is the only cookie.</li>
-            <li>Your theme choice stays in your browser's local storage.</li>
-            <li>Cloudflare and TypeSafe handle each request under their own privacy policies.</li>
+            <li>
+              No accounts and no ads. Cloudflare Web Analytics counts page views without cookies. It
+              strips <code>?food=</code> before reporting, so your foods never reach it. It sends
+              the page path, the referring page, browser and OS versions and load timings.
+              Cloudflare says it collects no personal data.
+            </li>
+            <li>Your theme choice, if you pick one, stays in your browser's local storage.</li>
+            <li>
+              Cloudflare and TypeSafe handle what they receive under their own policies:{" "}
+              <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener">
+                Cloudflare's privacy policy
+              </a>{" "}
+              and{" "}
+              <a href="https://typesafe.ai/legal/privacy-policy" rel="noopener">
+                TypeSafe's privacy policy
+              </a>
+              . TypeSafe says it doesn't train its models on what we send but may keep it.
+            </li>
           </ul>
         </article>
 
