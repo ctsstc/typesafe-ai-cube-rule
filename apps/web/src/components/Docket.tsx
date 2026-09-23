@@ -14,9 +14,12 @@ import { FoodLink } from "./FoodForm";
 
 interface DocketProps {
   readonly onPick: (item: string) => void;
+  /** Keeps lists that are ready from rendering until the slot is back below the reader. */
+  readonly hold?: boolean;
+  readonly onShown?: () => void;
 }
 
-interface EntryProps extends DocketProps {
+interface EntryProps extends Pick<DocketProps, "onPick"> {
   readonly list: ListName;
   readonly entry: ListEntry;
   readonly className: string;
@@ -56,8 +59,10 @@ function ListHead({ name }: { readonly name: ListName }) {
   );
 }
 
-export function Docket({ onPick }: DocketProps) {
+export function Docket({ onPick, hold = false, onShown }: DocketProps) {
   const [docket, setDocket] = useState<DocketData | null>(null);
+  const [shown, setShown] = useState(false);
+  if (docket && !hold && !shown) setShown(true);
 
   useEffect(() => {
     let live = true;
@@ -69,7 +74,11 @@ export function Docket({ onPick }: DocketProps) {
     };
   }, []);
 
-  if (!docket) return null;
+  useEffect(() => {
+    if (shown) onShown?.();
+  }, [shown, onShown]);
+
+  if (!docket || !shown) return null;
   const latest = docket.lists.find((list) => list.name === "latest");
   const cards = docket.lists.filter((list) => list.name !== "latest");
 

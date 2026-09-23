@@ -1,7 +1,17 @@
-import { type ComponentType, lazy, Suspense, useEffect, useRef, useState } from "react";
+import {
+  type ComponentType,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 interface DocketProps {
   readonly onPick: (item: string) => void;
+  readonly hold?: boolean;
+  readonly onShown?: () => void;
 }
 
 const Docket = lazy(
@@ -12,33 +22,40 @@ const Docket = lazy(
     ),
 );
 
-// Below only. Loading while the slot sits above the viewport would push a section that a hash
-// link scrolled to out of view in browsers without scroll anchoring.
-const NEAR_BELOW = "0px 0px 600px 0px";
+// From mid-viewport to 600px below it. Inserting the docket while its slot sits higher would push
+// what the reader is looking at, such as a section a hash link scrolled to, out of view.
+const BAND = "-50% 0px 600px 0px";
 
-/** Loads and fetches the docket only once the reader scrolls near it. */
-export function DocketSlot({ onPick }: DocketProps) {
+/** Loads the docket once the reader nears it, and shows it only while it lands below them. */
+export function DocketSlot({ onPick }: Pick<DocketProps, "onPick">) {
   const ref = useRef<HTMLDivElement>(null);
   const [near, setNear] = useState(false);
+  const [below, setBelow] = useState(false);
+  const [shown, setShown] = useState(false);
+  const onShown = useCallback(() => setShown(true), []);
 
   useEffect(() => {
     const slot = ref.current;
-    if (near || !slot || typeof IntersectionObserver === "undefined") return;
+    if (shown || !slot || typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) setNear(true);
+        for (const entry of entries) {
+          const bandTop = entry.rootBounds?.top ?? window.innerHeight / 2;
+          setBelow(entry.boundingClientRect.top >= bandTop);
+          if (entry.isIntersecting) setNear(true);
+        }
       },
-      { rootMargin: NEAR_BELOW },
+      { rootMargin: BAND },
     );
     observer.observe(slot);
     return () => observer.disconnect();
-  }, [near]);
+  }, [shown]);
 
   return (
     <div ref={ref}>
       {near && (
         <Suspense fallback={null}>
-          <Docket onPick={onPick} />
+          <Docket onPick={onPick} hold={!below} onShown={onShown} />
         </Suspense>
       )}
     </div>
