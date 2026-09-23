@@ -64,6 +64,7 @@ describe("page outline", () => {
     expect(screen.getByRole("heading", { level: 2, name: /Jev's probabilities/ })).toBeVisible();
     const levels = outline().map((line) => Number(line[1]));
     expect(levels.every((level, i) => i === 0 || level <= (levels[i - 1] ?? 0) + 1)).toBe(true);
+    expect(screen.getByRole("contentinfo")).toHaveTextContent("The Cube Rule is by @Phosphatide.");
     await expectNoAxeViolations();
   });
 
