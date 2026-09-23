@@ -1,8 +1,9 @@
 import react from "@vitejs/plugin-react";
 import { defineProject } from "vitest/config";
+import { evalStats } from "./plugins/evalStats.ts";
 
 export default defineProject({
-  plugins: [react()],
+  plugins: [react(), evalStats()],
   define: { __APP_VERSION__: JSON.stringify("0.0.0-test") },
   test: {
     name: "web",

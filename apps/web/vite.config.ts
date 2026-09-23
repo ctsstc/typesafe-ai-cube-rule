@@ -2,6 +2,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 // Releases bump the root package.json only (see CLAUDE.md).
 import pkg from "../../package.json" with { type: "json" };
+import { evalStats } from "./plugins/evalStats.ts";
 import { fontPreload } from "./plugins/fontPreload.ts";
 import { mockApi } from "./plugins/mockApi.ts";
 import { siteMeta } from "./plugins/siteMeta.ts";
@@ -28,6 +29,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
+      evalStats(),
       fontPreload(),
       siteMeta(env.SITE_URL || "https://cube-rule-oracle.pages.dev"),
       mock && mockApi(),
