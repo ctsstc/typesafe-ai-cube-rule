@@ -10,8 +10,8 @@ export type PublicListingReason =
   | "nonsense"
   | "blocked"
   | "personal_info"
-  | "abusive"
-  | "private_person";
+  | "private_person"
+  | "abusive";
 
 export interface PublicListing {
   readonly listed: boolean;
@@ -65,11 +65,11 @@ export function publicListing(
   // Negated so a missing or NaN answer hides the item. Canon names skip the abusive bar because
   // they are cuberule.com's own rulings, and Jev scores "humans" 0.12.
   const { is_abusive, person_kind } = response.answers;
-  if (!findOfficialRuling(item) && !(is_abusive?.noul < THRESHOLDS.publicAbusive)) {
-    return listing("abusive");
-  }
   if (!(person_kind?.probabilities.private < THRESHOLDS.publicPrivatePerson)) {
     return listing("private_person");
+  }
+  if (!findOfficialRuling(item) && !(is_abusive?.noul < THRESHOLDS.publicAbusive)) {
+    return listing("abusive");
   }
   return listing("listed");
 }

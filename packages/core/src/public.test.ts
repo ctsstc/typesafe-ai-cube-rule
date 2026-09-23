@@ -65,6 +65,7 @@ describe("publicListing", () => {
     ["24 carrot cake", {}, "listed"],
     ["7-layer dip", {}, "listed"],
     ["my boss", { kind: "not_food", privateP: 1 }, "private_person"],
+    ["dave from accounting", { kind: "not_food", privateP: 1, abusive: 0.08 }, "private_person"],
     ["my mom's lasagna", { privateP: 0.99 }, "private_person"],
     ["hot dog", { abusive: 0.9 }, "declined"],
     ["asdfgh", { kind: "nonsense" }, "nonsense"],
