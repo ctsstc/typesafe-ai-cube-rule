@@ -176,6 +176,20 @@ async function readSmallBody(request: Request, maxBytes: number): Promise<string
 
 type Verdict = "passed" | "rejected" | "unavailable";
 
+// These mean our secret is wrong, not the visitor's check, so they must never read as a failed check.
+const SECRET_ERRORS = new Set(["invalid-input-secret", "missing-input-secret"]);
+
+let reportedSecretError = false;
+function secretRefused(codes: string[]): Verdict {
+  if (!reportedSecretError) {
+    reportedSecretError = true;
+    console.error("session: siteverify refused TURNSTILE_SECRET_KEY, so new rulings are refused", {
+      codes,
+    });
+  }
+  return "unavailable";
+}
+
 async function verifyTurnstile(
   secret: string,
   token: string,
@@ -208,17 +222,24 @@ async function verifyTurnstile(
       continue;
     }
     const result: unknown = await response.json().catch(() => null);
-    return judge(result, secret, hostname);
+    const verdict = judge(result, secret, hostname);
+    if (verdict !== "retry") return verdict;
   }
   return "unavailable";
 }
 
-function judge(result: unknown, secret: string, hostname: string): Verdict {
+function judge(result: unknown, secret: string, hostname: string): Verdict | "retry" {
   if (typeof result !== "object" || result === null) return "unavailable";
   const outcome = result as { success?: unknown; hostname?: unknown; action?: unknown };
   if (outcome.success !== true) {
-    const codes = (result as { "error-codes"?: unknown })["error-codes"];
-    console.warn("session: token rejected", { codes: Array.isArray(codes) ? codes : [] });
+    const raw = (result as { "error-codes"?: unknown })["error-codes"];
+    const codes = Array.isArray(raw) ? raw.filter((code) => typeof code === "string") : [];
+    if (codes.some((code) => SECRET_ERRORS.has(code))) return secretRefused(codes);
+    if (codes.includes("internal-error")) {
+      console.warn("session: siteverify internal error", { codes });
+      return "retry";
+    }
+    console.warn("session: token rejected", { codes });
     return "rejected";
   }
   if (TEST_SECRETS.has(secret)) return "passed";

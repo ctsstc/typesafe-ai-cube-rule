@@ -172,7 +172,7 @@ It then builds the SPA with the sitekey and runs `wrangler pages deploy dist --p
 
 The build bakes absolute `og:url` and `og:image` URLs into `index.html` from `SITE_URL`, which defaults to `https://typesafe-ai-cube-rule.codyswartz.us`. Override it for a one-off with `SITE_URL=https://cube-rule-oracle.pages.dev pnpm deploy:pages`.
 
-Tail production logs with `pnpm exec wrangler pages deployment tail --project-name cube-rule-oracle`. Refused spend checks log `classify: daily Jev call limit reached` and `classify: spend check failed`.
+Tail production logs with `pnpm exec wrangler pages deployment tail --project-name cube-rule-oracle`. Refused spend checks log `classify: daily Jev call limit reached` and `classify: spend check failed`. A wrong or rotated `TURNSTILE_SECRET_KEY` logs `session: siteverify refused TURNSTILE_SECRET_KEY` at error level, and visitors see "Something broke on our side" instead of a failed human check.
 
 ## Custom domain (DNS at DigitalOcean)
 

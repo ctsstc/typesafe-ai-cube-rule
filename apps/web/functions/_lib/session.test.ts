@@ -188,6 +188,41 @@ describe("POST /api/session", () => {
     expect(sentTo(0).idempotency_key).toBe(sentTo(1).idempotency_key);
   });
 
+  it("reports a refused secret as our fault, not a failed check, and logs it once", async () => {
+    const realEnv = env({ TURNSTILE_SECRET_KEY: REAL_SECRET });
+    for (const code of ["invalid-input-secret", "missing-input-secret"]) {
+      fetchMock.mockResolvedValueOnce(siteverify({ success: false, "error-codes": [code] }, 400));
+      const response = await call(post({ token: TOKEN }), realEnv);
+      expect(response.status, code).toBe(502);
+      expect((await errorBody(response)).error.code).toBe("upstream_error");
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const errors = logs.filter(([message]) => String(message).includes("refused TURNSTILE"));
+    expect(errors).toHaveLength(1);
+    expect(logs.some(([message]) => message === "session: token rejected")).toBe(false);
+    expectNothingLeaked();
+  });
+
+  it("retries a siteverify internal-error with the same idempotency key", async () => {
+    fetchMock
+      .mockResolvedValueOnce(siteverify({ success: false, "error-codes": ["internal-error"] }))
+      .mockResolvedValueOnce(passed());
+    const response = await call(post({ token: TOKEN }));
+    expect(response.status).toBe(204);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(sentTo(0).idempotency_key).toBe(sentTo(1).idempotency_key);
+  });
+
+  it("answers 502 after a second siteverify internal-error", async () => {
+    fetchMock.mockImplementation(async () =>
+      siteverify({ success: false, "error-codes": ["internal-error"] }),
+    );
+    const response = await call(post({ token: TOKEN }));
+    expect(response.status).toBe(502);
+    expect((await errorBody(response)).error.code).toBe("upstream_error");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("answers 502 when siteverify stays down", async () => {
     fetchMock.mockImplementation(async () => siteverify({}, 500));
     const response = await call(post({ token: TOKEN }));
