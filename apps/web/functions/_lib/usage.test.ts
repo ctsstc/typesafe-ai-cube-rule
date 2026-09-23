@@ -2,7 +2,9 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_DAILY_CALL_LIMIT, dailyCallLimit } from "./usage";
+import type { Env } from "./env";
+import { fakeD1 } from "./fake-d1";
+import { DEFAULT_DAILY_CALL_LIMIT, dailyCallLimit, forgetExpired, reserveJevCall } from "./usage";
 
 // Free plan KV writes per day, account wide. Each billed ruling writes one.
 const FREE_KV_WRITES_PER_DAY = 1000;
@@ -31,5 +33,28 @@ describe("daily call limit", () => {
     [" 250 ", 250],
   ])("reads DAILY_CALL_LIMIT=%j as %i", (value, expected) => {
     expect(dailyCallLimit({ DAILY_CALL_LIMIT: value })).toBe(expected);
+  });
+});
+
+describe("D1 statements", () => {
+  const NOW = Date.parse("2026-09-22T12:00:00Z");
+  const session = { sid: "00000000-0000-4000-8000-000000000000", iat: 0, exp: NOW / 1000 + 60 };
+
+  // D1 bills every row a statement scans, so a table scan here grows with traffic.
+  it("finds rows through an index, never a table scan", async () => {
+    const d1 = fakeD1();
+    const env: Env = { DB: d1.binding, DAILY_CALL_LIMIT: "1" };
+    await reserveJevCall(env, { session, client: "client-key" }, NOW);
+    await reserveJevCall(env, { session, client: "client-key" }, NOW);
+    await forgetExpired(d1.binding, NOW);
+    const statements = new Set(d1.calls);
+    expect(statements.size).toBeGreaterThanOrEqual(7);
+    for (const sql of statements) {
+      const plan = d1.sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all();
+      const scans = plan
+        .map((row) => String(row.detail))
+        .filter((step) => /^SCAN (?!CONSTANT ROW)/.test(step));
+      expect(scans, sql).toEqual([]);
+    }
   });
 });

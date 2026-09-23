@@ -169,6 +169,15 @@ pnpm deploy:pages
 It then builds the SPA with the sitekey and runs `wrangler pages deploy dist --project-name cube-rule-oracle --branch main` from `apps/web`.
 
 > [!IMPORTANT]
+> Apply new migrations to the remote database before the next deploy. Since v1.0.0 that is `0003_cleanup_indexes.sql`:
+>
+> ```sh
+> pnpm exec wrangler d1 migrations apply cube-rule-oracle --remote
+> ```
+>
+> `scripts/deploy.sh` refuses to deploy while any migration is unapplied. Migrations are additive, so the running deployment keeps working after they land.
+
+> [!IMPORTANT]
 > Deploy from `apps/web`, never with `wrangler pages deploy apps/web/dist` from the repo root. Wrangler looks for `functions/` and `wrangler.jsonc` in its working directory. From the root it would upload the SPA without the API.
 
 The build bakes absolute `og:url` and `og:image` URLs into `index.html` from `SITE_URL`, which defaults to `https://cube-rule-oracle.pages.dev`, the official URL. To make the custom domain official instead, change the default in `scripts/deploy.sh`, or override it for one deploy with `SITE_URL=https://typesafe-ai-cube-rule.codyswartz.us pnpm deploy:pages`.
@@ -247,7 +256,7 @@ Every Jev call costs money, so the Function only calls Jev on a full cache miss,
 
 The in-code limiter is a speed bump, not a quota: each location runs many isolates and they restart often. The D1 caps are the real limits, because D1 is one database with serialized writes.
 
-D1 on the Free plan allows 100,000 rows written and 5 million rows read a day, with limits resetting at 00:00 UTC. A Jev call writes three rows (the session, the client and the day), so 1,000 calls use 3,000 writes. Starting a session also deletes expired session rows and past days' client rows. If D1 itself hits its daily limit, the spend check fails and new rulings are refused until midnight UTC, which is the safe direction.
+D1 on the Free plan allows 100,000 rows written and 5 million rows read a day, with limits resetting at 00:00 UTC. A Jev call writes three rows (the session, the client and the day), so 1,000 calls use 3,000 writes. Starting a session also deletes expired session rows and past days' client rows. Migration 0003 indexes `sessions.exp` and `clients.day`, so that cleanup reads only the rows it deletes instead of scanning both tables on every human check; `functions/_lib/usage.test.ts` fails if any spend-cap statement goes back to a table scan. Each index costs one extra row write when a session or client row is created. If D1 itself hits its daily limit, the spend check fails and new rulings are refused until midnight UTC, which is the safe direction.
 
 Other levers:
 
