@@ -77,13 +77,14 @@ Single page. State lives in the query string. No router library.
 
 | URL | View | Release |
 |---|---|---|
-| `/` | Home: hero, gallery, about | v0.1 |
+| `/` | Home: hero, gallery, docket, how Jev rules, about | v0.1 |
 | `/?food=hot+dog` | Home with the ruling for hot dog | v0.1 |
 | `/?food=hot+dog&vs=sub+sandwich` | Settle the debate | v0.2 |
 | `/is/taco/?food=hot+dog` | Same as `?food=`, served from a per-category HTML file with category OG tags | v0.2 |
 | `/?play=daily`, `/?play=endless` | Guess the cube | v0.3 |
 | `#gallery`, `#about`, `#about-mock` | In-page anchors | v0.1 |
 | `#how-jev-rules` | In-page anchor for How Jev rules | v1.1 |
+| `#docket` | In-page anchor for the docket, present only while it shows | v1.2 |
 
 - Submitting pushes a history entry with the state `{ typed: true }`. Back and forward restore earlier rulings from the in-memory cache without refetching. Any other entry, including the one a deep link opened, replays as a deep link, so its text stays hidden until Jev clears it.
 - In-page anchors fire `popstate` too. They keep the search, so the app ignores them and the ruling, the input and any error panel stay as they are.
@@ -133,6 +134,18 @@ The SPA runs `toCubeResult(item, body)` itself, so a copy or threshold change is
 
 > [!CAUTION]
 > The browser never imports `TypeSafeClient` or the question builders. `apps/web/src/bundle.test.ts` builds the SPA and fails if the output contains `api.typesafe.ai`, the SDK client, any question text, or a source map.
+
+### Lists wire
+
+The docket asks for the public lists at one endpoint, built by `listsUrl()`:
+
+```
+GET /api/lists?v=<QUESTION_SET_VERSION>
+```
+
+It answers a `ListsResponse` from `@cube/core`: `enabled`, `questionSetVersion`, `activity` (`{ newFoodsLastHour }` only above the Function's threshold, otherwise `null`) and four `ListEntry` arrays, `latest`, `mostDebated`, `jevDissents` and `friendshipEnding`. Each entry carries the normalized `item`, `kind` (`food` or `honorary`), Jev's own `category`, `wet`, `confidence`, `runnerUp`, `official` and `debateLevel`. Another question set gets `409 stale_client`, and the kill switch or any failure answers `{ enabled: false }`. Declined rulings are never sent.
+
+`lib/docket.ts` fetches it once per page load with the browser's default cache mode, so the response's `Cache-Control` decides reuse, and gives up after the same 10 second timeout. Any error, a body that is not JSON, another question set or `enabled: false` hides the section. Before counting, it drops an entry that fails `isListEntry` (so any kind but food and honorary), is not normalized, matches `hasPersonalInfo`, repeats within its list or contradicts the list's title, such as an agreeing canon in Jev vs the canon or a settled debate in Friendship-ending.
 
 ### Result variants
 
@@ -202,7 +215,7 @@ Mobile first. The content column is `min(100% - 32px, 640px)`. The gallery and, 
 - **Header:** logo cube and wordmark, nav links (Rule, Cubes, How Jev rules, About) from 520px, and the theme toggle. From 520 to 679px the nav takes its own row under the wordmark, since four links do not fit beside it.
 - **Skip link:** "Skip to the oracle", first in tab order, targets the food input.
 - **Footer:** "Unofficial fan app. The Cube Rule is by @Phosphatide. cuberule.com is by @indirect. Rulings by Jev from TypeSafe." Then "Made by Cody Swartz (GitHub, LinkedIn). Built with Claude Code. Source code on GitHub." (`MadeBy`), then the app version, question set, the model from the last response, and links to About and privacy, How Jev rules and the nine cubes.
-- **Direct anchors:** a page opened at `/#about` or `/#how-jev-rules` scrolls there once How Jev rules has rendered and the display font has loaded. How Jev rules loads late, above About, and browsers without scroll anchoring (Safari before 27) would otherwise leave About thousands of pixels down. A `?food=` link wins over the hash, and the scroll is skipped if the visitor has already moved to another anchor or a food.
+- **Direct anchors:** a page opened at `/#about` or `/#how-jev-rules` scrolls there once How Jev rules and About have rendered and the display font has loaded. Both load late in one Suspense boundary, and browsers without scroll anchoring (Safari before 27) would otherwise leave About thousands of pixels down. A `?food=` link wins over the hash, and the scroll is skipped if the visitor has already moved to another anchor or a food.
 
 ### 7.2 Home and hero
 
@@ -260,7 +273,29 @@ Every simulated ruling shows a "Simulated" pill beside the eyebrow and a "SIMULA
 
 A face legend, then one card per category: a static cube at its hero angle, the number badge and name, core's summary, the family, and three canon example links. Rows on mobile, two columns from 640px, three from 900px. Cubes turn 20 degrees on hover or focus within the card. The section uses `content-visibility: auto` with a placeholder height per breakpoint close to the real one, so the page does not jump when the gallery renders.
 
-### 7.5 How Jev rules (`#how-jev-rules`)
+### 7.5 The docket (`#docket`)
+
+Between the gallery and How Jev rules. It makes the site feel lived in without showing anyone: foods asked about at least twice, as the court heard them, never who asked and never a time.
+
+- **Lazy twice over.** `DocketSlot` sits in the initial bundle as an empty `<div>`. An `IntersectionObserver` with a bottom-only root margin of 600px loads the `Docket` chunk and its CSS once the slot comes near from below, and only then fetches `/api/lists`. It never loads while the slot sits above the viewport, so a page opened at `#how-jev-rules` or `#about` does not shift in browsers without scroll anchoring. Without `IntersectionObserver` it never loads.
+- **Heading:** h2 "The docket", then "What the court has been hearing. Pick a case for the full ruling."
+- **Activity line:** "14 new foods ruled in the last hour." ("1 new food" in the singular), a pill under the intro, only when `activity` is present and above zero. A quiet hour shows nothing rather than a small number.
+- **Latest rulings:** a wrapping strip of up to six chips, newest first, each the food and the ruling a card would show (`official ?? category`, with "wet"), stamped in small accent capitals. No timestamps.
+- **Three cards**, each an h3, a one-line blurb and an `<ol>` of up to five:
+
+| List | Blurb | Line under the food |
+|---|---|---|
+| Most debated | Jev couldn't settle on one cube. | "taco or sushi" (Jev's pick and the runner-up), or "arguably quiche" with no runner-up |
+| Jev vs the canon | cuberule.com has ruled. Jev, on its own, disagrees. | "Canon: cake, Jev: sandwich" |
+| Friendship-ending | What people argue about most, by Jev's read. | "Debate: Friendship-ending" (`DEBATE_LABELS`) |
+
+- **Hiding:** a list with fewer than three entries is hidden. With every list hidden, the lists off, or any error, the whole section renders nothing: no heading, no empty state.
+- **Honorary** rulings are listed, with a small outlined "Honorary" marker after the name.
+- **Entries are `FoodLink`s** to `/?food=<item>`. A plain click rules through the normal flow (typed history entry, scroll to the card), and hover or focus prefetches from storage. Listed foods are already stored, so no human check appears.
+- **Accessibility:** each list is an `<ol>` labelled by its h3. Link names read as a sentence ("Gyro: taco or sushi", "Canoe, Honorary: taco or sushi") through visually hidden punctuation. Every link is at least 44px tall. The section fades in over 600ms, and not at all with reduced motion.
+- **Layout:** one column on phones, `auto-fit` cards of at least 260px from 640px, three across on wide screens.
+
+### 7.6 How Jev rules (`#how-jev-rules`)
 
 Between the gallery and About, reachable from the header nav and the footer. `HowJevRules` loads as its own chunk, so it stays out of the initial bundle. Order and rules:
 
@@ -278,15 +313,16 @@ Numbers never appear as literals. The `cube:eval-stats` plugin (`apps/web/plugin
 > [!IMPORTANT]
 > Never add "up from" trends, TypeSafe's marketing multipliers, an absolute "free" for repeats, a claim that holdout was never tuned against, or a claim that people wrote the words. Link only to typesafe.ai and docs.typesafe.ai for TypeSafe. `Claims.test.tsx` and `lib/sourceCopy.test.ts` fail on "never tuned", the authorship claim and em or en dashes.
 
-### 7.6 About (`#about`)
+### 7.7 About (`#about`)
 
-Six short blocks in our own words: what the Cube Rule is (credit and link to cuberule.com, "Go read the original"), who decides (Jev returns probabilities, the words are templates in our code, the site was built with Claude Code, and a link to How Jev rules), why Jev might be wrong (names only, forms vary, canon wins, the rice clause), what gets sent where, demo mode (`#about-mock`), and credits, which end with the same `MadeBy` line as the footer.
+Loaded through `import()` in the same Suspense boundary as How Jev rules. Six short blocks in our own words: what the Cube Rule is (credit and link to cuberule.com, "Go read the original"), who decides (Jev returns probabilities, the words are templates in our code, the site was built with Claude Code, and a link to How Jev rules), why Jev might be wrong (names only, forms vary, canon wins, the rice clause), what gets sent where, demo mode (`#about-mock`), and credits, which end with the same `MadeBy` line as the footer.
 
 **What gets sent where** must match the Function:
 
 - The food name goes to our Pages Function and, only when no stored ruling exists, to TypeSafe's API.
 - Every ruling puts the food in the page address with `history.pushState` (`/?food=`), so foods land in browser history and in shared links. `/api/classify` responses are cacheable in the browser for a year. A declined or unechoable food is replaced with `/`.
 - Rulings are stored by food name in KV with no expiration and in each data center's cache for up to a year. Who asked is not stored.
+- A food asked about at least twice (asks count on edge cache and KV hits, never on a prefetch, so that usually means two browsers) may show up in the public lists. D1's `rulings` table notes when each food was first asked and stops counting at two. The lists never show who asked or a time, and names of private people, phone numbers, email addresses, links and flagged text are screened out.
 - A new food needs the Turnstile check first. Turnstile loads only on a `401 challenge_required`, which happens during page load when a shared link names a food nobody has asked about. Its frame gets the page URL, food included, from `api.js`, plus the IP and browser signals, and siteverify gets the IP too. The [Turnstile privacy addendum](https://www.cloudflare.com/turnstile-privacy-policy/) says Cloudflare may use its signals to improve bot detection.
 - Passing it sets one cookie, `cube_session`, for an hour: a random ID and its start and end times, signed, and sent only to `/api`. It covers up to 60 new foods. It is the only cookie this site sets; Turnstile's frame may keep its own on `challenges.cloudflare.com`.
 - D1 counts Jev calls per day, per session ID, and per IP address per day. The last is keyed by an HMAC of the IP and the date, so no IP is stored. Expired session rows and earlier days' client rows are deleted only when someone next passes the check (`forgetExpired` in `startSession`), and [D1 Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/) can restore them for up to 30 days. The daily `usage` row is kept and holds no personal data.
@@ -296,25 +332,25 @@ Six short blocks in our own words: what the Cube Rule is (credit and link to cub
 
 If the Function's storage or logging changes, this copy changes with it. `components/About.test.tsx` pins the key facts.
 
-### 7.7 Settle the debate (v0.2)
+### 7.8 Settle the debate (v0.2)
 
 Two inputs with a VS badge and a swap button, two mini ruling cards side by side from 640px, and a banner: "SAME CUBE. Hot dog and sub sandwich are both tacos. Hug it out.", "DIFFERENT CUBES. ...", or "OPEN CASE." when either side is torn. A starch diff is computed from the canonical layouts. Two cached GETs, no new endpoint.
 
 The main input also learns an "Is X a Y?" parser: "is a hot dog a sandwich?" answers "No. Hot dog is a taco, not a sandwich." or "Kind of." when Y is the runner-up; "X vs Y" and "X or Y" open Debate. Pure code with a table-driven test.
 
-### 7.8 Guess the cube (v0.3)
+### 7.9 Guess the cube (v0.3)
 
 A date-seeded Cube of the Day and an Endless mode over a curated list. Nine radio tiles (digits 0 to 8 work only inside the form), points are `round(100 * probability of the guess)`, streaks live in local storage, and the share text never names the food or the category.
 
-### 7.9 Starch X-ray and debate heat (v0.3)
+### 7.10 Starch X-ray and debate heat (v0.3)
 
 - **X-ray toggle** (`aria-pressed`) tints each face by `eyes.faces` and lists the read in text. When `eyes.agrees` is false: "Face by face, Jev reads this as a sandwich. Even the oracle argues with itself." The jaggedness docs say this happens, so we make it a joke rather than hide it.
 - **Debate heat meter:** four segments from `debate_heat`, combined with the band ("Humans have argued about this for years. Jev settled it in milliseconds.").
 - **It depends:** when `dependsOnServing` is true and the food is in a curated variants table, chips rule each variant.
 
-### 7.10 Hall of Controversy (v0.3)
+### 7.11 Hall of Controversy (v0.3)
 
-A lazy section that rules 16 famous-argument foods through the cached endpoint, at most 4 in flight, and lists them lowest confidence first.
+A lazy section that rules 16 famous-argument foods through the cached endpoint, at most 4 in flight, and lists them lowest confidence first. The docket's Most debated list already does this for foods people asked about; the Hall would stay a curated set.
 
 ## 8. Code map
 
@@ -334,11 +370,12 @@ Pure logic in `apps/web/src/lib/`, unit tested without React:
 | `url.ts` | `?food=` parsing and share URLs |
 | `evalStats.ts` | The `virtual:eval-stats` shape and its number formatting |
 | `jevQuestions.ts` | Plain phrasing for each Jev question, grouped by answer type |
+| `docket.ts` | Lazily loaded: the `/api/lists` fetch, which lists and entries show, and their copy |
 | `links.ts` | Author, source repo, Claude Code and TypeSafe docs URLs |
 
 Hooks: `useOracle` (the ruling state machine and request ids), `useReducedMotion`, `useOnline`.
 
-Components: `App`, `Header`, `ThemeToggle`, `MockBanner`, `Footer`, `HeroArt`, `FoodForm` (with `FoodLink`), `RulingCard`, `Cube3D`, `Stamp`, `ProbabilityList`, `ErrorPanel`, `ShareBar`, `NerdStats`, `Gallery`, `HowJevRules` (lazy), `About`, `MadeBy`, `Announcer` (live region and toast), `ErrorBoundary` ("The cube collapsed.").
+Components: `App`, `Header`, `ThemeToggle`, `MockBanner`, `Footer`, `HeroArt`, `FoodForm` (with `FoodLink`), `RulingCard`, `Cube3D`, `Stamp`, `ProbabilityList`, `ErrorPanel`, `ShareBar`, `NerdStats`, `Gallery`, `DocketSlot` with `Docket` (lazy), `HowJevRules` (lazy), `About` (lazy), `MadeBy`, `Announcer` (live region and toast), `ErrorBoundary` ("The cube collapsed.").
 
 ## 9. Copy deck
 
@@ -433,7 +470,7 @@ Only `transform`, the individual transform properties, and `opacity` animate. Th
 ## 12. Accessibility
 
 - Landmarks: header, nav, main, footer. The mock banner is a labelled `aside`. Skip link first.
-- One h1. On the home page it is the daily question. Once a ruling shows, typed or deep linked, the ruling heading is the h1 ("Consulting the cube" while a deep link loads) and its probability list and error title are h2. The gallery and about headings are h2 and their cards are h3. `RulingCard` takes a `level` so the v0.2 debate cards can sit lower.
+- One h1. On the home page it is the daily question. Once a ruling shows, typed or deep linked, the ruling heading is the h1 ("Consulting the cube" while a deep link loads) and its probability list and error title are h2. The gallery, docket and about headings are h2 and their cards and lists are h3. `RulingCard` takes a `level` so the v0.2 debate cards can sit lower.
 - The form has a visible label, the hint and error are linked by `aria-describedby`, and `aria-invalid` is set on error.
 - One polite live region carries loading ("Ruling on hot dog."), error titles, toasts, and the verdict of a deep-linked ruling. A typed ruling moves focus to its heading instead; a deep link never steals focus.
 - The cube is `role="img"` with a description built from its geometry. Stamps and bars are `aria-hidden` because the heading and the list text carry them.
@@ -456,29 +493,31 @@ Crawlers do not run JavaScript, so the share text carries the food and verdict a
 ## 14. Mock mode
 
 - The Function returns `mockCubeResponse(item)` with `mock: true` and `no-store` when `TYPESAFE_API_KEY` is unset.
-- `pnpm --filter @cube/web dev:mock` serves the same mock straight from Vite, without wrangler, plus trigger foods for every state: `mock sure`, `mock leans`, `mock torn`, `mock family`, `mock baffled`, `mock 429`, `mock 502`, `mock 503`, `mock 504`, `mock 500`, `mock challenge` (401), `mock daily` (503 `daily_limit`, resets in 3 hours), `mock client` (429 `client_limit`), `mock stale` (409 `stale_client`), `mock swamped` (a 200 with an HTML page, as Pages sends once the Functions quota runs out), `mock slow` (5s), `mock timeout` (12s). `/api/session` accepts any token, so `VITE_TURNSTILE_SITE_KEY=3x00000000000000000000FF pnpm --filter @cube/web dev:mock` shows the check card for `mock challenge`. Core's own mock declines any item containing the word `slur` and treats consonant mash as nonsense.
+- `pnpm --filter @cube/web dev:mock` serves the same mock straight from Vite, without wrangler, plus `/api/lists` with twelve entries, honorary ones included, and trigger foods for every state: `mock sure`, `mock leans`, `mock torn`, `mock family`, `mock baffled`, `mock 429`, `mock 502`, `mock 503`, `mock 504`, `mock 500`, `mock challenge` (401), `mock daily` (503 `daily_limit`, resets in 3 hours), `mock client` (429 `client_limit`), `mock stale` (409 `stale_client`), `mock swamped` (a 200 with an HTML page, as Pages sends once the Functions quota runs out), `mock slow` (5s), `mock timeout` (12s). `/api/session` accepts any token, so `VITE_TURNSTILE_SITE_KEY=3x00000000000000000000FF pnpm --filter @cube/web dev:mock` shows the check card for `mock challenge`. Core's own mock declines any item containing the word `slur` and treats consonant mash as nonsense.
+- `CUBE_MOCK_LISTS=partial|empty|disabled|error pnpm --filter @cube/web dev:mock` shows the docket's other states: two lists hidden and no activity line, no section at all, the kill switch, and a 500. The mock filters and sorts the way the Function's queries do.
 - The UI shows the banner, the Simulated pill and caption, and `#about-mock`.
 
 ## 15. Performance budget
 
 | Metric | Budget | v0.1 |
 |---|---|---|
-| Initial JS | 90 KB gzip | about 86 KB (React plus the app); about 89 KB at v1.1, with How Jev rules in its own 4.5 KB chunk; 89.95 KB with the fuller privacy list, so the next addition needs its own chunk |
+| Initial JS | 90 KB gzip | about 86 KB (React plus the app); about 89 KB at v1.1, with How Jev rules in its own 4.5 KB chunk; 88.5 KB at v1.2, with About (2.5 KB) and the docket (1.9 KB plus 0.9 KB of CSS) in their own chunks |
 | CSS | 12 KB gzip | about 7.3 KB |
 | Display font | 40 KB woff2, preloaded | 36.6 KB |
 | Above-the-fold images | none | none (CSS cube, inline SVG icons) |
 | CLS | below 0.02 | the loading card reserves its height |
 
-How Jev rules already loads through `import()`. Debate, game, X-ray, and share image will too when they land, so the initial bundle stays inside the budget.
+How Jev rules, About and the docket already load through `import()`. Debate, game, X-ray, and share image will too when they land, so the initial bundle stays inside the budget. `apps/web/src/bundle.test.ts` builds with `NODE_ENV=production` and fails `pnpm check` when the entry script and its preloads pass 90,000 bytes gzip, or when About, How Jev rules or the docket end up in them.
 
 ## 16. Release plan
 
 - **v0.1 "The Oracle":** hero input with a daily question and hero cube, the ruling card with the 3D reveal, all nine bars, band copy with family fallback, honorary, nonsense, and declined states, the canon badge, starch and debate chips, deep links, share and copy, the static OG card, the gallery, about and credits, every error and rate-limit state, mock mode, themes, reduced motion, and nerd stats.
 - **v0.2 "Fight Night":** Settle the debate, the "Is X a Y?" parser, per-category share pages and cards, recent foods, drag and keyboard cube rotation, and a torn crossfade. No new Jev questions.
 - **v0.3 "Cube of the Day":** Guess the cube, the Starch X-ray on `eyes`, the debate heat meter, "it depends" variants, the Hall of Controversy, the share image, an in-app motion setting, and a PWA shell. The questions these need (the face Nouls, `debate_heat`, `varies_by_serving`) already run in every request.
+- **v1.2 "The docket":** public lists of foods people asked about (latest rulings, most debated, Jev vs the canon, friendship-ending), shown only after two asks, with private people, personal info and flagged text screened out, a kill switch and a blocklist. About moves into its own chunk to keep the initial JS inside budget.
 
 ## 17. Open questions
 
 1. **Site URL.** Settled: `scripts/deploy.sh` builds with the official URL, `https://cube-rule-oracle.pages.dev`. The custom domain `typesafe-ai-cube-rule.codyswartz.us` (a CNAME at DigitalOcean) serves the same site. A one-off deploy can still override `SITE_URL`.
 2. **Canon accuracy.** Audited against cuberule.com on 2026-09-22 ([canon-audit.md](canon-audit.md)), and `official.test.ts` pins the table. Audit again whenever the site changes.
-3. **Privacy copy.** The about section tracks the Function, Turnstile and Web Analytics as they are now (see 7.6). Any new logging or storage needs the copy updated in the same change.
+3. **Privacy copy.** The about section tracks the Function, Turnstile and Web Analytics as they are now (see 7.7). Any new logging or storage needs the copy updated in the same change.
