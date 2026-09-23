@@ -5,6 +5,7 @@ import { mockCubeResponse } from "./mock";
 import {
   buildCubeQuestions,
   buildCubeRequest,
+  CUBE_ANSWER_TYPES,
   CUBE_MODEL,
   QUESTION_SET_VERSION,
 } from "./questions";
@@ -34,6 +35,15 @@ describe("question set fingerprint", () => {
   it("never reuses a fingerprint across versions", () => {
     const hashes = Object.values(REQUEST_FINGERPRINTS);
     expect(new Set(hashes).size).toBe(hashes.length);
+  });
+});
+
+describe("CUBE_ANSWER_TYPES", () => {
+  it("lists every question with its answer type", () => {
+    const types = Object.fromEntries(
+      Object.entries(buildCubeQuestions()).map(([id, question]) => [id, question.type]),
+    );
+    expect(CUBE_ANSWER_TYPES).toEqual(types);
   });
 });
 

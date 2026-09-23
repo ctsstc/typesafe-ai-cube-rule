@@ -32,6 +32,7 @@ export {
   buildCubeQuestions,
   buildCubeRequest,
   buildCubeState,
+  CUBE_ANSWER_TYPES,
   CUBE_MODEL,
   type CubeAnswers,
   type CubeQuestions,
@@ -72,5 +73,6 @@ export {
   type ClassifyResponse,
   isClassifyErrorBody,
   isClassifyErrorCode,
+  isClassifyResponse,
   PREFETCH_HEADER,
 } from "./wire";

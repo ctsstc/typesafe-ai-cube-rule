@@ -592,6 +592,27 @@ export function buildCubeQuestions() {
 }
 
 export type CubeQuestions = ReturnType<typeof buildCubeQuestions>;
+
+// The answer type of every question, without the question text, so the browser can validate a
+// response without bundling the questions. questions.test.ts pins it to buildCubeQuestions().
+export const CUBE_ANSWER_TYPES = {
+  is_abusive: "noul",
+  input_kind: "choice",
+  category: "choice",
+  honorary_category: "choice",
+  starch: "choice",
+  is_wet: "noul",
+  starch_base: "noul",
+  starch_lid: "noul",
+  starch_side_wall: "noul",
+  starch_opposite_walls: "noul",
+  starch_all_walls: "noul",
+  starch_middle_layer: "noul",
+  starch_loose_pieces: "noul",
+  starch_block: "noul",
+  varies_by_serving: "noul",
+  debate_heat: "score",
+} as const satisfies Record<keyof CubeQuestions, "choice" | "noul" | "score">;
 export type CubeRequest = SystemOneRequest<CubeQuestions> & { model: string; state: CubeState };
 export type CubeAnswers = SystemOneResult<CubeQuestions>["answers"];
 export type CubeResponse = Pick<SystemOneResult<CubeQuestions>, "answers" | "model">;

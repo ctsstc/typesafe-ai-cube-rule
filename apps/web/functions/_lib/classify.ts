@@ -3,6 +3,7 @@ import {
   type ClassifyErrorCode,
   type ClassifyResponse,
   classifyUrl,
+  isClassifyResponse,
   isStaleClassifyQuery,
   mockCubeResponse,
   PREFETCH_HEADER,
@@ -127,7 +128,7 @@ async function classify(
       signal: AbortSignal.timeout(JEV_DEADLINE_MS),
     });
     // Anything cached here is immutable for a year, so never cache a malformed 200.
-    if (!isCubeResponse(result)) throw new UnexpectedUpstreamShape();
+    if (!isClassifyResponse(result)) throw new UnexpectedUpstreamShape();
     body = JSON.stringify({ model: result.model, answers: result.answers });
   } catch (error) {
     return upstreamFailure(error);
@@ -136,12 +137,6 @@ async function classify(
   background(waitUntil, "cache put", fillCache(body));
   background(waitUntil, "kv put", env.CLASSIFICATIONS?.put(kvKey, body));
   return jsonResponse(body, { cacheControl: CACHE_IMMUTABLE, cache: "MISS" });
-}
-
-function isCubeResponse(value: unknown): value is ClassifyResponse {
-  if (typeof value !== "object" || value === null) return false;
-  const { model, answers } = value as Partial<Record<keyof ClassifyResponse, unknown>>;
-  return typeof model === "string" && typeof answers === "object" && answers !== null;
 }
 
 async function settle<T>(promise: Promise<T> | undefined): Promise<T | undefined> {

@@ -9,6 +9,7 @@ import {
   type ClassifyResponse,
   isClassifyErrorBody,
   isClassifyErrorCode,
+  isClassifyResponse,
 } from "./wire";
 
 describe("CLASSIFY_ERROR_CODES", () => {
@@ -57,6 +58,40 @@ describe("ClassifyResponse", () => {
     expectTypeOf<ClassifyResponse["mock"]>().toEqualTypeOf<true | undefined>();
     const mocked: ClassifyResponse = { ...mockCubeResponse("taco"), mock: true };
     expect(mocked.mock).toBe(true);
+  });
+});
+
+describe("isClassifyResponse", () => {
+  it("accepts a full response, mock or live", () => {
+    expect(isClassifyResponse(mockCubeResponse("taco"))).toBe(true);
+    expect(isClassifyResponse({ ...mockCubeResponse("taco"), mock: true })).toBe(true);
+  });
+
+  it.each([
+    ["a missing answer", (a: Record<string, unknown>) => delete a.debate_heat],
+    ["a noul without a number", (a: Record<string, unknown>) => (a.is_wet = { type: "noul" })],
+    [
+      "a wrong answer type",
+      (a: Record<string, unknown>) => (a.starch_block = { type: "score", score: 1 }),
+    ],
+    [
+      "a choice without probabilities",
+      (a: Record<string, unknown>) => (a.starch = { type: "choice", choice: "rice" }),
+    ],
+    [
+      "a non-finite score",
+      (a: Record<string, unknown>) => (a.debate_heat = { type: "score", score: Number.NaN }),
+    ],
+  ])("rejects %s", (_label, damage) => {
+    const response = structuredClone(mockCubeResponse("taco"));
+    damage(response.answers as unknown as Record<string, unknown>);
+    expect(isClassifyResponse(response)).toBe(false);
+  });
+
+  it("rejects bodies that are not responses", () => {
+    expect(isClassifyResponse(null)).toBe(false);
+    expect(isClassifyResponse({ model: "jev", answers: "nope" })).toBe(false);
+    expect(isClassifyResponse({ answers: mockCubeResponse("taco").answers })).toBe(false);
   });
 });
 

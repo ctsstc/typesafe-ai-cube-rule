@@ -75,6 +75,12 @@ describe("classify", () => {
     expect((await failure("taco")).code).toBe("internal");
   });
 
+  it("rejects a ruling that is missing an answer, so the card never spins on it", async () => {
+    const { debate_heat: _missing, ...answers } = mockCubeResponse("taco").answers;
+    vi.stubGlobal("fetch", async () => json({ model: "jev-1.13.0", answers }));
+    expect((await failure("taco")).code).toBe("internal");
+  });
+
   it("refetches after a failure", async () => {
     const fetchMock = vi
       .fn()

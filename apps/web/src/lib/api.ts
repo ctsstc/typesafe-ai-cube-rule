@@ -4,6 +4,7 @@ import {
   type ClassifyResponse,
   classifyUrl,
   isClassifyErrorBody,
+  isClassifyResponse,
   PREFETCH_HEADER,
 } from "@cube/core";
 
@@ -48,18 +49,6 @@ export function parseRetryAfter(value: string | null, now = Date.now()): number 
   if (Number.isFinite(seconds)) return Math.max(0, Math.ceil(seconds));
   const date = Date.parse(value);
   return Number.isNaN(date) ? null : Math.max(0, Math.ceil((date - now) / 1000));
-}
-
-function isClassifyResponse(value: unknown): value is ClassifyResponse {
-  if (typeof value !== "object" || value === null) return false;
-  const { model, answers } = value as { model?: unknown; answers?: unknown };
-  if (typeof model !== "string" || typeof answers !== "object" || answers === null) return false;
-  const a = answers as Record<string, { probabilities?: unknown; noul?: unknown } | undefined>;
-  return (
-    typeof a.category?.probabilities === "object" &&
-    typeof a.input_kind?.probabilities === "object" &&
-    typeof a.is_abusive?.noul === "number"
-  );
 }
 
 function servedFromBrowserCache(url: string): boolean {

@@ -33,6 +33,14 @@ export function canEcho(state: ActiveState): boolean {
   );
 }
 
+function settle(base: Base, meta: Classified): OracleState {
+  try {
+    return { ...base, status: "done", result: toCubeResult(base.item, meta.response), meta };
+  } catch {
+    return { ...base, status: "error", error: new RulingError("internal") };
+  }
+}
+
 export function useOracle() {
   const [state, setState] = useState<OracleState>({ status: "idle" });
   const nextId = useRef(0);
@@ -49,19 +57,14 @@ export function useOracle() {
     }
     const cached = cachedClassified(item);
     if (cached) {
-      setState({
-        ...base,
-        status: "done",
-        result: toCubeResult(item, cached.response),
-        meta: cached,
-      });
+      setState(settle(base, cached));
       return;
     }
     setState({ ...base, status: "loading" });
     classify(item).then(
       (meta) => {
         if (currentId.current !== id) return;
-        setState({ ...base, status: "done", result: toCubeResult(item, meta.response), meta });
+        setState(settle(base, meta));
       },
       (error: unknown) => {
         if (currentId.current !== id) return;

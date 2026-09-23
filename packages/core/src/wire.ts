@@ -1,4 +1,4 @@
-import type { CubeResponse } from "./questions";
+import { CUBE_ANSWER_TYPES, type CubeResponse } from "./questions";
 
 export const CLASSIFY_ERROR_CODES = {
   bad_request: 400,
@@ -29,6 +29,28 @@ export const CLIENT_TIMEOUT_MS = 10_000;
 
 export interface ClassifyErrorBody {
   readonly error: { readonly code: ClassifyErrorCode; readonly message: string };
+}
+
+function isAnswer(value: unknown, type: "choice" | "noul" | "score"): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  const answer = value as Record<string, unknown>;
+  if (answer.type !== type) return false;
+  if (type === "noul") return Number.isFinite(answer.noul);
+  if (type === "score") return Number.isFinite(answer.score);
+  const { probabilities } = answer;
+  return (
+    typeof answer.choice === "string" && typeof probabilities === "object" && probabilities !== null
+  );
+}
+
+/** True when every question has an answer of the right type, so toCubeResult cannot throw on it. */
+export function isClassifyResponse(value: unknown): value is ClassifyResponse {
+  if (typeof value !== "object" || value === null) return false;
+  const { model, answers } = value as { model?: unknown; answers?: unknown };
+  if (typeof model !== "string" || typeof answers !== "object" || answers === null) return false;
+  return Object.entries(CUBE_ANSWER_TYPES).every(([id, type]) =>
+    isAnswer((answers as Record<string, unknown>)[id], type),
+  );
 }
 
 export function isClassifyErrorCode(value: unknown): value is ClassifyErrorCode {

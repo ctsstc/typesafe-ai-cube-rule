@@ -369,6 +369,24 @@ describe("upstream error mapping", () => {
     expect(cache.put).not.toHaveBeenCalled();
   });
 
+  it("refuses to cache a 200 that is missing an answer", async () => {
+    const kv = fakeKv();
+    const cache = fakeCache();
+    const { answers } = mockCubeResponse("taco");
+    const { debate_heat: _missing, ...partial } = answers;
+    fetchMock.mockImplementation(async () =>
+      upstream(200, { model: "jev-1.13.0", answers: partial }),
+    );
+    const response = await call(classifyUrl("taco"), {
+      TYPESAFE_API_KEY: KEY,
+      CLASSIFICATIONS: kv as unknown as KVNamespace,
+    });
+    expect(response.status).toBe(502);
+    await Promise.all(pending);
+    expect(kv.put).not.toHaveBeenCalled();
+    expect(cache.put).not.toHaveBeenCalled();
+  });
+
   it("turns unexpected exceptions into a JSON 500", async () => {
     const handler = createClassifyHandler({
       take: () => {
