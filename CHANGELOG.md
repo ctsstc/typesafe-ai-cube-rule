@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-22
+
+First production release, live at https://cube-rule-oracle.pages.dev.
+
+### Added
+
+- Production Cloudflare Pages deployment with the Turnstile widget, the D1 spend-cap database, the KV ruling store and the TypeSafe, Turnstile and session secrets.
+- The custom domain `typesafe-ai-cube-rule.codyswartz.us`, a CNAME at DigitalOcean, serves the same site.
+
+### Changed
+
+- `cube-rule-oracle.pages.dev` is the official URL: builds bake it into the canonical and Open Graph tags, and only per-deploy preview hosts send `noindex`.
+
 ## [0.2.0] - 2026-09-22
 
 ### Added
