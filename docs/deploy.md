@@ -280,7 +280,7 @@ For each day it shows the Jev calls, the share of `DAILY_CALL_LIMIT` (read from 
 - Days with a recorded `usage.input_tokens` are priced exactly.
 - Days without one are estimated as calls times the average input tokens in `eval/results/v<QUESTION_SET_VERSION>/raw.jsonl` (9,642 for question set 6, and the fallback when that file is missing), and marked `~`.
 - The day migration 0004 lands mixes both: calls charged before the deploy that records tokens have none, so that day's exact figure runs low.
-- `usage.calls` counts reserved calls. A call that failed after the charge stays counted, and the SDK retries once, so one counted call can make two upstream attempts. Estimates therefore run slightly high, which is the safe direction.
+- `usage.calls` counts reserved calls. A call that failed after the charge stays counted, so estimates run slightly high. The SDK also retries once on a 5xx, so if TypeSafe bills failed attempts, one counted call can cost up to two.
 
 > [!IMPORTANT]
 > These are the app's own counters. The [TypeSafe console](https://console.typesafe.ai) is the source of truth for what the key is billed. Revoking the key there at `/keys` is the fastest stop and needs no deploy.
