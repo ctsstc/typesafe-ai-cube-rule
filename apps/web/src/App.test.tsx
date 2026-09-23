@@ -39,7 +39,7 @@ describe("App", () => {
       await screen.findByRole("heading", { name: "Hot dog: Officially a taco." }),
     ).toBeVisible();
     expect(fetchMock).toHaveBeenCalledWith(classifyUrl("hot dog"), expect.anything());
-    expect(input()).toHaveValue("hot dog");
+    await waitFor(() => expect(input()).toHaveValue("hot dog"));
     expect(document.title).toBe("Hot dog: officially a taco | Cube Rule Oracle");
   });
 
