@@ -374,6 +374,7 @@ describe("upstream error mapping", () => {
       take: () => {
         throw new Error("limiter bug");
       },
+      size: () => 0,
     });
     const request = new Request(`${ORIGIN}${classifyUrl("taco")}`);
     const response = await handler(request, { TYPESAFE_API_KEY: KEY }, waitUntil);

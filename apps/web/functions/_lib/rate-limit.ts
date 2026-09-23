@@ -1,6 +1,8 @@
 export interface RateLimiter {
   /** Returns 0 when the call is allowed, otherwise the seconds until the window resets. */
   take(key: string, now: number): number;
+  /** How many client keys (IP addresses) are held right now. */
+  size(): number;
 }
 
 // Per isolate and per location only: a speed bump for a single client looping on new items,
@@ -17,6 +19,11 @@ export function createRateLimiter({
   const windows = new Map<string, { start: number; count: number }>();
   return {
     take(key, now) {
+      // Windows are inserted as they start, so the expired ones are always at the head.
+      for (const [held, { start }] of windows) {
+        if (now - start < windowMs) break;
+        windows.delete(held);
+      }
       let entry = windows.get(key);
       if (!entry || now - entry.start >= windowMs) {
         windows.delete(key);
@@ -32,5 +39,6 @@ export function createRateLimiter({
       entry.count++;
       return 0;
     },
+    size: () => windows.size,
   };
 }

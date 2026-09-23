@@ -82,9 +82,10 @@ export function About() {
               you typed.
             </li>
             <li>
-              Your IP address is held in memory for a minute or so to slow down floods of requests,
-              and passed to Cloudflare when you take the check. Our code doesn't log it or what you
-              typed.
+              Your IP address is held in the server's memory to slow down floods of requests. It is
+              dropped at the first request after its one minute window ends, or when that server
+              instance stops. It is also passed to Cloudflare when you take the check. Our code
+              doesn't log it or what you typed.
             </li>
             <li>No accounts and no analytics scripts. The session cookie is the only cookie.</li>
             <li>Your theme choice stays in your browser's local storage.</li>
