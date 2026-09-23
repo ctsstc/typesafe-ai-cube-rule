@@ -64,10 +64,27 @@ export function About() {
               same answer instantly and Jev isn't asked twice. Who asked is not stored.
             </li>
             <li>
-              Your IP address is held in memory for a minute or so to slow down floods of requests.
-              Our code doesn't log it or what you typed.
+              Asking Jev about a new food costs real money, so before the first one, Turnstile by
+              Cloudflare checks that a person is asking. It usually runs unseen and now and then
+              asks for a click. It loads from Cloudflare only at that moment, never when the page
+              opens, and foods someone already asked about never trigger it.
             </li>
-            <li>No accounts, no cookies, and no analytics scripts.</li>
+            <li>
+              Passing the check sets one cookie, <code>cube_session</code>, for an hour. It holds a
+              random ID and its start and end times, signed so it can't be forged, and it is only
+              sent to this site's <code>/api</code>. It covers up to 60 new foods.
+            </li>
+            <li>
+              To keep the bill in check, the server counts Jev calls per day (a date and a number)
+              and per session (the random ID, until it expires). Neither count holds your IP
+              address, what you typed, or anything else about you.
+            </li>
+            <li>
+              Your IP address is held in memory for a minute or so to slow down floods of requests,
+              and passed to Cloudflare when you take the check. Our code doesn't log it or what you
+              typed.
+            </li>
+            <li>No accounts and no analytics scripts. The session cookie is the only cookie.</li>
             <li>Your theme choice stays in your browser's local storage.</li>
             <li>Cloudflare and TypeSafe handle each request under their own privacy policies.</li>
           </ul>
