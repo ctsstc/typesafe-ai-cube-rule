@@ -77,8 +77,9 @@ export function About() {
               and no gibberish. Pattern rules and Jev's own reading screen out names of private
               people, phone numbers, email addresses, links and anything flagged as abusive. No
               screen catches everything, so anything that slips through can be hidden by hand. The
-              lists started with foods from our own testing. The server notes when each food was
-              first asked, but the lists show only foods and rulings: never who asked, and no times.
+              lists started with foods from our own testing and foods people had already asked
+              about, some from before the lists existed. The server notes when each food was first
+              asked, but the lists show only foods and rulings: never who asked, and no times.
             </li>
             <li>
               A new food costs real money, so first Turnstile by Cloudflare checks that a person is

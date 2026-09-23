@@ -43,7 +43,9 @@ describe("About: what gets sent where", () => {
     expect(text).toContain(
       "A food can show up in the public lists on this page the first time anyone asks about it, if it passes the checks: nothing abusive, no private people, no contact details and no gibberish.",
     );
-    expect(text).toContain("The lists started with foods from our own testing.");
+    expect(text).toContain(
+      "The lists started with foods from our own testing and foods people had already asked about, some from before the lists existed.",
+    );
     expect(text).toContain("The server notes when each food was first asked");
     expect(text).toContain("never who asked, and no times");
     expect(text).toContain(
