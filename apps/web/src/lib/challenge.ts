@@ -34,6 +34,20 @@ declare global {
 
 export class ChallengeError extends Error {
   override name = "ChallengeError";
+  /** True when nobody failed the check: it was dismissed, ignored, or no longer needed. */
+  constructor(
+    message: string,
+    readonly skipped = false,
+  ) {
+    super(message);
+  }
+}
+
+export interface SolveOptions {
+  /** Aborting removes the card and rejects as skipped. */
+  readonly signal?: AbortSignal;
+  /** Called when Cloudflare asks for a click and the card shows. */
+  readonly onInteractive?: () => void;
 }
 
 let loading: Promise<TurnstileApi> | null = null;
@@ -80,6 +94,7 @@ interface Host {
 // widget when Cloudflare asks for a click.
 function mountHost(): Host {
   const root = document.createElement("section");
+  let previous: Element | null = null;
   root.className = "challenge";
   root.dataset.state = "checking";
   root.setAttribute("aria-labelledby", "challenge-title");
@@ -111,17 +126,28 @@ function mountHost(): Host {
     slot,
     cancel,
     interactive() {
+      previous = document.activeElement;
       root.dataset.state = "interactive";
       root.removeAttribute("aria-hidden");
       root.focus({ preventScroll: true });
     },
-    remove: () => root.remove(),
+    remove() {
+      const hadFocus = root.contains(document.activeElement);
+      root.remove();
+      if (hadFocus && previous instanceof HTMLElement && previous !== document.body) {
+        if (previous.isConnected) previous.focus({ preventScroll: true });
+      }
+    },
   };
 }
 
 /** Runs one interaction-only Turnstile widget and resolves with its single-use token. */
-export async function solveChallenge(sitekey: string): Promise<string> {
+export async function solveChallenge(
+  sitekey: string,
+  { signal, onInteractive }: SolveOptions = {},
+): Promise<string> {
   const turnstile = await loadTurnstile();
+  if (signal?.aborted) throw new ChallengeError("cancelled", true);
   const host = mountHost();
   let widgetId: string | null | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -132,14 +158,18 @@ export async function solveChallenge(sitekey: string): Promise<string> {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      signal?.removeEventListener("abort", abandon);
       if (widgetId) turnstile.remove(widgetId);
       host.remove();
       outcome();
     };
-    const fail = (reason: string) => finish(() => reject(new ChallengeError(reason)));
+    const fail = (reason: string, skipped = false) =>
+      finish(() => reject(new ChallengeError(reason, skipped)));
+    const abandon = () => fail("cancelled", true);
 
-    timer = setTimeout(() => fail("timed out"), SOLVE_TIMEOUT_MS);
-    host.cancel.addEventListener("click", () => fail("cancelled"));
+    timer = setTimeout(() => fail("timed out", true), SOLVE_TIMEOUT_MS);
+    host.cancel.addEventListener("click", abandon);
+    signal?.addEventListener("abort", abandon, { once: true });
     try {
       widgetId = turnstile.render(host.slot, {
         sitekey,
@@ -156,7 +186,10 @@ export async function solveChallenge(sitekey: string): Promise<string> {
           return true;
         },
         "unsupported-callback": () => fail("unsupported browser"),
-        "before-interactive-callback": () => host.interactive(),
+        "before-interactive-callback": () => {
+          host.interactive();
+          onInteractive?.();
+        },
       });
     } catch (error) {
       fail(error instanceof Error ? error.message : "render failed");

@@ -1,7 +1,8 @@
 import { type CubeResult, type FoodResult, type HonoraryResult, STARCHES } from "@cube/core";
-import { Fragment, useEffect, useId, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { type ActiveState, canEcho } from "../hooks/useOracle";
 import { useReducedMotion } from "../hooks/useReducedMotion";
+import { isChecking, subscribeChecking } from "../lib/api";
 import {
   bandOf,
   confidenceLine,
@@ -15,6 +16,7 @@ import {
   shareText,
   stampFor,
   verdictLine,
+  WAITING_FOR_CHECK,
 } from "../lib/copy";
 import { sentenceCase } from "../lib/format";
 import { useAnnouncer } from "./Announcer";
@@ -54,6 +56,7 @@ function useLoadingLine(active: boolean) {
   const [tick, setTick] = useState(0);
   useEffect(() => {
     if (!active) return;
+    setTick(0);
     const started = Date.now();
     const timer = setInterval(() => setTick(Date.now() - started), 250);
     return () => clearInterval(timer);
@@ -188,7 +191,11 @@ export function RulingCard({ state, level = 2, onRetry, onEdit, onCubeAnother }:
   const headingId = useId();
   const [revealed, setRevealed] = useState(false);
   const revealing = state.status === "done" && !revealed;
-  const { line, slow } = useLoadingLine(state.status === "loading");
+  const checkShown = useSyncExternalStore(subscribeChecking, isChecking, () => false);
+  const checking = checkShown && state.status === "loading";
+  // Jev is not asked until the check passes, so the slow line only times Jev.
+  const { line, slow } = useLoadingLine(state.status === "loading" && !checking);
+  const sawCheck = useRef(false);
   const echo = canEcho(state);
   const heading = headingText(state);
 
@@ -199,6 +206,18 @@ export function RulingCard({ state, level = 2, onRetry, onEdit, onCubeAnother }:
       announce(errorCopy(state.error.code, state.error.retryAfter).title);
     }
   }, [state, echo, announce]);
+
+  // Closing the check card can drop focus to <body>. Bring it back to the ruling it was for.
+  useEffect(() => {
+    if (checkShown) {
+      sawCheck.current = true;
+      return;
+    }
+    if (!sawCheck.current) return;
+    sawCheck.current = false;
+    const focused = document.activeElement;
+    if (focused === null || focused === document.body) headingRef.current?.focus();
+  }, [checkShown]);
 
   useEffect(() => {
     if (state.status !== "done") return;
@@ -264,9 +283,9 @@ export function RulingCard({ state, level = 2, onRetry, onEdit, onCubeAnother }:
         {state.status === "loading" && (
           <>
             <p className="ruling__status" aria-hidden="true">
-              {line}
+              {checking ? WAITING_FOR_CHECK : line}
             </p>
-            <p className="ruling__slow">{slow ? STILL_THINKING : " "}</p>
+            <p className="ruling__slow">{slow && !checking ? STILL_THINKING : " "}</p>
             <SkeletonOdds />
           </>
         )}

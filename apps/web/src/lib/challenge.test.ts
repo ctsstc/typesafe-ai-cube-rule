@@ -81,19 +81,54 @@ describe("solveChallenge", () => {
     expect(host()).toBeNull();
   });
 
-  it("lets the visitor back out", async () => {
+  it("lets the visitor back out, and says the check was skipped rather than failed", async () => {
     const pending = solveChallenge(SITE_KEY);
     await vi.waitFor(() => expect(turnstile.api.render).toHaveBeenCalled());
     turnstile.last().options["before-interactive-callback"]();
     host()?.querySelector("button")?.click();
-    await expect(pending).rejects.toThrow("cancelled");
+    await expect(pending).rejects.toMatchObject({ message: "cancelled", skipped: true });
     expect(turnstile.api.remove).toHaveBeenCalled();
+  });
+
+  it("reports a widget error as a real failure", async () => {
+    const pending = solveChallenge(SITE_KEY);
+    await vi.waitFor(() => expect(turnstile.api.render).toHaveBeenCalled());
+    turnstile.last().options["error-callback"]("600010");
+    await expect(pending).rejects.toMatchObject({ skipped: false });
+  });
+
+  it("removes the card when the ruling it was for goes away", async () => {
+    const wanted = new AbortController();
+    const pending = solveChallenge(SITE_KEY, { signal: wanted.signal });
+    await vi.waitFor(() => expect(turnstile.api.render).toHaveBeenCalled());
+    turnstile.last().options["before-interactive-callback"]();
+    expect(host()).not.toBeNull();
+    wanted.abort();
+    await expect(pending).rejects.toMatchObject({ skipped: true });
+    expect(host()).toBeNull();
+  });
+
+  it("tells its caller when the card shows, and gives focus back when it closes", async () => {
+    const button = document.createElement("button");
+    document.body.append(button);
+    button.focus();
+    const onInteractive = vi.fn();
+    const pending = solveChallenge(SITE_KEY, { onInteractive });
+    await vi.waitFor(() => expect(turnstile.api.render).toHaveBeenCalled());
+    turnstile.last().options["before-interactive-callback"]();
+    expect(onInteractive).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(host());
+
+    host()?.querySelector("button")?.click();
+    await expect(pending).rejects.toThrow("cancelled");
+    expect(document.activeElement).toBe(button);
+    button.remove();
   });
 
   it("gives up after two minutes", async () => {
     vi.useFakeTimers();
     const pending = solveChallenge(SITE_KEY);
-    const settled = expect(pending).rejects.toThrow("timed out");
+    const settled = expect(pending).rejects.toMatchObject({ message: "timed out", skipped: true });
     await vi.advanceTimersByTimeAsync(120_000);
     await settled;
   });

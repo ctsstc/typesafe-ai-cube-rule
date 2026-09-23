@@ -4,6 +4,7 @@ import {
   cachedClassified,
   classify,
   clearClassifyCache,
+  isChecking,
   parseRetryAfter,
   prefetch,
   RulingError,
@@ -148,7 +149,10 @@ describe("classify behind the human check", () => {
     const result = await classify("taco");
     expect(result.response.model).toBe("mock");
     expect(result.cache).toBe("MISS");
-    expect(solve).toHaveBeenCalledExactlyOnceWith(SITE_KEY);
+    expect(solve).toHaveBeenCalledExactlyOnceWith(
+      SITE_KEY,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
     expect(urls()).toEqual([
       `GET ${classifyUrl("taco")}`,
       `POST ${SESSION_URL}`,
@@ -222,6 +226,99 @@ describe("classify behind the human check", () => {
     await both;
     expect(solve).toHaveBeenCalledTimes(1);
     expect(urls().filter((u) => u.startsWith("POST"))).toHaveLength(1);
+  });
+
+  const skipped = () => Object.assign(new Error("cancelled"), { skipped: true });
+  const solveUntilAborted = (release: { current: () => void }) =>
+    solve.mockImplementationOnce(
+      (_key, options) =>
+        new Promise((resolve, reject) => {
+          release.current = () => resolve("XXXX.DUMMY.TOKEN.XXXX");
+          options?.signal?.addEventListener("abort", () => reject(skipped()));
+        }),
+    );
+
+  it("reports a dismissed check as skipped, not failed", async () => {
+    fetchMock.mockResolvedValueOnce(challenge());
+    solve.mockRejectedValueOnce(skipped());
+    expect((await failure("taco")).code).toBe("challenge_skipped");
+    expect(urls()).toEqual([`GET ${classifyUrl("taco")}`]);
+  });
+
+  it("drops the check once the only ruling waiting on it is gone", async () => {
+    solveUntilAborted({ current: () => {} });
+    fetchMock.mockResolvedValueOnce(challenge());
+    const wanted = new AbortController();
+    const pending = classify("taco", wanted.signal).catch((e: unknown) => e);
+    await vi.waitFor(() => expect(solve).toHaveBeenCalled());
+    wanted.abort();
+    expect(await pending).toMatchObject({ code: "challenge_skipped" });
+    expect(urls()).toEqual([`GET ${classifyUrl("taco")}`]);
+  });
+
+  it("keeps the check for a ruling that still needs it, and pays only for that one", async () => {
+    const release = { current: () => {} };
+    solveUntilAborted(release);
+    fetchMock.mockImplementation(async (url) => {
+      if (url === SESSION_URL) return sessionOk();
+      const sessions = fetchMock.mock.calls.filter(([u]) => u === SESSION_URL).length;
+      if (sessions === 0) return challenge();
+      return ruling(url.includes("taco") ? "taco" : "pizza");
+    });
+
+    const first = new AbortController();
+    const taco = classify("taco", first.signal).catch((e: unknown) => e);
+    await vi.waitFor(() => expect(solve).toHaveBeenCalledTimes(1));
+    const pizza = classify("pizza", new AbortController().signal);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    first.abort();
+    release.current();
+
+    expect((await pizza).response.model).toBe("mock");
+    expect(await taco).toMatchObject({ code: "challenge_skipped" });
+    expect(urls()).toEqual([
+      `GET ${classifyUrl("taco")}`,
+      `GET ${classifyUrl("pizza")}`,
+      `POST ${SESSION_URL}`,
+      `GET ${classifyUrl("pizza")}`,
+    ]);
+  });
+
+  it("keeps a check that a second caller for the same food still wants", async () => {
+    const release = { current: () => {} };
+    solveUntilAborted(release);
+    fetchMock
+      .mockResolvedValueOnce(challenge())
+      .mockResolvedValueOnce(sessionOk())
+      .mockResolvedValueOnce(ruling("taco"));
+    const first = new AbortController();
+    const shared = classify("taco", first.signal);
+    await vi.waitFor(() => expect(solve).toHaveBeenCalledTimes(1));
+    const again = classify("taco", new AbortController().signal);
+    first.abort();
+    release.current();
+    expect(await again).toBe(await shared);
+  });
+
+  it("says when the check card is on screen", async () => {
+    const release = { current: () => {} };
+    solve.mockImplementationOnce(
+      (_key, options) =>
+        new Promise((resolve) => {
+          options?.onInteractive?.();
+          release.current = () => resolve("XXXX.DUMMY.TOKEN.XXXX");
+        }),
+    );
+    fetchMock
+      .mockResolvedValueOnce(challenge())
+      .mockResolvedValueOnce(sessionOk())
+      .mockResolvedValueOnce(ruling("taco"));
+    const pending = classify("taco");
+    await vi.waitFor(() => expect(isChecking()).toBe(true));
+    release.current();
+    await pending;
+    expect(isChecking()).toBe(false);
   });
 
   it("never starts a human check for a prefetch", async () => {

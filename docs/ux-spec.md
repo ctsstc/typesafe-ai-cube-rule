@@ -290,7 +290,7 @@ Components: `App`, `Header`, `ThemeToggle`, `MockBanner`, `Footer`, `HeroArt`, `
 
 - **Subhead:** "Name any food. Jev finds the structural starch, and the cube rules."
 - **Loading lines** (every 1.1s, `aria-hidden`; the live region gets "Ruling on hot dog."): Locating structural starch. / Checking both ends. / Measuring crust coverage. / Consulting the cube.
-- **Still thinking** (at 4s): "Still thinking. Jev is usually faster than this."
+- **Still thinking** (at 4s): "Still thinking. Jev is usually faster than this." It times Jev only: while the check card is on screen the status line reads "Waiting for the quick check." and the 4s clock restarts once the check is done.
 - **Confidence lines:**
 
 | Band | Variants |

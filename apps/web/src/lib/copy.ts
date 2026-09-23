@@ -262,6 +262,8 @@ export const STILL_THINKING = "Still thinking. Jev is usually faster than this."
 
 export const NO_FOOD_IN_LINK = "That link has no food in it.";
 
+export const WAITING_FOR_CHECK = "Waiting for the quick check.";
+
 export interface ErrorCopy {
   readonly title: string;
   readonly body: string;
@@ -330,6 +332,12 @@ export function errorCopy(code: RulingErrorCode, retryAfter: number | null): Err
         title: "That doesn't look like a food name.",
         body: "Letters, numbers, spaces, and apostrophes work best.",
         action: "edit",
+      };
+    case "challenge_skipped":
+      return {
+        title: "Skipped the quick check.",
+        body: "Jev wasn't asked, so nothing was spent. Try again whenever you like.",
+        action: "retry",
       };
     case "challenge_required":
       return {

@@ -10,7 +10,7 @@ import {
 
 export const SESSION_URL = "/api/session";
 
-export type RulingErrorCode = ClassifyErrorCode | "offline" | "network";
+export type RulingErrorCode = ClassifyErrorCode | "offline" | "network" | "challenge_skipped";
 
 export class RulingError extends Error {
   constructor(
@@ -102,7 +102,30 @@ async function load(item: string): Promise<Classified> {
   return result;
 }
 
-async function startSession(): Promise<void> {
+let checking = false;
+const checkingListeners = new Set<() => void>();
+
+function setChecking(next: boolean): void {
+  if (checking === next) return;
+  checking = next;
+  for (const listener of checkingListeners) listener();
+}
+
+/** Whether the check card is on screen, waiting for the visitor. For useSyncExternalStore. */
+export function isChecking(): boolean {
+  return checking;
+}
+
+export function subscribeChecking(listener: () => void): () => void {
+  checkingListeners.add(listener);
+  return () => checkingListeners.delete(listener);
+}
+
+function isSkipped(error: unknown): boolean {
+  return error instanceof Error && "skipped" in error && error.skipped === true;
+}
+
+async function startSession(signal: AbortSignal): Promise<void> {
   const sitekey: unknown = import.meta.env.VITE_TURNSTILE_SITE_KEY;
   if (typeof sitekey !== "string" || !sitekey) throw new RulingError("challenge_required");
   let solveChallenge: typeof import("./challenge").solveChallenge;
@@ -114,10 +137,14 @@ async function startSession(): Promise<void> {
   }
   let token: string;
   try {
-    token = await solveChallenge(sitekey);
-  } catch {
+    token = await solveChallenge(sitekey, { signal, onInteractive: () => setChecking(true) });
+  } catch (error) {
+    if (isSkipped(error)) throw new RulingError("challenge_skipped");
     throw new RulingError(navigator.onLine === false ? "offline" : "challenge_required");
+  } finally {
+    setChecking(false);
   }
+  if (signal.aborted) throw new RulingError("challenge_skipped");
   const res = await send(SESSION_URL, {
     method: "POST",
     headers: { accept: "application/json", "content-type": "application/json" },
@@ -126,14 +153,36 @@ async function startSession(): Promise<void> {
   if (!res.ok) throw failure(res, await res.json().catch(() => null));
 }
 
-let session: Promise<void> | null = null;
+// Rulings that miss together share one challenge. It is abandoned once no caller waits on a ruling.
+let session: { readonly done: Promise<void>; readonly controller: AbortController } | null = null;
+const callers = new Map<string, number>();
 
-// Rulings that miss together share one challenge.
 function ensureSession(): Promise<void> {
-  session ??= startSession().finally(() => {
-    session = null;
-  });
-  return session;
+  if (!session) {
+    const controller = new AbortController();
+    const done = startSession(controller.signal).finally(() => {
+      session = null;
+    });
+    session = { done, controller };
+  }
+  return session.done;
+}
+
+function hold(item: string, pending: Promise<unknown>, signal?: AbortSignal): void {
+  if (signal?.aborted) return;
+  callers.set(item, (callers.get(item) ?? 0) + 1);
+  let held = true;
+  const release = () => {
+    if (!held) return;
+    held = false;
+    signal?.removeEventListener("abort", release);
+    const left = (callers.get(item) ?? 1) - 1;
+    if (left > 0) callers.set(item, left);
+    else callers.delete(item);
+    if (callers.size === 0) session?.controller.abort();
+  };
+  signal?.addEventListener("abort", release, { once: true });
+  pending.then(release, release);
 }
 
 async function requestWithSession(item: string): Promise<Classified> {
@@ -143,6 +192,8 @@ async function requestWithSession(item: string): Promise<Classified> {
     if (!(error instanceof RulingError) || error.code !== "challenge_required") throw error;
   }
   await ensureSession();
+  // Every ruling that wanted this food went away while the check ran, so do not pay for it.
+  if (!callers.has(item)) throw new RulingError("challenge_skipped");
   // One retry only: a second challenge_required surfaces as an error instead of looping.
   return load(item);
 }
@@ -151,18 +202,22 @@ const inflight = new Map<string, Promise<Classified>>();
 const settled = new Map<string, Classified>();
 const prefetching = new Map<string, Promise<Classified | null>>();
 
-export function classify(item: string): Promise<Classified> {
-  const cached = inflight.get(item);
-  if (cached) return cached;
-  const early = prefetching.get(item);
-  const pending = early
-    ? early.then((hit) => hit ?? requestWithSession(item))
-    : requestWithSession(item);
-  inflight.set(item, pending);
-  pending.then(
-    (value) => settled.set(item, value),
-    () => inflight.delete(item),
-  );
+/** Rules on `item`. Aborting `signal` says this caller no longer wants the answer. */
+export function classify(item: string, signal?: AbortSignal): Promise<Classified> {
+  let pending = inflight.get(item);
+  if (!pending) {
+    const early = prefetching.get(item);
+    const request = early
+      ? early.then((hit) => hit ?? requestWithSession(item))
+      : requestWithSession(item);
+    inflight.set(item, request);
+    request.then(
+      (value) => settled.set(item, value),
+      () => inflight.delete(item),
+    );
+    pending = request;
+  }
+  hold(item, pending, signal);
   return pending;
 }
 
@@ -189,4 +244,7 @@ export function clearClassifyCache(): void {
   inflight.clear();
   settled.clear();
   prefetching.clear();
+  callers.clear();
+  session?.controller.abort();
+  session = null;
 }

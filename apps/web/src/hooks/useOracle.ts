@@ -45,39 +45,56 @@ export function useOracle() {
   const [state, setState] = useState<OracleState>({ status: "idle" });
   const nextId = useRef(0);
   const currentId = useRef(0);
+  const wanted = useRef<AbortController | null>(null);
 
-  const rule = useCallback((item: string, origin: Origin) => {
-    const id = ++nextId.current;
-    currentId.current = id;
-    const base = { id, item, origin };
-    const nonsense = precheckItem(item);
-    if (nonsense) {
-      setState({ ...base, status: "done", result: nonsense, meta: null });
-      return;
-    }
-    const cached = cachedClassified(item);
-    if (cached) {
-      setState(settle(base, cached));
-      return;
-    }
-    setState({ ...base, status: "loading" });
-    classify(item).then(
-      (meta) => {
-        if (currentId.current !== id) return;
-        setState(settle(base, meta));
-      },
-      (error: unknown) => {
-        if (currentId.current !== id) return;
-        const failure = error instanceof RulingError ? error : new RulingError("internal");
-        setState({ ...base, status: "error", error: failure });
-      },
-    );
+  // Tells api.ts the previous ruling is no longer wanted, so a check it started can be dropped.
+  const drop = useCallback((next: AbortController | null) => {
+    const previous = wanted.current;
+    wanted.current = next;
+    previous?.abort();
   }, []);
+
+  const rule = useCallback(
+    (item: string, origin: Origin) => {
+      const id = ++nextId.current;
+      currentId.current = id;
+      const base = { id, item, origin };
+      const nonsense = precheckItem(item);
+      if (nonsense) {
+        drop(null);
+        setState({ ...base, status: "done", result: nonsense, meta: null });
+        return;
+      }
+      const cached = cachedClassified(item);
+      if (cached) {
+        drop(null);
+        setState(settle(base, cached));
+        return;
+      }
+      setState({ ...base, status: "loading" });
+      const controller = new AbortController();
+      const pending = classify(item, controller.signal);
+      drop(controller);
+      pending.then(
+        (meta) => {
+          if (currentId.current !== id) return;
+          setState(settle(base, meta));
+        },
+        (error: unknown) => {
+          if (currentId.current !== id) return;
+          const failure = error instanceof RulingError ? error : new RulingError("internal");
+          setState({ ...base, status: "error", error: failure });
+        },
+      );
+    },
+    [drop],
+  );
 
   const reset = useCallback(() => {
     currentId.current = ++nextId.current;
+    drop(null);
     setState({ status: "idle" });
-  }, []);
+  }, [drop]);
 
   return { state, rule, reset };
 }
