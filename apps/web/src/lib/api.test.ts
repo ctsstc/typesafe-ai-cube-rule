@@ -1,4 +1,10 @@
-import { CLIENT_TIMEOUT_MS, classifyUrl, mockCubeResponse, PREFETCH_HEADER } from "@cube/core";
+import {
+  CLIENT_TIMEOUT_MS,
+  classifyUrl,
+  mockCubeResponse,
+  PREFETCH_HEADER,
+  SESSION_PATH,
+} from "@cube/core";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import {
   cachedClassified,
@@ -8,7 +14,6 @@ import {
   parseRetryAfter,
   prefetch,
   RulingError,
-  SESSION_URL,
 } from "./api";
 import { solveChallenge } from "./challenge";
 
@@ -155,7 +160,7 @@ describe("classify behind the human check", () => {
     );
     expect(urls()).toEqual([
       `GET ${classifyUrl("taco")}`,
-      `POST ${SESSION_URL}`,
+      `POST ${SESSION_PATH}`,
       `GET ${classifyUrl("taco")}`,
     ]);
     const init = fetchMock.mock.calls[1]?.[1];
@@ -213,8 +218,8 @@ describe("classify behind the human check", () => {
         }),
     );
     fetchMock.mockImplementation(async (url) => {
-      if (url === SESSION_URL) return sessionOk();
-      const sessions = fetchMock.mock.calls.filter(([u]) => u === SESSION_URL).length;
+      if (url === SESSION_PATH) return sessionOk();
+      const sessions = fetchMock.mock.calls.filter(([u]) => u === SESSION_PATH).length;
       if (sessions === 0) return challenge();
       return ruling(url.includes("taco") ? "taco" : "pizza");
     });
@@ -260,8 +265,8 @@ describe("classify behind the human check", () => {
     const release = { current: () => {} };
     solveUntilAborted(release);
     fetchMock.mockImplementation(async (url) => {
-      if (url === SESSION_URL) return sessionOk();
-      const sessions = fetchMock.mock.calls.filter(([u]) => u === SESSION_URL).length;
+      if (url === SESSION_PATH) return sessionOk();
+      const sessions = fetchMock.mock.calls.filter(([u]) => u === SESSION_PATH).length;
       if (sessions === 0) return challenge();
       return ruling(url.includes("taco") ? "taco" : "pizza");
     });
@@ -280,7 +285,7 @@ describe("classify behind the human check", () => {
     expect(urls()).toEqual([
       `GET ${classifyUrl("taco")}`,
       `GET ${classifyUrl("pizza")}`,
-      `POST ${SESSION_URL}`,
+      `POST ${SESSION_PATH}`,
       `GET ${classifyUrl("pizza")}`,
     ]);
   });
@@ -362,7 +367,7 @@ describe("classify behind the human check", () => {
     expect(urls()).toEqual([
       `GET ${classifyUrl("taco")}`,
       `GET ${classifyUrl("taco")}`,
-      `POST ${SESSION_URL}`,
+      `POST ${SESSION_PATH}`,
       `GET ${classifyUrl("taco")}`,
     ]);
     const headers = fetchMock.mock.calls.map(([, init]) =>

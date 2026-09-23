@@ -1,9 +1,9 @@
+import { TURNSTILE_ACTION } from "@cube/core";
 import "./challenge.css";
 
 // Must be loaded from this exact URL. Cloudflare warns that proxied or cached copies break.
 export const TURNSTILE_SCRIPT =
   "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-export const TURNSTILE_ACTION = "session";
 const SOLVE_TIMEOUT_MS = 120_000;
 
 interface RenderOptions {

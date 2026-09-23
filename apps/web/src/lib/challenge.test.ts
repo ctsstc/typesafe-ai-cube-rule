@@ -1,5 +1,6 @@
+import { TURNSTILE_ACTION } from "@cube/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { solveChallenge, TURNSTILE_ACTION, TURNSTILE_SCRIPT, type TurnstileApi } from "./challenge";
+import { solveChallenge, TURNSTILE_SCRIPT, type TurnstileApi } from "./challenge";
 
 type Options = Parameters<TurnstileApi["render"]>[1];
 

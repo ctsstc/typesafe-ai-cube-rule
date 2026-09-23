@@ -2,6 +2,9 @@ import { QUESTION_SET_VERSION } from "./questions";
 import type { NonsenseResult } from "./result";
 
 export const CLASSIFY_PATH = "/api/classify";
+export const SESSION_PATH = "/api/session";
+// The widget and siteverify must agree on it, or every real token is rejected.
+export const TURNSTILE_ACTION = "session";
 export const MAX_ITEM_LENGTH = 60;
 
 export function normalizeItem(raw: string): string {

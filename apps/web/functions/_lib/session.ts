@@ -1,3 +1,4 @@
+import { TURNSTILE_ACTION } from "@cube/core";
 import { clientIp, type Env, type WaitUntil } from "./env";
 import { errorResponse, noContent } from "./http";
 import { createRateLimiter, type RateLimiter } from "./rate-limit";
@@ -5,7 +6,6 @@ import { forgetExpired } from "./usage";
 
 export const SESSION_COOKIE = "cube_session";
 export const SESSION_TTL_S = 3600;
-export const TURNSTILE_ACTION = "session";
 export const SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 const MIN_SESSION_SECRET_LENGTH = 32;

@@ -6,9 +6,8 @@ import {
   isClassifyErrorBody,
   isClassifyResponse,
   PREFETCH_HEADER,
+  SESSION_PATH,
 } from "@cube/core";
-
-export const SESSION_URL = "/api/session";
 
 export type RulingErrorCode = ClassifyErrorCode | "offline" | "network" | "challenge_skipped";
 
@@ -145,7 +144,7 @@ async function startSession(signal: AbortSignal): Promise<void> {
     setChecking(false);
   }
   if (signal.aborted) throw new RulingError("challenge_skipped");
-  const res = await send(SESSION_URL, {
+  const res = await send(SESSION_PATH, {
     method: "POST",
     headers: { accept: "application/json", "content-type": "application/json" },
     body: JSON.stringify({ token }),
