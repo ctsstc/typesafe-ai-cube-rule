@@ -96,21 +96,28 @@ async function classify(
   const fillCache = (body: string) =>
     cache?.put(cacheKey, jsonResponse(body, { cacheControl: CACHE_IMMUTABLE, cache: "HIT" }));
 
-  const prefetch = request.headers.get(PREFETCH_HEADER) === "1";
+  // Prefetch hits count too: the browser then holds the ruling for a year, like any other ask.
   const cached = await settle(cache?.match(cacheKey));
   if (cached) {
-    if (!prefetch) background(waitUntil, "ask count", countAsk(env, item));
+    if (env.DB) {
+      const body = cached.clone().text();
+      background(
+        waitUntil,
+        "ask count",
+        body.then((text) => countAsk(env, item, text, now)),
+      );
+    }
     return cached;
   }
 
   const stored = await settle(env.CLASSIFICATIONS?.get(kvKey));
   if (stored) {
     background(waitUntil, "cache put", fillCache(stored));
-    if (!prefetch) background(waitUntil, "ask count", countAsk(env, item));
+    background(waitUntil, "ask count", countAsk(env, item, stored, now));
     return jsonResponse(stored, { cacheControl: CACHE_IMMUTABLE, cache: "KV" });
   }
 
-  if (prefetch) return noContent({});
+  if (request.headers.get(PREFETCH_HEADER) === "1") return noContent({});
 
   const client = await clientKey(request, env, utcDay(now));
   const session = await requireSession(request, env, now);

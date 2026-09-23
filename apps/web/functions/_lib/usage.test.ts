@@ -26,8 +26,11 @@ function wranglerVars(): Record<string, string> {
 }
 
 describe("daily call limit", () => {
-  it("ships a default that every stored ruling can fit under the KV write quota", () => {
-    expect(wranglerVars().DAILY_CALL_LIMIT).toBe(String(DEFAULT_DAILY_CALL_LIMIT));
+  // "0" is the documented kill switch, so this must pass with it set too.
+  it("ships a limit that every stored ruling can fit under the KV write quota", () => {
+    const shipped = Number(wranglerVars().DAILY_CALL_LIMIT);
+    expect(Number.isSafeInteger(shipped) && shipped >= 0).toBe(true);
+    expect(shipped).toBeLessThanOrEqual(FREE_KV_WRITES_PER_DAY);
     expect(DEFAULT_DAILY_CALL_LIMIT).toBeLessThanOrEqual(FREE_KV_WRITES_PER_DAY);
   });
 

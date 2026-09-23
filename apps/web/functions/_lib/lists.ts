@@ -4,9 +4,11 @@ import {
   isListEntry,
   isListsQuery,
   LIST_NAMES,
+  LISTS_ACTIVITY_CAP,
   type ListEntry,
   type ListName,
   type ListsResponse,
+  listingBar,
   listsUrl,
   QUESTION_SET_VERSION,
   THRESHOLDS,
@@ -19,11 +21,12 @@ export const LISTS_TTL_S = 120;
 export const LIST_LENGTH = 8;
 export const DEFAULT_ACTIVITY_THRESHOLD = 5;
 // Bounds the rows each refresh reads in a busy hour (docs/deploy.md#d1-budget).
-export const ACTIVITY_CAP = 50;
+export const ACTIVITY_CAP = LISTS_ACTIVITY_CAP;
 const HOUR_S = 3600;
 const CACHE_LISTS = `public, max-age=${LISTS_TTL_S}`;
 
-const COLUMNS = "item, kind, category, wet, confidence, runner_up, official, debate_level";
+const COLUMNS = `item, kind, category, wet, confidence, runner_up, official, debate_level,
+  person_none, person_public, person_private, abusive`;
 // Must match migration 0006's partial index predicates word for word, literal included.
 const PUBLIC = `listed = 1 AND asks >= ${MIN_ASKS}`;
 const NOT_BLOCKED = "NOT EXISTS (SELECT 1 FROM blocklist WHERE blocklist.item = rulings.item)";
@@ -48,17 +51,22 @@ export const LIST_QUERIES: Readonly<Record<ListName, string>> = {
   ),
 };
 
-export const ACTIVITY_QUERY = `SELECT first_seen FROM rulings INDEXED BY rulings_first_seen
-WHERE question_set = ?1 AND first_seen >= ?2 LIMIT ?3`;
+// Counts only rulings that passed the listing gates, so declined text never adds to "new foods".
+export const ACTIVITY_QUERY = `SELECT first_seen FROM rulings INDEXED BY rulings_activity
+WHERE question_set = ?1 AND listed = 1 AND first_seen >= ?2 LIMIT ?3`;
+
+export const SWITCH_QUERY = "SELECT value FROM switches WHERE name = 'lists'";
 
 export function listsEnabled(env: Env): boolean {
   const value = env.PUBLIC_LISTS?.trim().toLowerCase();
   return !value || value === "on";
 }
 
+// The count never exceeds ACTIVITY_CAP, so a higher threshold would hide the line for good.
 export function activityThreshold(env: Env): number {
   const threshold = Number(env.ACTIVITY_THRESHOLD?.trim() || Number.NaN);
-  return Number.isSafeInteger(threshold) && threshold >= 1 ? threshold : DEFAULT_ACTIVITY_THRESHOLD;
+  if (!Number.isSafeInteger(threshold) || threshold < 1) return DEFAULT_ACTIVITY_THRESHOLD;
+  return Math.min(threshold, ACTIVITY_CAP);
 }
 
 function isStaleListsQuery(rawSearch: string): boolean {
@@ -75,6 +83,10 @@ interface RulingRow {
   runner_up: unknown;
   official: unknown;
   debate_level: unknown;
+  person_none: number | null;
+  person_public: number | null;
+  person_private: number | null;
+  abusive: number | null;
 }
 
 function toEntry(row: RulingRow): ListEntry | null {
@@ -88,17 +100,31 @@ function toEntry(row: RulingRow): ListEntry | null {
     official: row.official ?? null,
     debateLevel: row.debate_level,
   };
-  // Rechecked so a stricter rule in core also hides rows recorded before it.
-  return isListEntry(entry) && !hasPersonalInfo(entry.item) ? entry : null;
+  if (!isListEntry(entry) || hasPersonalInfo(entry.item)) return null;
+  const scores = {
+    personNone: row.person_none,
+    personPublic: row.person_public,
+    personPrivate: row.person_private,
+    abusive: row.abusive,
+  };
+  return listingBar(entry.item, scores) === null ? entry : null;
 }
 
 export async function readLists(db: D1Database, env: Env, now: number): Promise<ListsResponse> {
   const since = Math.floor(now / 1000) - HOUR_S;
   const results = await db.batch([
+    db.prepare(SWITCH_QUERY),
     ...LIST_NAMES.map((name) => db.prepare(LIST_QUERIES[name]).bind(QUESTION_SET_VERSION)),
     db.prepare(ACTIVITY_QUERY).bind(QUESTION_SET_VERSION, since, ACTIVITY_CAP),
   ]);
-  const rows = (index: number) => (results[index]?.results ?? []) as RulingRow[];
+  const [switched] = (results[0]?.results ?? []) as { value?: unknown }[];
+  if (
+    String(switched?.value ?? "")
+      .trim()
+      .toLowerCase() === "off"
+  )
+    return disabledListsResponse();
+  const rows = (index: number) => (results[index + 1]?.results ?? []) as RulingRow[];
   const lists = Object.fromEntries(
     LIST_NAMES.map((name, index) => [
       name,

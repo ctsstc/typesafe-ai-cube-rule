@@ -107,6 +107,9 @@ export interface ListsResponse {
   readonly lists: Readonly<Record<ListName, readonly ListEntry[]>>;
 }
 
+/** newFoodsLastHour stops counting here, so a count at the cap means at least that many. */
+export const LISTS_ACTIVITY_CAP = 50;
+
 export function disabledListsResponse(): ListsResponse {
   return {
     enabled: false,

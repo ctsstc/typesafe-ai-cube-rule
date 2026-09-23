@@ -5,9 +5,13 @@ import {
   DEFAULT_LIMIT,
   formatBlocklist,
   formatChange,
+  formatPrune,
   formatRulings,
+  formatSwitch,
   MAX_LIMIT,
+  PRUNE_BATCH,
   parseOptions,
+  pruneStatements,
   report,
   statements,
   status,
@@ -35,7 +39,10 @@ function database() {
     db.exec(readFileSync(`${migrations}${file}`, "utf8"));
   }
   const insert = db.prepare(
-    `INSERT INTO rulings VALUES ('7', ?, ?, ?, 0, ?, NULL, ?, 1, ?, ?, ?, ?)`,
+    `INSERT INTO rulings (question_set, item, kind, category, wet, confidence, runner_up, official,
+      debate_level, listed, reason, asks, first_seen, person_none, person_public, person_private,
+      abusive)
+    VALUES ('7', ?, ?, ?, 0, ?, NULL, ?, 1, ?, ?, ?, ?, 0.99, 0, 0.01, 0.01)`,
   );
   insert.run("hot dog", "food", "sandwich", 0.61, "taco", 1, "listed", 2, NOW / 1000 - 60);
   insert.run("o'brien's pie", "food", "quiche", 0.9, null, 1, "listed", 1, NOW / 1000 - 30);
@@ -95,6 +102,10 @@ describe("parseOptions", () => {
     [["--limit", String(MAX_LIMIT + 1)], /1 to 500/],
     [["--limit", "2.5"], /1 to 500/],
     [["--delete"], /Unknown option/],
+    [["--lists", "maybe"], /on or off/],
+    [["--lists", "off", "--block", "x"], /Pick one/],
+    [["--yes"], /only applies to --prune/],
+    [["--prune", "--flagged"], /only apply to the listing/],
     [["pizza"], /Unexpected argument/],
   ])("refuses %j", (argv, message) => {
     expect(() => parseOptions(argv)).toThrow(UsageError);
@@ -103,16 +114,64 @@ describe("parseOptions", () => {
 });
 
 describe("statements", () => {
-  it("only writes to the blocklist, and only for --block and --unblock", () => {
-    for (const argv of [[], ["--flagged"], ["--blocklist"]]) {
+  it("writes only for --block, --unblock, --lists and --prune --yes", () => {
+    for (const argv of [[], ["--flagged"], ["--blocklist"], ["--prune"]]) {
       for (const sql of statements(parseOptions(argv), { now: NOW })) {
         expect(sql).toMatch(/^SELECT /);
       }
     }
     const [block] = statements(parseOptions(["--block", "x"]), { now: NOW });
     const [unblock] = statements(parseOptions(["--unblock", "x"]), { now: NOW });
+    const [lists] = statements(parseOptions(["--lists", "off"]), { now: NOW });
     expect(block).toMatch(/^INSERT INTO blocklist /);
     expect(unblock).toMatch(/^DELETE FROM blocklist /);
+    expect(lists).toMatch(/^INSERT INTO switches /);
+    for (const sql of statements(parseOptions(["--prune", "--yes"]), { now: NOW })) {
+      expect(sql).toMatch(/^SELECT /);
+    }
+  });
+
+  it("switches every list off and on", () => {
+    const db = database();
+    expect(run(db, parseOptions(["--lists", "OFF"]))).toEqual([[{ value: "off" }]]);
+    expect(run(db, parseOptions([]))[1]).toEqual([{ value: "off" }]);
+    expect(run(db, parseOptions(["--lists", "on"]))).toEqual([[{ value: "on" }]]);
+    expect(db.prepare("SELECT * FROM switches").all()).toEqual([
+      { name: "lists", value: "on", changed_at: NOW / 1000 },
+    ]);
+  });
+
+  it("counts other question sets, then deletes them in bounded batches", () => {
+    const db = database();
+    const insert = db.prepare(
+      "INSERT INTO rulings (question_set, item, kind, listed, reason, asks, first_seen) VALUES ('10', ?, 'food', 1, 'listed', 2, 0)",
+    );
+    for (const item of ["a", "b", "c"]) insert.run(item);
+    const [counts] = run(db, parseOptions(["--prune", "--yes"]));
+    expect(counts).toEqual(
+      expect.arrayContaining([
+        { question_set: "6", rulings: 1 },
+        { question_set: "10", rulings: 3 },
+      ]),
+    );
+    expect(counts).toHaveLength(2);
+    const deletes = pruneStatements(counts, 3);
+    for (const sql of [...statements(parseOptions(["--prune"]), { now: NOW }), ...deletes]) {
+      const plan = db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all();
+      expect(plan.map((row) => row.detail).filter((step) => /^SCAN /.test(step))).toEqual([]);
+      db.prepare(sql).all();
+    }
+    expect(db.prepare("SELECT COUNT(*) AS n FROM rulings WHERE question_set = '7'").get()).toEqual({
+      n: 4,
+    });
+    expect(db.prepare("SELECT COUNT(*) AS n FROM rulings WHERE question_set <> '7'").get()).toEqual(
+      {
+        n: 1,
+      },
+    );
+    expect(pruneStatements([{ question_set: "6", rulings: 5000 }])[0]).toContain(
+      `LIMIT ${PRUNE_BATCH}`,
+    );
   });
 
   it("reads the newest listed rulings of the current question set", () => {
@@ -138,7 +197,18 @@ describe("statements", () => {
     const block = parseOptions(["--block", "O'Brien's pie"]);
     expect(run(db, block)).toEqual([
       [{ item: "o'brien's pie" }],
-      [{ listed: 1, reason: "listed", asks: 1 }],
+      [
+        {
+          item: "o'brien's pie",
+          listed: 1,
+          reason: "listed",
+          asks: 1,
+          person_none: 0.99,
+          person_public: 0,
+          person_private: 0.01,
+          abusive: 0.01,
+        },
+      ],
     ]);
     expect(run(db, block)[0]).toEqual([]);
     expect(db.prepare("SELECT * FROM blocklist").all()).toEqual([
@@ -164,13 +234,26 @@ describe("statements", () => {
 });
 
 describe("status", () => {
+  const scores = { person_none: 0.99, person_public: 0, person_private: 0.01, abusive: 0.01 };
   it.each([
     [{ blocked: 1, listed: 1, asks: 2 }, "blocked"],
     [{ blocked: 0, listed: 0, reason: "declined", asks: 1 }, "hidden: declined"],
-    [{ blocked: 0, listed: 1, asks: 1 }, "waiting, 1 of 2 asks"],
-    [{ blocked: 0, listed: 1, asks: 2 }, "public"],
+    [{ blocked: 0, listed: 1, asks: 1, ...scores }, "waiting, 1 of 2 asks"],
+    [{ blocked: 0, listed: 1, asks: 2, ...scores }, "public"],
+    [
+      { blocked: 0, listed: 1, asks: 2, ...scores, person_private: 0.12 },
+      "hidden now: private_person",
+    ],
+    [{ blocked: 0, listed: 1, asks: 2, ...scores, abusive: null }, "hidden now: abusive"],
+    [{ blocked: 0, listed: 1, asks: 2 }, "hidden now: private_person"],
   ])("reads %j as %s", (row, expected) => {
-    expect(status(row)).toBe(expected);
+    expect(status({ item: "gyro", ...row })).toBe(expected);
+  });
+
+  it("rechecks personal info with today's rules", () => {
+    expect(status({ item: "acme dot ai", blocked: 0, listed: 1, asks: 2, ...scores })).toBe(
+      "hidden now: personal_info",
+    );
   });
 });
 
@@ -186,6 +269,10 @@ describe("formatRulings", () => {
     asks: 2,
     first_seen: NOW / 1000,
     blocked: 0,
+    person_none: 0.99,
+    person_public: 0,
+    person_private: 0.01,
+    abusive: 0.01,
   };
 
   it("prints a table with the status of each ruling", () => {
@@ -210,14 +297,19 @@ describe("formatRulings", () => {
     expect(text.split("\n")).toEqual([
       "Every ruling for question set 7 in the local D1, newest first (up to 30).",
       "",
-      "First seen (UTC)  Item     Kind      Cube                Conf  Asks  Status",
-      "2026-09-23 12:00  hot dog  food      taco, Jev sandwich  0.61  2     public",
-      "2026-09-23 12:00  pizza    food      sandwich            0.90  1     waiting, 1 of 2 asks",
-      "2026-09-23 12:00  a slur   declined  -                   -     1     hidden: declined",
+      "First seen (UTC)  Item     Kind      Cube                Conf  Asks  Status                Private  Sure  Abusive",
+      "2026-09-23 12:00  hot dog  food      taco, Jev sandwich  0.61  2     public                0.01     0.99  0.01",
+      "2026-09-23 12:00  pizza    food      sandwich            0.90  1     waiting, 1 of 2 asks  0.01     0.99  0.01",
+      "2026-09-23 12:00  a slur   declined  -                   -     1     hidden: declined      0.01     0.99  0.01",
       "",
-      "Public means listed, at least 2 asks and not blocked.",
+      "Public means listed, at least 2 asks, not blocked and within the current bars.",
       "This includes declined and hidden text. Keep it to your own terminal.",
     ]);
+  });
+
+  it("says when every list is switched off", () => {
+    const text = formatRulings([], { flagged: false, limit: 30, ...CONTEXT, listsOff: true });
+    expect(text).toContain("Every public list is switched off.");
   });
 
   it("says how to see hidden rulings when there are none to show", () => {
@@ -241,7 +333,16 @@ describe("formatRulings", () => {
 describe("formatChange", () => {
   const block = { action: "block", item: "hot dog", typed: "Hot Dog!" };
   const unblock = { ...block, action: "unblock" };
-  const listed = { listed: 1, reason: "listed", asks: 2 };
+  const listed = {
+    item: "hot dog",
+    listed: 1,
+    reason: "listed",
+    asks: 2,
+    person_none: 0.99,
+    person_public: 0,
+    person_private: 0.01,
+    abusive: 0.01,
+  };
 
   it("confirms a block and what it hides", () => {
     expect(formatChange(block, [[{ item: "hot dog" }], [listed]], CONTEXT).split("\n")).toEqual([
@@ -250,7 +351,7 @@ describe("formatChange", () => {
       "Status of its question set 7 ruling before the block: public.",
     ]);
     expect(formatChange(block, [[{ item: "hot dog" }], []], CONTEXT)).toContain(
-      "One recorded later is stored as blocked.",
+      "stays out of the lists while blocked",
     );
     expect(formatChange(block, [[], [listed]], CONTEXT)).toBe(
       '"hot dog" was already blocked in the local D1.',
@@ -261,10 +362,6 @@ describe("formatChange", () => {
     expect(
       formatChange({ ...unblock, typed: "hot dog" }, [[{ item: "hot dog" }], [listed]], CONTEXT),
     ).toBe('Unblocked "hot dog" in the local D1.\nStatus of its question set 7 ruling: public.');
-    const recordedBlocked = { listed: 0, reason: "blocked", asks: 1 };
-    expect(formatChange(unblock, [[{ item: "hot dog" }], [recordedBlocked]], CONTEXT)).toContain(
-      "stays hidden until the next question set",
-    );
     expect(formatChange(unblock, [[], []], CONTEXT)).toBe(
       '"hot dog" was not blocked in the local D1.',
     );
@@ -285,5 +382,20 @@ describe("report", () => {
       ].join("\n"),
     );
     expect(formatBlocklist([], CONTEXT)).toBe("The blocklist in the local D1 is empty.");
+    expect(formatSwitch({ state: "off" }, [[{ value: "off" }]], CONTEXT)).toContain(
+      "Every public list is off in the local D1.",
+    );
+    expect(formatPrune({ yes: false }, [[{ question_set: "6", rulings: 3 }]], CONTEXT)).toContain(
+      `Run pnpm recent --prune --yes to delete up to ${PRUNE_BATCH} of them.`,
+    );
+    expect(formatPrune({ yes: true }, [[{ question_set: "6", rulings: 3 }]], CONTEXT)).toBe(
+      "3 rulings in the local D1 belong to other question sets and are never read: 3 from question set 6.\nDeleted 3.",
+    );
+    expect(
+      formatPrune({ yes: true }, [[{ question_set: "6", rulings: PRUNE_BATCH + 5 }]], CONTEXT),
+    ).toContain("Run it again for the other 5");
+    expect(formatPrune({ yes: true }, [[]], CONTEXT)).toBe(
+      "No rulings from other question sets than 7 in the local D1.",
+    );
   });
 });

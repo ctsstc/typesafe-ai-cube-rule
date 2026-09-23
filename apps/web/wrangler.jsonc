@@ -19,8 +19,10 @@
     // under the Free plan's 1,000 KV writes a day, or later rulings go unstored and get billed again.
     "DAILY_CALL_LIMIT": "1000",
     // "off" empties /api/lists on the next deploy. Any value but "on" counts as off.
+    // pnpm recent --lists off does the same without a deploy.
     "PUBLIC_LISTS": "on",
-    // New rulings in the last hour before the lists show an activity line.
+    // Listable rulings first seen in the last hour before the lists show an activity line. The
+    // count stops at 50, so a higher value is read as 50.
     "ACTIVITY_THRESHOLD": "5"
   },
   "dev": { "port": 8788 }

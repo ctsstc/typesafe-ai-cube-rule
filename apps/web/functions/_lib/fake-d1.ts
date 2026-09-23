@@ -9,6 +9,10 @@ export interface FakeD1 {
   readonly binding: D1Database;
   readonly sqlite: DatabaseSync;
   readonly calls: string[];
+  /** Rows each run() changed, in order. */
+  readonly changes: number[];
+  /** Makes the next statement matching `pattern` throw, like a transient D1 error. */
+  failNext(pattern: RegExp): void;
 }
 
 export function fakeD1(): FakeD1 {
@@ -19,19 +23,30 @@ export function fakeD1(): FakeD1 {
     sqlite.exec(readFileSync(`${MIGRATIONS}${file}`, "utf8"));
   }
   const calls: string[] = [];
+  const changes: number[] = [];
+  const failures: RegExp[] = [];
+  const call = (sql: string) => {
+    const failure = failures.findIndex((pattern) => pattern.test(sql));
+    if (failure >= 0) {
+      failures.splice(failure, 1);
+      throw new Error("D1_ERROR: simulated failure");
+    }
+    calls.push(sql);
+  };
   const statement = (sql: string, params: SQLInputValue[]) => ({
     bind: (...values: SQLInputValue[]) => statement(sql, values),
     first: async () => {
-      calls.push(sql);
+      call(sql);
       return sqlite.prepare(sql).get(...params) ?? null;
     },
     run: async () => {
-      calls.push(sql);
-      const { changes } = sqlite.prepare(sql).run(...params);
-      return { success: true, results: [], meta: { changes: Number(changes) } };
+      call(sql);
+      const changed = Number(sqlite.prepare(sql).run(...params).changes);
+      changes.push(changed);
+      return { success: true, results: [], meta: { changes: changed } };
     },
     all: async () => {
-      calls.push(sql);
+      call(sql);
       return { success: true, results: sqlite.prepare(sql).all(...params), meta: {} };
     },
   });
@@ -44,7 +59,7 @@ export function fakeD1(): FakeD1 {
       return results;
     },
   } as unknown as D1Database;
-  return { binding, sqlite, calls };
+  return { binding, sqlite, calls, changes, failNext: (pattern) => void failures.push(pattern) };
 }
 
 /** Plan steps that scan a table for any statement the fake has run. D1 bills every scanned row. */

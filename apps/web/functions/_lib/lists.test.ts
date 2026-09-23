@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   type ClassifyErrorBody,
+  disabledListsResponse,
   isListsResponse,
   LIST_NAMES,
   LISTS_PATH,
@@ -63,14 +64,20 @@ interface Seed {
   asks?: number;
   first_seen?: number;
   question_set?: string;
+  person_none?: number | null;
+  person_public?: number | null;
+  person_private?: number | null;
+  abusive?: number | null;
 }
 
 function seed(d1: FakeD1, ...rows: Seed[]) {
   const insert = d1.sqlite.prepare(
     `INSERT INTO rulings (question_set, item, kind, category, wet, confidence, runner_up, official,
-      debate_level, listed, reason, asks, first_seen)
+      debate_level, person_none, person_public, person_private, abusive, listed, reason, asks,
+      first_seen)
     VALUES (:question_set, :item, :kind, :category, :wet, :confidence, :runner_up, :official,
-      :debate_level, :listed, :reason, :asks, :first_seen)`,
+      :debate_level, :person_none, :person_public, :person_private, :abusive, :listed, :reason,
+      :asks, :first_seen)`,
   );
   for (const row of rows) {
     insert.run({
@@ -82,6 +89,10 @@ function seed(d1: FakeD1, ...rows: Seed[]) {
       runner_up: null,
       official: null,
       debate_level: 1,
+      person_none: 0.99,
+      person_public: 0,
+      person_private: 0.01,
+      abusive: 0.01,
       listed: 1,
       reason: "listed",
       asks: MIN_ASKS,
@@ -220,13 +231,69 @@ describe("GET /api/lists", () => {
     expect(items(await body(await get({ DB: d1.binding }))).latest).toEqual(["pizza"]);
   });
 
+  it("rechecks the current bars on every stored row, so a stricter bar hides older rulings", async () => {
+    const d1 = fakeD1();
+    seed(
+      d1,
+      { item: "pizza" },
+      {
+        item: "tyler okonkwo's jollof rice",
+        person_none: 0.03,
+        person_public: 0.86,
+        person_private: 0.11,
+      },
+      { item: "sven lindqvist", person_none: 0.02, person_public: 0.68, person_private: 0.04 },
+      {
+        item: "gordon ramsay",
+        kind: "honorary",
+        person_none: 0,
+        person_public: 1,
+        person_private: 0,
+      },
+      { item: "slutty brownies", abusive: 0.11 },
+      { item: "humans", kind: "honorary", abusive: 0.12 },
+      {
+        item: "no scores",
+        person_none: null,
+        person_public: null,
+        person_private: null,
+        abusive: null,
+      },
+    );
+    expect(items(await body(await get({ DB: d1.binding }))).latest?.sort()).toEqual([
+      "gordon ramsay",
+      "humans",
+      "pizza",
+    ]);
+  });
+
+  it("counts only listable rulings as activity", async () => {
+    const d1 = fakeD1();
+    const fresh = (n: number, more: Seed = {} as Seed) =>
+      Array.from({ length: n }, (_, i) => ({
+        asks: 1,
+        first_seen: NOW_S - 60,
+        ...more,
+        item: `${more.item ?? "new"} ${i}`,
+      }));
+    seed(
+      d1,
+      ...fresh(DEFAULT_ACTIVITY_THRESHOLD - 1),
+      ...fresh(10, { item: "declined", kind: "declined", listed: 0, reason: "declined" }),
+    );
+    expect((await body(await get({ DB: d1.binding }))).activity).toBeNull();
+    seed(d1, ...fresh(1, { item: "one more" }));
+    expect((await body(await get({ DB: d1.binding }))).activity).toEqual({
+      newFoodsLastHour: DEFAULT_ACTIVITY_THRESHOLD,
+    });
+  });
+
   it("shows activity only at or above ACTIVITY_THRESHOLD", async () => {
     const d1 = fakeD1();
     const recent = (n: number, from = 0) =>
       Array.from({ length: n }, (_, i) => ({
         item: `new ${from + i}`,
         asks: 1,
-        listed: 0,
         first_seen: NOW_S - 60,
       }));
     seed(d1, ...recent(DEFAULT_ACTIVITY_THRESHOLD - 1), {
@@ -254,6 +321,8 @@ describe("GET /api/lists", () => {
     );
     const lists = await body(await get({ DB: d1.binding }));
     expect(lists.activity).toEqual({ newFoodsLastHour: ACTIVITY_CAP });
+    const high = await body(await get({ DB: d1.binding, ACTIVITY_THRESHOLD: "500" }));
+    expect(high.activity).toEqual({ newFoodsLastHour: ACTIVITY_CAP });
   });
 
   it("serves the edge copy without touching D1 until it expires", async () => {
@@ -292,7 +361,25 @@ describe("GET /api/lists", () => {
     expect(cache.match).toHaveBeenCalledTimes(1);
   });
 
-  it("ships with the lists on and the default activity threshold", () => {
+  it("turns off from D1 without a deploy", async () => {
+    const d1 = fakeD1();
+    seed(d1, { item: "pizza" }, { item: "tacos" }, { item: "sushi" });
+    const flip = (value: string) =>
+      d1.sqlite
+        .prepare(
+          "INSERT INTO switches (name, value, changed_at) VALUES ('lists', ?, 0) ON CONFLICT (name) DO UPDATE SET value = excluded.value",
+        )
+        .run(value);
+    flip("off");
+    const off = await get({ DB: d1.binding });
+    expect(off.headers.get("Cache-Control")).toBe(CACHED);
+    expect(await body(off)).toEqual(disabledListsResponse());
+    flip("on");
+    expect(items(await body(await get({ DB: d1.binding }))).latest).toHaveLength(3);
+  });
+
+  // Flipping the kill switch in wrangler.jsonc must not turn pnpm check red, or the deploy fails.
+  it("ships a readable kill switch and activity threshold", () => {
     const text = readFileSync(
       fileURLToPath(new URL("../../wrangler.jsonc", import.meta.url).href),
       "utf8",
@@ -300,8 +387,8 @@ describe("GET /api/lists", () => {
     const { vars } = JSON.parse(text.replace(/^\s*\/\/.*$/gm, "")) as {
       vars: Record<string, string>;
     };
-    expect(vars.PUBLIC_LISTS).toBe("on");
-    expect(vars.ACTIVITY_THRESHOLD).toBe(String(DEFAULT_ACTIVITY_THRESHOLD));
+    expect(["on", "off"]).toContain(vars.PUBLIC_LISTS);
+    expect(activityThreshold(vars)).toBe(Number(vars.ACTIVITY_THRESHOLD));
   });
 
   it.each([
@@ -320,6 +407,7 @@ describe("GET /api/lists", () => {
     ["abc", DEFAULT_ACTIVITY_THRESHOLD],
     ["0", DEFAULT_ACTIVITY_THRESHOLD],
     [" 12 ", 12],
+    ["500", ACTIVITY_CAP],
   ])("reads ACTIVITY_THRESHOLD=%j as %i", (value, threshold) => {
     expect(activityThreshold({ ACTIVITY_THRESHOLD: value })).toBe(threshold);
   });
@@ -372,7 +460,7 @@ describe("D1 statements", () => {
     const d1 = fakeD1();
     seed(d1, { item: "pizza" }, { item: "hot dog", official: "taco" });
     await get({ DB: d1.binding });
-    expect(new Set(d1.calls).size).toBe(LIST_NAMES.length + 1);
+    expect(new Set(d1.calls).size).toBe(LIST_NAMES.length + 2);
     expect(tableScans(d1)).toEqual([]);
   });
 });

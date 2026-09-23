@@ -98,6 +98,7 @@ export {
   isListsQuery,
   isListsResponse,
   LIST_NAMES,
+  LISTS_ACTIVITY_CAP,
   LISTS_PATH,
   type ListEntry,
   type ListName,

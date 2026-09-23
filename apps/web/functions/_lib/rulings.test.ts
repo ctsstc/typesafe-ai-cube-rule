@@ -106,6 +106,10 @@ describe("recording rulings", () => {
         runner_up: expect.any(String),
         official: "taco",
         debate_level: expect.any(Number),
+        person_none: expect.any(Number),
+        person_public: expect.any(Number),
+        person_private: expect.any(Number),
+        abusive: 0.01,
         listed: 1,
         reason: "listed",
         asks: 1,
@@ -125,30 +129,48 @@ describe("recording rulings", () => {
     expect((await ask("pizza", env)).headers.get("X-Cube-Cache")).toBe("KV");
     expect((await ask("pizza", env)).headers.get("X-Cube-Cache")).toBe("HIT");
     expect(rows(d1)[0]?.asks).toBe(MIN_ASKS);
-
-    const counts = d1.calls.filter((sql) => sql.startsWith("UPDATE rulings"));
-    expect(counts).toHaveLength(2);
-    const changes = d1.sqlite
-      .prepare(counts[0] ?? "")
-      .run(QUESTION_SET_VERSION, "pizza", MIN_ASKS).changes;
-    expect(changes).toBe(0);
+    const before = JSON.stringify(rows(d1));
+    await ask("pizza", env);
+    expect(JSON.stringify(rows(d1))).toBe(before);
+    expect(d1.changes.at(-1)).toBe(0);
   });
 
-  it("never counts a prefetch as an ask", async () => {
+  // The browser keeps the prefetched ruling for a year, so a prefetch hit still counts one browser.
+  it("counts a prefetch hit as an ask, and never a prefetch miss", async () => {
     const d1 = fakeD1();
     const kv = fakeKv();
     fakeCache();
     jevReturns(listable("sushi"));
     const env: Env = { TYPESAFE_API_KEY: KEY, DB: d1.binding, CLASSIFICATIONS: kv.binding };
     await ask("sushi", env);
-    d1.calls.length = 0;
     const prefetch = await ask("sushi", env, { [PREFETCH_HEADER]: "1" });
     expect(prefetch.status).toBe(200);
-    expect(d1.calls).toEqual([]);
-    expect(rows(d1)[0]?.asks).toBe(1);
+    expect(rows(d1)[0]?.asks).toBe(MIN_ASKS);
+
+    const miss = await ask("nobody asked", env, { [PREFETCH_HEADER]: "1" });
+    expect(miss.status).toBe(204);
+    expect(rows(d1).map((row) => row.item)).toEqual(["sushi"]);
   });
 
-  it("records the reason a ruling is hidden", async () => {
+  it("records a ruling from its stored copy when the Jev call's record failed", async () => {
+    const d1 = fakeD1();
+    const kv = fakeKv();
+    const cache = fakeCache();
+    jevReturns(listable("hot dog"));
+    const env: Env = { TYPESAFE_API_KEY: KEY, DB: d1.binding, CLASSIFICATIONS: kv.binding };
+    d1.failNext(/^INSERT INTO rulings/);
+    await ask("hot dog", env);
+    expect(rows(d1)).toEqual([]);
+    expect(JSON.stringify(logs)).toContain("classify: ruling record failed");
+
+    expect((await ask("hot dog", env)).headers.get("X-Cube-Cache")).toBe("HIT");
+    expect(rows(d1)[0]).toMatchObject({ item: "hot dog", official: "taco", listed: 1, asks: 1 });
+    cache.clear();
+    expect((await ask("hot dog", env)).headers.get("X-Cube-Cache")).toBe("KV");
+    expect(rows(d1)[0]?.asks).toBe(MIN_ASKS);
+  });
+
+  it("records the reason a ruling is hidden, and leaves the blocklist to read time", async () => {
     const d1 = fakeD1();
     const env: Env = { TYPESAFE_API_KEY: KEY, DB: d1.binding };
     d1.sqlite.exec("INSERT INTO blocklist (item, added_at) VALUES ('nacho platter', 0)");
@@ -191,8 +213,8 @@ describe("recording rulings", () => {
         item: "nacho platter",
         kind: "food",
         category: expect.any(String),
-        listed: 0,
-        reason: "blocked",
+        listed: 1,
+        reason: "listed",
       },
     ]);
   });
@@ -206,6 +228,15 @@ describe("recording rulings", () => {
     await ask("taco", env);
     await ask("taco", env);
     expect(rows(d1)[0]).toMatchObject({ asks: MIN_ASKS, first_seen: NOW / 1000 });
+
+    const moved = listable("taco");
+    jevReturns({
+      ...moved,
+      answers: { ...moved.answers, is_abusive: { type: "noul", noul: 0.02 } },
+    });
+    await ask("taco", env);
+    expect(rows(d1)[0]?.abusive).toBe(0.01);
+    expect(d1.changes.at(-1)).toBe(0);
   });
 
   it("writes nothing in mock mode", async () => {
@@ -246,7 +277,7 @@ describe("D1 statements", () => {
     await ask("taco", env);
     await ask("taco", env);
     const recording = d1.calls.filter((sql) => /\b(rulings|blocklist)\b/.test(sql));
-    expect(new Set(recording).size).toBe(3);
+    expect(new Set(recording).size).toBe(2);
     expect(tableScans(d1)).toEqual([]);
   });
 });
