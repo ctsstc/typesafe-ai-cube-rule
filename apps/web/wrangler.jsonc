@@ -6,5 +6,19 @@
   // Uncomment after `wrangler kv namespace create CLASSIFICATIONS` (see docs/deploy.md).
   // Local dev binds it anyway through `--kv CLASSIFICATIONS` in scripts/pages-dev.sh.
   // "kv_namespaces": [{ "binding": "CLASSIFICATIONS", "id": "<namespace id>" }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cube-rule-oracle",
+      // Placeholder until `wrangler d1 create cube-rule-oracle` (see docs/deploy.md).
+      // Local dev works with it; scripts/deploy.sh refuses to ship it.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    // Jev calls allowed per UTC day, about $0.0004 each. "0" stops every new ruling.
+    "DAILY_CALL_LIMIT": "2000"
+  },
   "dev": { "port": 8788 }
 }

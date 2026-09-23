@@ -16,15 +16,13 @@ import {
   TypeSafeClient,
   TypeSafeError,
 } from "@typesafe-ai/sdk";
+import { clientIp, type Env, type WaitUntil } from "./env";
 import { CACHE_IMMUTABLE, CACHE_NONE, errorResponse, jsonResponse } from "./http";
 import { createRateLimiter, type RateLimiter } from "./rate-limit";
+import { requireSession } from "./session";
+import { reserveJevCall } from "./usage";
 
-export interface Env {
-  TYPESAFE_API_KEY?: string;
-  CLASSIFICATIONS?: KVNamespace;
-}
-
-type WaitUntil = (promise: Promise<unknown>) => void;
+export type { Env } from "./env";
 
 // Pinned so a stray TYPESAFE_BASE_URL can never send the key elsewhere.
 const TYPESAFE_BASE_URL = "https://api.typesafe.ai";
@@ -77,8 +75,11 @@ async function classify(
   const item = parseClassifyQuery(url.search);
   if (item === null) return errorResponse("bad_request");
 
+  const now = Date.now();
   const apiKey = env.TYPESAFE_API_KEY?.trim();
   if (!apiKey) {
+    const session = await requireSession(request, env, now);
+    if (session instanceof Response) return session;
     const body: ClassifyResponse = { ...mockCubeResponse(item), mock: true };
     return jsonResponse(JSON.stringify(body), { cacheControl: CACHE_NONE });
   }
@@ -98,9 +99,14 @@ async function classify(
     return jsonResponse(stored, { cacheControl: CACHE_IMMUTABLE, cache: "KV" });
   }
 
-  const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
-  const wait = limiter.take(ip, Date.now());
+  const session = await requireSession(request, env, now);
+  if (session instanceof Response) return session;
+
+  const wait = limiter.take(clientIp(request), now);
   if (wait > 0) return errorResponse("rate_limited", { headers: { "Retry-After": String(wait) } });
+
+  const refused = await reserveJevCall(env, session, now);
+  if (refused) return refused;
 
   let body: string;
   try {

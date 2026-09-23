@@ -50,6 +50,14 @@ export function jsonResponse(
   });
 }
 
+export function noContent(headers: Record<string, string>): Response {
+  const { "Content-Type": _json, ...base } = BASE_HEADERS;
+  return new Response(null, {
+    status: 204,
+    headers: { ...base, "Cache-Control": CACHE_NONE, ...headers },
+  });
+}
+
 export function errorResponse(
   code: ClassifyErrorCode,
   {

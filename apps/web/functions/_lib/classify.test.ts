@@ -10,7 +10,10 @@ import {
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { onRequest as apiFallback } from "../api/[[path]]";
 import { createClassifyHandler, type Env } from "./classify";
+import { fakeD1 } from "./fake-d1";
 import { createRateLimiter } from "./rate-limit";
+import { issueSession, SESSION_COOKIE } from "./session";
+import { SESSION_CALL_LIMIT } from "./usage";
 
 const ORIGIN = "https://oracle.example";
 const KEY = "ts-test-key-do-not-leak";
@@ -369,5 +372,196 @@ describe("upstream error mapping", () => {
         requestId: "req_123",
       },
     ]);
+  });
+});
+
+describe("challenge and spend caps", () => {
+  const TURNSTILE = "1x0000000000000000000000000000000AA";
+  const SESSION_SECRET = "0123456789abcdef0123456789abcdef-do-not-leak";
+
+  function guardedEnv(overrides: Partial<Env> = {}) {
+    const d1 = fakeD1();
+    const env: Env = {
+      TYPESAFE_API_KEY: KEY,
+      TURNSTILE_SECRET_KEY: TURNSTILE,
+      SESSION_SECRET,
+      DB: d1.binding,
+      ...overrides,
+    };
+    return { d1, env };
+  }
+
+  async function cookie(now = Date.now()) {
+    return `${SESSION_COOKIE}=${await issueSession(SESSION_SECRET, now)}`;
+  }
+
+  function ask(item: string, env: Env, sessionCookie?: string) {
+    const handler = createClassifyHandler(createRateLimiter({ limit: 100, windowMs: 60_000 }));
+    const headers: Record<string, string> = { "CF-Connecting-IP": "203.0.113.7" };
+    if (sessionCookie) headers.Cookie = sessionCookie;
+    return handler(new Request(`${ORIGIN}${classifyUrl(item)}`, { headers }), env, waitUntil);
+  }
+
+  const usage = (d1: ReturnType<typeof fakeD1>) =>
+    d1.sqlite.prepare("SELECT day, calls FROM usage").all();
+
+  it("serves an edge cache hit without a cookie", async () => {
+    const cache = fakeCache();
+    const { d1, env } = guardedEnv();
+    fetchMock.mockResolvedValueOnce(jevOk("taco"));
+    expect((await ask("taco", env, await cookie())).status).toBe(200);
+    await Promise.all(pending);
+
+    const response = await ask("taco", env);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Cube-Cache")).toBe("HIT");
+    expect(cache.match).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(usage(d1)).toEqual([{ day: expect.any(String), calls: 1 }]);
+  });
+
+  it("serves a KV hit without a cookie", async () => {
+    const stored = JSON.stringify(mockCubeResponse("sushi"));
+    const kv = fakeKv({ [`v${QUESTION_SET_VERSION}:sushi`]: stored });
+    const { d1, env } = guardedEnv({ CLASSIFICATIONS: kv as unknown as KVNamespace });
+    const response = await ask("sushi", env);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Cube-Cache")).toBe("KV");
+    expect(d1.calls).toEqual([]);
+  });
+
+  it("answers a miss without a cookie with 401 challenge_required", async () => {
+    const { d1, env } = guardedEnv();
+    const response = await ask("taco", env);
+    expect(response.status).toBe(401);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect((await errorBody(response)).error.code).toBe("challenge_required");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(d1.calls).toEqual([]);
+  });
+
+  it("rejects an expired or tampered cookie", async () => {
+    const { env } = guardedEnv();
+    const stale = await cookie(Date.now() - 3601 * 1000);
+    const tampered = (await cookie()).replace(/.$/, (c) => (c === "A" ? "B" : "A"));
+    for (const value of [stale, tampered, `${SESSION_COOKIE}=junk`]) {
+      expect((await ask("taco", env, value)).status).toBe(401);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("calls Jev with a valid cookie and counts the call", async () => {
+    const { d1, env } = guardedEnv();
+    fetchMock.mockResolvedValueOnce(jevOk("taco"));
+    const response = await ask("taco", env, await cookie());
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Cube-Cache")).toBe("MISS");
+    expect(usage(d1)).toEqual([{ day: new Date().toISOString().slice(0, 10), calls: 1 }]);
+    expect(d1.sqlite.prepare("SELECT calls FROM sessions").all()).toEqual([{ calls: 1 }]);
+  });
+
+  it("refuses Jev past DAILY_CALL_LIMIT until UTC midnight, but keeps serving the cache", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-22T23:00:00Z"));
+    const cache = fakeCache();
+    const { d1, env } = guardedEnv({ DAILY_CALL_LIMIT: "2" });
+    const session = await cookie();
+    fetchMock.mockImplementation(async () => jevOk("taco"));
+
+    expect((await ask("taco", env, session)).status).toBe(200);
+    expect((await ask("pizza", env, session)).status).toBe(200);
+    const refused = await ask("sushi", env, session);
+    expect(refused.status).toBe(503);
+    expect(refused.headers.get("Retry-After")).toBe("3600");
+    expect(refused.headers.get("Cache-Control")).toBe("no-store");
+    expect((await errorBody(refused)).error.code).toBe("daily_limit");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(usage(d1)).toEqual([{ day: "2026-09-22", calls: 2 }]);
+
+    await Promise.all(pending);
+    expect(cache.store.size).toBe(2);
+    expect((await ask("taco", env)).status).toBe(200);
+
+    vi.setSystemTime(new Date("2026-09-23T00:00:01Z"));
+    expect((await ask("sushi", env, await cookie())).status).toBe(200);
+  });
+
+  it("treats DAILY_CALL_LIMIT=0 as a kill switch", async () => {
+    const { env } = guardedEnv({ DAILY_CALL_LIMIT: "0" });
+    const response = await ask("taco", env, await cookie());
+    expect(response.status).toBe(503);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("re-challenges a session that used its calls without spending the daily budget", async () => {
+    const { d1, env } = guardedEnv();
+    const session = await cookie();
+    fetchMock.mockImplementation(async () => jevOk("taco"));
+    expect((await ask("taco", env, session)).status).toBe(200);
+    d1.sqlite.exec(`UPDATE sessions SET calls = ${SESSION_CALL_LIMIT}`);
+
+    const response = await ask("pizza", env, session);
+    expect(response.status).toBe(401);
+    expect((await errorBody(response)).error.code).toBe("challenge_required");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(usage(d1)).toEqual([{ day: expect.any(String), calls: 1 }]);
+    expect((await ask("pizza", env, await cookie())).status).toBe(200);
+  });
+
+  it("fails closed when TURNSTILE_SECRET_KEY is set without SESSION_SECRET", async () => {
+    const cache = fakeCache();
+    const { d1, env } = guardedEnv({ SESSION_SECRET: undefined });
+    const response = await ask("taco", env, await cookie());
+    expect(response.status).toBe(500);
+    expect((await errorBody(response)).error.code).toBe("internal");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(d1.calls).toEqual([]);
+    expect(JSON.stringify(logs)).toContain("SESSION_SECRET is missing");
+
+    const stored = new Response(JSON.stringify(mockCubeResponse("taco")));
+    cache.store.set(`${ORIGIN}${classifyUrl("taco")}`, stored);
+    expect((await ask("taco", env)).status).toBe(200);
+  });
+
+  it("refuses Jev when the spend check itself fails", async () => {
+    const broken = {
+      prepare: () => {
+        throw new Error("D1_ERROR: no such table: usage");
+      },
+    } as unknown as D1Database;
+    const { env } = guardedEnv({ DB: broken });
+    const response = await ask("taco", env, await cookie());
+    expect(response.status).toBe(500);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(JSON.stringify(logs)).not.toContain("no such table");
+  });
+
+  it("skips the caps with one warning when DB is not bound", async () => {
+    fetchMock.mockImplementation(async () => jevOk("taco"));
+    const { env } = guardedEnv({ DB: undefined, TURNSTILE_SECRET_KEY: undefined });
+    expect((await ask("taco", env)).status).toBe(200);
+    expect((await ask("pizza", env)).status).toBe(200);
+    const warnings = logs.filter(([message]) => String(message).includes("no DB binding"));
+    expect(warnings.length).toBeLessThanOrEqual(1);
+  });
+
+  it("challenges mock rulings too, so the flow can be tried without a key", async () => {
+    const { d1, env } = guardedEnv({ TYPESAFE_API_KEY: undefined });
+    expect((await ask("taco", env)).status).toBe(401);
+    const response = await ask("taco", env, await cookie());
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as ClassifyResponse).mock).toBe(true);
+    expect(d1.calls).toEqual([]);
+  });
+
+  it("never logs the session secret or cookie", async () => {
+    const { env } = guardedEnv();
+    const value = await cookie();
+    fetchMock.mockResolvedValueOnce(jevOk("taco"));
+    await ask("taco", env, value);
+    await ask("pizza", env, `${value}x`);
+    const logged = JSON.stringify(logs);
+    expect(logged).not.toContain(SESSION_SECRET);
+    expect(logged).not.toContain(value.split("=")[1]);
   });
 });
