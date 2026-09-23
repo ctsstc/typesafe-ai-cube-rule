@@ -10,7 +10,7 @@ This spec covers what people see and do: screens, components, copy, visual syste
 ## 1. Product principles
 
 1. **The cube is the hero.** A ruling is a picture before it is a number. People should want to screenshot it.
-2. **Jev supplies numbers; we write every word.** Copy is chosen by code from `choice`, `probabilities`, `confidence`, `noul`, and `score`.
+2. **Jev supplies numbers; the words live in our code.** Copy is chosen by code from `choice`, `probabilities`, `confidence`, `noul`, and `score`.
 3. **Honest uncertainty is the joke.** "Jev is torn between taco and sandwich" is a feature, not an error state.
 4. **Fast and free to repeat.** A static page plus one cached GET per food. The second person to ask about hot dogs costs nothing.
 5. **Credit the source loudly.** This is an unofficial fan app. The Cube Rule is by @Phosphatide and cuberule.com is by @indirect. Both are credited in the footer of every view and in the about section.
@@ -83,6 +83,7 @@ Single page. State lives in the query string. No router library.
 | `/is/taco/?food=hot+dog` | Same as `?food=`, served from a per-category HTML file with category OG tags | v0.2 |
 | `/?play=daily`, `/?play=endless` | Guess the cube | v0.3 |
 | `#gallery`, `#about`, `#about-mock` | In-page anchors | v0.1 |
+| `#how-jev-rules` | In-page anchor for How Jev rules | v1.1 |
 
 - Submitting pushes a history entry with the state `{ typed: true }`. Back and forward restore earlier rulings from the in-memory cache without refetching. Any other entry, including the one a deep link opened, replays as a deep link, so its text stays hidden until Jev clears it.
 - In-page anchors fire `popstate` too. They keep the search, so the app ignores them and the ruling, the input and any error panel stay as they are.
@@ -198,9 +199,10 @@ Mobile first. The content column is `min(100% - 32px, 640px)`. The gallery and, 
 ### 7.1 App shell
 
 - **Mock banner** (only after a response with `mock: true`): "Demo mode: no TypeSafe key is set, so these rulings are simulated. Consistent, not correct. What's this?" linking to `#about-mock`. Dismissable for the session.
-- **Header:** logo cube and wordmark, nav links (Rule, Cubes, About) from 520px, and the theme toggle.
+- **Header:** logo cube and wordmark, nav links (Rule, Cubes, How Jev rules, About) from 520px, and the theme toggle. From 520 to 679px the nav takes its own row under the wordmark, since four links do not fit beside it.
 - **Skip link:** "Skip to the oracle", first in tab order, targets the food input.
-- **Footer:** "Unofficial fan app. The Cube Rule is by @Phosphatide. cuberule.com is by @indirect. Rulings by Jev from TypeSafe." Then the app version, question set, and the model from the last response.
+- **Footer:** "Unofficial fan app. The Cube Rule is by @Phosphatide. cuberule.com is by @indirect. Rulings by Jev from TypeSafe." Then "Made by Cody Swartz (GitHub, LinkedIn). Built with Claude Code. Source code on GitHub." (`MadeBy`), then the app version, question set, the model from the last response, and links to About and privacy, How Jev rules and the nine cubes.
+- **Direct anchors:** a page opened at `/#about` or `/#how-jev-rules` scrolls there once the display font has loaded, since the sections render after the browser's own jump. A `?food=` link wins over the hash.
 
 ### 7.2 Home and hero
 
@@ -257,9 +259,27 @@ Every simulated ruling shows a "Simulated" pill beside the eyebrow and a "SIMULA
 
 A face legend, then one card per category: a static cube at its hero angle, the number badge and name, core's summary, the family, and three canon example links. Rows on mobile, two columns from 640px, three from 900px. Cubes turn 20 degrees on hover or focus within the card. The section uses `content-visibility: auto` with a placeholder height per breakpoint close to the real one, so the page does not jump when the gallery renders.
 
-### 7.5 About (`#about`)
+### 7.5 How Jev rules (`#how-jev-rules`)
 
-Six short blocks in our own words: what the Cube Rule is (credit and link to cuberule.com, "Go read the original"), who decides (Jev returns probabilities, people wrote every word), why Jev might be wrong (names only, forms vary, canon wins, the rice clause), what gets sent where, demo mode (`#about-mock`), and credits.
+Between the gallery and About, reachable from the header nav and the footer. `HowJevRules` loads as its own chunk, so it stays out of the initial bundle. Order and rules:
+
+1. **Disclaimer first,** right under the h2: "Unofficial. This fan app is not affiliated with or endorsed by TypeSafe, cuberule.com or its creators." Facts about Jev cite TypeSafe's docs and launch post; the numbers are ours.
+2. **Four stat tiles:** holdout accuracy first ("right on foods we never tuned against"), the question count, the cost per new ruling, and the median Jev call "from a laptop".
+3. **It doesn't talk:** System One against a chat model, the three primitives (Choice, Score, Noul), "Jev can't invent a tenth cube", and that every sentence lives in our code and the site was built with Claude Code. Jevons noticed that more efficient steam engines raised coal use; never write "cheaper coal".
+4. **One order, N questions:** grouped by answer type from `CUBE_ANSWER_TYPES`, with plain phrasing per question in `lib/jevQuestions.ts`. A new question fails the typecheck until it gets a phrase.
+5. **Sure, probably, arguably:** probabilities are calibrated across many answers; confidence is a separate score and not a probability. The bands come from `THRESHOLDS` and `VERDICT_ADVERBS`.
+6. **The receipt:** tokens, TypeSafe's published price, cost per new ruling, rulings per dollar, the whole test, repeat foods at "usually $0", and p50 and p95. Latency is always labelled as the developer's laptop calling TypeSafe's API directly.
+7. **How we grade it:** canon, tune and holdout; holdout is "looked at only after each version of the questions was final, and never tuned against". The table leads with holdout, then holdout without the items the ruling questions name, and the leak counts for holdout and canon are spelled out. Links to `docs/eval.md` on GitHub.
+8. **Honest limits:** our labels, small numbers (one holdout item in points), name only, literal reading, the abuse check as a smoke test, and the pinned model.
+
+Numbers never appear as literals. The `cube:eval-stats` plugin (`apps/web/plugins/evalStats.ts`) reads `eval/results/v<QUESTION_SET_VERSION>/summary.json` at build time and serves only named numbers plus the version and model as `virtual:eval-stats`, because the summary also names eval items, abusive probes included. The build fails when the summary is missing, has missing items, or was scored on another model, and `lib/evalStats.test.ts` fails when the current question set has no summary.
+
+> [!IMPORTANT]
+> Never add "up from" trends, TypeSafe's marketing multipliers, an absolute "free" for repeats, or a claim that people wrote the words. Link only to typesafe.ai and docs.typesafe.ai for TypeSafe. `Claims.test.tsx` and `lib/sourceCopy.test.ts` fail on the authorship claim and on em or en dashes.
+
+### 7.6 About (`#about`)
+
+Six short blocks in our own words: what the Cube Rule is (credit and link to cuberule.com, "Go read the original"), who decides (Jev returns probabilities, the words are templates in our code, the site was built with Claude Code, and a link to How Jev rules), why Jev might be wrong (names only, forms vary, canon wins, the rice clause), what gets sent where, demo mode (`#about-mock`), and credits, which end with the same `MadeBy` line as the footer.
 
 **What gets sent where** must match the Function:
 
@@ -269,27 +289,27 @@ Six short blocks in our own words: what the Cube Rule is (credit and link to cub
 - Passing it sets one cookie, `cube_session`, for an hour: a random ID and its start and end times, signed, and sent only to `/api`. It covers up to 60 new foods.
 - D1 counts Jev calls per day, per session ID, and per IP address per day. The last is keyed by an HMAC of the IP and the date, so no IP is stored, and past days' rows are deleted.
 - The IP is held in the in-memory rate limiter until the first request after its one minute window. Our code logs neither it nor the food.
-- No accounts and no analytics. The session cookie is the only cookie, and the theme choice stays in local storage.
+- No accounts and no ads. Cloudflare Web Analytics counts page views without cookies or personal data. The session cookie is the only cookie, and the theme choice stays in local storage.
 
 If the Function's storage or logging changes, this copy changes with it.
 
-### 7.6 Settle the debate (v0.2)
+### 7.7 Settle the debate (v0.2)
 
 Two inputs with a VS badge and a swap button, two mini ruling cards side by side from 640px, and a banner: "SAME CUBE. Hot dog and sub sandwich are both tacos. Hug it out.", "DIFFERENT CUBES. ...", or "OPEN CASE." when either side is torn. A starch diff is computed from the canonical layouts. Two cached GETs, no new endpoint.
 
 The main input also learns an "Is X a Y?" parser: "is a hot dog a sandwich?" answers "No. Hot dog is a taco, not a sandwich." or "Kind of." when Y is the runner-up; "X vs Y" and "X or Y" open Debate. Pure code with a table-driven test.
 
-### 7.7 Guess the cube (v0.3)
+### 7.8 Guess the cube (v0.3)
 
 A date-seeded Cube of the Day and an Endless mode over a curated list. Nine radio tiles (digits 0 to 8 work only inside the form), points are `round(100 * probability of the guess)`, streaks live in local storage, and the share text never names the food or the category.
 
-### 7.8 Starch X-ray and debate heat (v0.3)
+### 7.9 Starch X-ray and debate heat (v0.3)
 
 - **X-ray toggle** (`aria-pressed`) tints each face by `eyes.faces` and lists the read in text. When `eyes.agrees` is false: "Face by face, Jev reads this as a sandwich. Even the oracle argues with itself." The jaggedness docs say this happens, so we make it a joke rather than hide it.
 - **Debate heat meter:** four segments from `debate_heat`, combined with the band ("Humans have argued about this for years. Jev settled it in milliseconds.").
 - **It depends:** when `dependsOnServing` is true and the food is in a curated variants table, chips rule each variant.
 
-### 7.9 Hall of Controversy (v0.3)
+### 7.10 Hall of Controversy (v0.3)
 
 A lazy section that rules 16 famous-argument foods through the cached endpoint, at most 4 in flight, and lists them lowest confidence first.
 
@@ -309,10 +329,13 @@ Pure logic in `apps/web/src/lib/`, unit tested without React:
 | `theme.ts`, `storage.ts` | Theme preference with guarded local storage |
 | `contrast.ts` | WCAG luminance and ratio, used by the token test |
 | `url.ts` | `?food=` parsing and share URLs |
+| `evalStats.ts` | The `virtual:eval-stats` shape and its number formatting |
+| `jevQuestions.ts` | Plain phrasing for each Jev question, grouped by answer type |
+| `links.ts` | Author, source repo, Claude Code and TypeSafe docs URLs |
 
 Hooks: `useOracle` (the ruling state machine and request ids), `useReducedMotion`, `useOnline`.
 
-Components: `App`, `Header`, `ThemeToggle`, `MockBanner`, `Footer`, `HeroArt`, `FoodForm` (with `FoodLink`), `RulingCard`, `Cube3D`, `Stamp`, `ProbabilityList`, `ErrorPanel`, `ShareBar`, `NerdStats`, `Gallery`, `About`, `Announcer` (live region and toast), `ErrorBoundary` ("The cube collapsed.").
+Components: `App`, `Header`, `ThemeToggle`, `MockBanner`, `Footer`, `HeroArt`, `FoodForm` (with `FoodLink`), `RulingCard`, `Cube3D`, `Stamp`, `ProbabilityList`, `ErrorPanel`, `ShareBar`, `NerdStats`, `Gallery`, `HowJevRules` (lazy), `About`, `MadeBy`, `Announcer` (live region and toast), `ErrorBoundary` ("The cube collapsed.").
 
 ## 9. Copy deck
 
@@ -421,7 +444,7 @@ Only `transform`, the individual transform properties, and `opacity` animate. Th
 
 Crawlers do not run JavaScript, so the share text carries the food and verdict and the preview carries the brand.
 
-**v0.1: one static card.** `index.html` has static `og:` and `twitter:` tags. `og:image` and `og:url` are absolute: the build replaces `%SITE_URL%` with `SITE_URL` (default `https://cube-rule-oracle.pages.dev` for a plain build). `scripts/deploy.sh` builds with `https://typesafe-ai-cube-rule.codyswartz.us` unless `SITE_URL` is set. `public/og.png` (1200x630, about 58 KB) renders from `apps/web/og/og.svg` with `pnpm --filter @cube/web og`, which runs rsvg-convert with Fraunces unpacked from `@fontsource/fraunces`.
+**v0.1: one static card.** `index.html` has static `og:` and `twitter:` tags. `og:image` and `og:url` are absolute: the build replaces `%SITE_URL%` with `SITE_URL` (default `https://cube-rule-oracle.pages.dev` for a plain build). `scripts/deploy.sh` builds with the same official URL unless `SITE_URL` is set. `public/og.png` (1200x630, about 58 KB) renders from `apps/web/og/og.svg` with `pnpm --filter @cube/web og`, which runs rsvg-convert with Fraunces unpacked from `@fontsource/fraunces`.
 
 **v0.2: per-category share pages.** A post-build script writes `dist/is/{category}/index.html` with category OG tags and renders nine more cards from the same SVG. Pages serves `/is/taco/` from that file with no rewrite rules. Share links become `/is/taco/?food=hot+dog`, and the app replaces the path when the live ruling differs.
 
@@ -437,13 +460,13 @@ Crawlers do not run JavaScript, so the share text carries the food and verdict a
 
 | Metric | Budget | v0.1 |
 |---|---|---|
-| Initial JS | 90 KB gzip | about 86 KB (React plus the app) |
+| Initial JS | 90 KB gzip | about 86 KB (React plus the app); about 89 KB at v1.1, with How Jev rules in its own 4.5 KB chunk |
 | CSS | 12 KB gzip | about 7.3 KB |
 | Display font | 40 KB woff2, preloaded | 36.6 KB |
 | Above-the-fold images | none | none (CSS cube, inline SVG icons) |
 | CLS | below 0.02 | the loading card reserves its height |
 
-Debate, game, X-ray, and share image load through `import()` when they land, so the initial bundle stays inside the budget.
+How Jev rules already loads through `import()`. Debate, game, X-ray, and share image will too when they land, so the initial bundle stays inside the budget.
 
 ## 16. Release plan
 
