@@ -77,10 +77,18 @@ describe("The docket", () => {
     serve(listsBody());
     const { region, onPick } = await renderDocket();
     const link = within(list(region, "Most debated")).getByRole("link", { name: /^Quesadilla/ });
+    const handledByApp: boolean[] = [];
+    const lastListener = (event: MouseEvent) => {
+      handledByApp.push(event.defaultPrevented);
+      event.preventDefault();
+    };
+    window.addEventListener("click", lastListener);
     fireEvent.click(link);
-    expect(onPick).toHaveBeenCalledWith("quesadilla");
     fireEvent.click(link, { metaKey: true });
+    window.removeEventListener("click", lastListener);
+    expect(handledByApp).toEqual([true, false]);
     expect(onPick).toHaveBeenCalledTimes(1);
+    expect(onPick).toHaveBeenCalledWith("quesadilla");
   });
 
   it("marks honorary rulings, in words a screen reader reads too", async () => {
