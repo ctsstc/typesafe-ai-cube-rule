@@ -14,6 +14,10 @@ afterEach(async () => {
 });
 
 if (hasDom) {
+  // Lazy sections (How Jev rules, About, the docket) can take over the default 1s to load while
+  // the whole suite runs in parallel, which made findBy and waitFor calls fail at random.
+  const { configure } = await import("@testing-library/react");
+  configure({ asyncUtilTimeout: 5000 });
   window.matchMedia ??= (query: string) =>
     ({
       matches: false,
