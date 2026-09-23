@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { MIN_ASKS } from "../apps/web/functions/_lib/rulings.ts";
 import {
   DEFAULT_LIMIT,
   formatBlocklist,
@@ -236,9 +237,10 @@ describe("statements", () => {
 describe("status", () => {
   const scores = { person_none: 0.99, person_public: 0, person_private: 0.01, abusive: 0.01 };
   it.each([
-    [{ blocked: 1, listed: 1, asks: 2 }, "blocked"],
+    [{ blocked: 1, listed: 1, asks: 1 }, "blocked"],
     [{ blocked: 0, listed: 0, reason: "declined", asks: 1 }, "hidden: declined"],
-    [{ blocked: 0, listed: 1, asks: 1, ...scores }, "waiting, 1 of 2 asks"],
+    [{ blocked: 0, listed: 1, asks: MIN_ASKS - 1, ...scores }, `waiting, 0 of ${MIN_ASKS} asks`],
+    [{ blocked: 0, listed: 1, asks: 1, ...scores }, "public"],
     [{ blocked: 0, listed: 1, asks: 2, ...scores }, "public"],
     [
       { blocked: 0, listed: 1, asks: 2, ...scores, person_private: 0.12 },
@@ -297,12 +299,12 @@ describe("formatRulings", () => {
     expect(text.split("\n")).toEqual([
       "Every ruling for question set 7 in the local D1, newest first (up to 30).",
       "",
-      "First seen (UTC)  Item     Kind      Cube                Conf  Asks  Status                Private  Sure  Abusive",
-      "2026-09-23 12:00  hot dog  food      taco, Jev sandwich  0.61  2     public                0.01     0.99  0.01",
-      "2026-09-23 12:00  pizza    food      sandwich            0.90  1     waiting, 1 of 2 asks  0.01     0.99  0.01",
-      "2026-09-23 12:00  a slur   declined  -                   -     1     hidden: declined      0.01     0.99  0.01",
+      "First seen (UTC)  Item     Kind      Cube                Conf  Status            Private  Sure  Abusive",
+      "2026-09-23 12:00  hot dog  food      taco, Jev sandwich  0.61  public            0.01     0.99  0.01",
+      "2026-09-23 12:00  pizza    food      sandwich            0.90  public            0.01     0.99  0.01",
+      "2026-09-23 12:00  a slur   declined  -                   -     hidden: declined  0.01     0.99  0.01",
       "",
-      "Public means listed, at least 2 asks, not blocked and within the current bars.",
+      "Public means listed, asked at least once, not blocked and within the current bars.",
       "This includes declined and hidden text. Keep it to your own terminal.",
     ]);
   });

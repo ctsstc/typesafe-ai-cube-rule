@@ -126,7 +126,7 @@ export function statements(options, { now, questionSet = QUESTION_SET_VERSION })
 }
 
 // Mirrors /api/lists, which applies the current bars to every stored row.
-// A public row takes up to 6 row writes to delete, so a batch stays well inside 100,000 a day.
+// A public row takes up to 7 row writes to delete, so a batch stays well inside 100,000 a day.
 export const PRUNE_BATCH = 2000;
 
 /** Deletes for `pnpm recent --prune --yes`, from the counts its first statement returned. */
@@ -193,14 +193,13 @@ export function formatRulings(rows, { flagged, limit, questionSet, source, lists
   if (rows.length === 0) {
     lines.push(flagged ? "No rulings recorded yet." : "No listed rulings yet.");
   } else {
-    const header = ["First seen (UTC)", "Item", "Kind", "Cube", "Conf", "Asks", "Status"];
+    const header = ["First seen (UTC)", "Item", "Kind", "Cube", "Conf", "Status"];
     const cells = (row) => [
       utc(row.first_seen),
       printable(row.item),
       row.kind,
       cube(row),
       score(row.confidence),
-      String(row.asks),
       status(row),
     ];
     lines.push(
@@ -220,7 +219,7 @@ export function formatRulings(rows, { flagged, limit, questionSet, source, lists
   }
   lines.push(
     "",
-    `Public means listed, at least ${MIN_ASKS} asks, not blocked and within the current bars.`,
+    `Public means listed, asked at least ${MIN_ASKS === 1 ? "once" : `${MIN_ASKS} times`}, not blocked and within the current bars.`,
     flagged
       ? "This includes declined and hidden text. Keep it to your own terminal."
       : "Declined and hidden rulings are left out. Add --flagged to see them.",
@@ -273,7 +272,7 @@ export function formatPrune(options, [counts = []], { questionSet, source }) {
   const left = total - deleted;
   return [
     found,
-    `Deleted ${deleted}.${left > 0 ? ` Run it again for the other ${left}, one batch at a time: each batch writes up to about ${PRUNE_BATCH * 6} rows, counting index rows, of D1's 100,000 a day.` : ""}`,
+    `Deleted ${deleted}.${left > 0 ? ` Run it again for the other ${left}, one batch at a time: each batch writes up to about ${PRUNE_BATCH * 7} rows, counting index rows, of D1's 100,000 a day.` : ""}`,
   ].join("\n");
 }
 
