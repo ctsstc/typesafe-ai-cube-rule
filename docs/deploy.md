@@ -395,8 +395,8 @@ Measured against wrangler's local D1, which counts rows the way D1 bills them. I
 | `pnpm recent --block`, `--unblock` or `--lists` | up to 3 | 1 | By hand |
 | `pnpm recent --prune --yes` | the rows it counts, then the rows it deletes | up to 14,000 per run | By hand |
 | Migration 0008 | about 7 per ruling on file | 3 per listed ruling, 4 per listed honorary one | Once |
-| Seeding the 188 listed question set 7 eval rulings | 0 | about 1,160: 6 per ruling, 7 for each of the 29 honorary ones | Once |
-| Backfilling foods from earlier question sets | 0 | 6 per food, 7 for an honorary one, 2 for a hidden one | Once |
+| `pnpm seed:docket --apply`, the 188 listed question set 7 eval rulings | up to 1 per candidate, for the lookup | about 1,160: 6 per ruling, 7 for each of the 29 honorary ones | Once |
+| `pnpm seed:docket --backfill --apply`, foods from earlier question sets | up to 1 per food | 6 per food, 7 for an honorary one, 2 for a hidden one, plus today's `usage` row | Once |
 
 At the default limit of 1,000 Jev calls a day, writes top out around 16,000 of the 100,000 a day, plus the session cleanup described in [Rate limiting and spend](#rate-limiting-and-spend). One ask lists a ruling, so hits and repeat Jev calls for a recorded item write nothing. Hits read 1 row each, so the Functions request cap bounds them at 100,000 reads. A lists refresh reads at most about 83 rows, so reads stay under 5 million until about 60,000 refreshes a day. That would take about 85 data centers, each serving the lists to someone every 2 minutes, all day. `functions/_lib/rulings.test.ts`, `functions/_lib/lists.test.ts` and `scripts/recent.test.mjs` fail if a recording, list, `pnpm recent` listing or prune statement falls back to a table scan. Only `--blocklist` reads its whole (small) table.
 
