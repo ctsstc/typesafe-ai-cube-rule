@@ -4,7 +4,13 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { Env } from "./env";
 import { fakeD1 } from "./fake-d1";
-import { DEFAULT_DAILY_CALL_LIMIT, dailyCallLimit, forgetExpired, reserveJevCall } from "./usage";
+import {
+  DEFAULT_DAILY_CALL_LIMIT,
+  dailyCallLimit,
+  forgetExpired,
+  refuseSpentDay,
+  reserveJevCall,
+} from "./usage";
 
 // Free plan KV writes per day, account wide. Each billed ruling writes one.
 const FREE_KV_WRITES_PER_DAY = 1000;
@@ -46,9 +52,10 @@ describe("D1 statements", () => {
     const env: Env = { DB: d1.binding, DAILY_CALL_LIMIT: "1" };
     await reserveJevCall(env, { session, client: "client-key" }, NOW);
     await reserveJevCall(env, { session, client: "client-key" }, NOW);
+    await refuseSpentDay(env, NOW);
     await forgetExpired(d1.binding, NOW);
     const statements = new Set(d1.calls);
-    expect(statements.size).toBeGreaterThanOrEqual(7);
+    expect(statements.size).toBeGreaterThanOrEqual(8);
     for (const sql of statements) {
       const plan = d1.sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all();
       const scans = plan

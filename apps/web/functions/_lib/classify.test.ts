@@ -477,7 +477,50 @@ describe("challenge and spend caps", () => {
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect((await errorBody(response)).error.code).toBe("challenge_required");
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(d1.calls).toEqual(["SELECT calls FROM usage WHERE day = ?1"]);
+    expect(usage(d1)).toEqual([]);
+  });
+
+  it("skips the human check with 503 daily_limit once the day is spent", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-22T23:00:00Z"));
+    const { d1, env } = guardedEnv({ DAILY_CALL_LIMIT: "2" });
+    d1.sqlite.exec("INSERT INTO usage (day, calls) VALUES ('2026-09-22', 1)");
+    expect((await ask("taco", env)).status).toBe(401);
+
+    d1.sqlite.exec("UPDATE usage SET calls = 2");
+    d1.calls.length = 0;
+    const refused = await ask("taco", env);
+    expect(refused.status).toBe(503);
+    expect(refused.headers.get("Retry-After")).toBe("3600");
+    expect(refused.headers.get("Cache-Control")).toBe("no-store");
+    expect((await errorBody(refused)).error.code).toBe("daily_limit");
+    expect(d1.calls).toEqual(["SELECT calls FROM usage WHERE day = ?1"]);
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    vi.setSystemTime(new Date("2026-09-23T00:00:01Z"));
+    expect((await ask("taco", env)).status).toBe(401);
+  });
+
+  it("skips the human check without reading D1 when DAILY_CALL_LIMIT is 0", async () => {
+    const { d1, env } = guardedEnv({ DAILY_CALL_LIMIT: "0" });
+    const response = await ask("taco", env);
+    expect(response.status).toBe(503);
+    expect((await errorBody(response)).error.code).toBe("daily_limit");
     expect(d1.calls).toEqual([]);
+  });
+
+  it("still challenges when the early daily read fails, leaving the charge to refuse", async () => {
+    const broken = {
+      prepare: () => {
+        throw new Error("D1_ERROR: rows read limit");
+      },
+    } as unknown as D1Database;
+    const { env } = guardedEnv({ DB: broken });
+    const response = await ask("taco", env);
+    expect(response.status).toBe(401);
+    expect((await errorBody(response)).error.code).toBe("challenge_required");
+    expect(JSON.stringify(logs)).toContain("classify: daily usage read failed");
   });
 
   it("rejects an expired or tampered cookie", async () => {

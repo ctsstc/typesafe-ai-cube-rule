@@ -16,7 +16,7 @@ All wrangler commands below run from `apps/web`, where `wrangler.jsonc`, `functi
 Every uncached ruling calls Jev, about $0.0004 each. Cached rulings stay free and never see a challenge.
 
 1. `GET /api/classify` checks the edge cache, then KV. A hit is served straight away, with no cookie needed.
-2. On a miss it needs a valid `cube_session` cookie. Without one it answers `401 challenge_required`.
+2. On a miss it needs a valid `cube_session` cookie. Without one it answers `401 challenge_required`, unless today's budget is already spent. Then it answers `503 daily_limit` straight away, after one primary-key read of today's `usage` row, so nobody solves a check that can only end in `daily_limit`. That read is only a shortcut: a failed read falls through to the challenge, and the atomic charge in step 6 stays the real guard.
 3. The SPA then loads Turnstile from `challenges.cloudflare.com` (only now, never on page load), runs an interaction-only widget with the action `session`, and posts the token to `POST /api/session`.
 4. `/api/session` calls siteverify with the secret, an idempotency key and the visitor's IP, and checks `success`, that `hostname` equals the request host and that `action` is `session`. It then sets `cube_session`: `{sid, iat, exp}` signed with HMAC-SHA256 under `SESSION_SECRET`, valid for one hour, `HttpOnly; Secure; SameSite=Strict; Path=/api` (no `Secure` on localhost).
 5. The SPA retries the ruling once. A second `challenge_required` is shown as an error, never looped.

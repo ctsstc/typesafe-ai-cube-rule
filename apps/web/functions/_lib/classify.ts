@@ -1,5 +1,6 @@
 import {
   buildCubeRequest,
+  CLASSIFY_ERROR_CODES,
   type ClassifyErrorCode,
   type ClassifyResponse,
   classifyUrl,
@@ -23,7 +24,7 @@ import { clientIp, type Env, type WaitUntil } from "./env";
 import { CACHE_IMMUTABLE, CACHE_NONE, errorResponse, jsonResponse, noContent } from "./http";
 import { createRateLimiter, type RateLimiter } from "./rate-limit";
 import { clientKey, requireSession } from "./session";
-import { reserveJevCall, utcDay } from "./usage";
+import { refuseSpentDay, reserveJevCall, utcDay } from "./usage";
 
 export type { Env } from "./env";
 
@@ -106,7 +107,10 @@ async function classify(
   if (request.headers.get(PREFETCH_HEADER) === "1") return noContent({});
 
   const session = await requireSession(request, env, now);
-  if (session instanceof Response) return session;
+  if (session instanceof Response) {
+    if (session.status !== CLASSIFY_ERROR_CODES.challenge_required) return session;
+    return (await refuseSpentDay(env, now)) ?? session;
+  }
 
   const wait = limiter.take(clientIp(request), now);
   if (wait > 0) return errorResponse("rate_limited", { headers: { "Retry-After": String(wait) } });

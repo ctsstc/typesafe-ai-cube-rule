@@ -24,6 +24,8 @@ const RESERVE_DAILY_CALL = `INSERT INTO usage (day, calls) SELECT ?1, 1 WHERE ?2
 ON CONFLICT (day) DO UPDATE SET calls = calls + 1 WHERE calls < ?2
 RETURNING calls`;
 
+const READ_DAILY_CALLS = "SELECT calls FROM usage WHERE day = ?1";
+
 export function dailyCallLimit(env: Env): number {
   const limit = Number(env.DAILY_CALL_LIMIT?.trim() || Number.NaN);
   return Number.isSafeInteger(limit) && limit >= 0 ? limit : DEFAULT_DAILY_CALL_LIMIT;
@@ -99,10 +101,7 @@ export async function reserveJevCall(
     const charged = await db.prepare(RESERVE_DAILY_CALL).bind(day, limit).first();
     if (!charged) {
       await refund(true);
-      console.warn("classify: daily Jev call limit reached", { day, limit });
-      return errorResponse("daily_limit", {
-        headers: { "Retry-After": String(secondsUntilUtcMidnight(now)) },
-      });
+      return dailyLimitReached(day, limit, now);
     }
     return null;
   } catch (error) {
@@ -110,6 +109,34 @@ export async function reserveJevCall(
       error: error instanceof Error ? error.name : typeof error,
     });
     return errorResponse("internal");
+  }
+}
+
+function dailyLimitReached(day: string, limit: number, now: number): Response {
+  console.warn("classify: daily Jev call limit reached", { day, limit });
+  return errorResponse("daily_limit", {
+    headers: { "Retry-After": String(secondsUntilUtcMidnight(now)) },
+  });
+}
+
+/**
+ * daily_limit when today's budget is already spent, so nobody solves a human check for nothing.
+ * Only a shortcut: reserveJevCall stays the guard, so a failed read falls through to the check.
+ */
+export async function refuseSpentDay(env: Env, now: number): Promise<Response | null> {
+  const db = env.DB;
+  if (!db) return null;
+  const day = utcDay(now);
+  const limit = dailyCallLimit(env);
+  if (limit === 0) return dailyLimitReached(day, limit, now);
+  try {
+    const row = await db.prepare(READ_DAILY_CALLS).bind(day).first<{ calls: number }>();
+    return row && row.calls >= limit ? dailyLimitReached(day, limit, now) : null;
+  } catch (error) {
+    console.warn("classify: daily usage read failed", {
+      error: error instanceof Error ? error.name : typeof error,
+    });
+    return null;
   }
 }
 
