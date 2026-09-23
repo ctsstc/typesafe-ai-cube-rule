@@ -11,6 +11,8 @@ export {
   FAMILIES,
   INPUT_KIND_IDS,
   type InputKindId,
+  PERSON_KIND_IDS,
+  type PersonKindId,
   RICE_CLAUSE,
   STARCH_IDS,
   STARCHES,
@@ -28,7 +30,7 @@ export {
   SESSION_PATH,
   TURNSTILE_ACTION,
 } from "./input";
-export { MOCK_DECLINE_TRIGGER, mockCubeResponse } from "./mock";
+export { MOCK_DECLINE_TRIGGER, MOCK_PRIVATE_PERSON_TRIGGER, mockCubeResponse } from "./mock";
 export { findOfficialRuling, OFFICIAL_RULINGS, type OfficialRuling } from "./official";
 export {
   buildCubeQuestions,

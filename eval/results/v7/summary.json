@@ -1,0 +1,459 @@
+{
+  "questionSetVersion": "7",
+  "model": "jev-1.13.0",
+  "fingerprint": "134fae84df89d9115020c217e74a57c277c1b7b8812a4134ec83e3a81b70d530",
+  "datasetSize": 235,
+  "scored": 235,
+  "missing": 0,
+  "headline": {
+    "tuneN": 115,
+    "tuneAccuracy": 0.9826,
+    "tuneFamilyAccuracy": 1,
+    "holdoutN": 75,
+    "holdoutAccuracy": 0.9733,
+    "holdoutFamilyAccuracy": 0.9867,
+    "canonN": 45,
+    "canonJevAgreement": 1,
+    "inputKindAccuracy": 1,
+    "abuseFalsePositives": 0,
+    "abuseDetection": 1,
+    "eyesAgreeRate": 0.9206,
+    "eyesNullRate": 0.2455,
+    "avgInputTokens": 10142,
+    "p50LatencyMs": 235,
+    "p95LatencyMs": 487,
+    "runCostUsd": 0.100099
+  },
+  "splits": {
+    "canon": {
+      "n": 45,
+      "accuracy": {
+        "n": 45,
+        "hits": 45,
+        "rate": 1
+      },
+      "familyAccuracy": {
+        "n": 45,
+        "hits": 45,
+        "rate": 1
+      },
+      "categoryAccuracy": {
+        "n": 44,
+        "hits": 44,
+        "rate": 1
+      },
+      "inputKindAccuracy": {
+        "n": 45,
+        "hits": 45,
+        "rate": 1
+      },
+      "unleakedAccuracy": {
+        "n": 8,
+        "hits": 8,
+        "rate": 1
+      },
+      "verdicts": {
+        "unanimous": {
+          "n": 42,
+          "hits": 42,
+          "rate": 1
+        },
+        "majority": {
+          "n": 2,
+          "hits": 2,
+          "rate": 1
+        },
+        "split": {
+          "n": 0,
+          "hits": 0,
+          "rate": null
+        }
+      }
+    },
+    "tune": {
+      "n": 115,
+      "accuracy": {
+        "n": 115,
+        "hits": 113,
+        "rate": 0.9826086956521739
+      },
+      "familyAccuracy": {
+        "n": 115,
+        "hits": 115,
+        "rate": 1
+      },
+      "categoryAccuracy": {
+        "n": 77,
+        "hits": 75,
+        "rate": 0.974025974025974
+      },
+      "inputKindAccuracy": {
+        "n": 101,
+        "hits": 101,
+        "rate": 1
+      },
+      "unleakedAccuracy": {
+        "n": 101,
+        "hits": 99,
+        "rate": 0.9801980198019802
+      },
+      "verdicts": {
+        "unanimous": {
+          "n": 57,
+          "hits": 57,
+          "rate": 1
+        },
+        "majority": {
+          "n": 15,
+          "hits": 14,
+          "rate": 0.9333333333333333
+        },
+        "split": {
+          "n": 5,
+          "hits": 4,
+          "rate": 0.8
+        }
+      }
+    },
+    "holdout": {
+      "n": 75,
+      "accuracy": {
+        "n": 75,
+        "hits": 73,
+        "rate": 0.9733333333333334
+      },
+      "familyAccuracy": {
+        "n": 75,
+        "hits": 74,
+        "rate": 0.9866666666666667
+      },
+      "categoryAccuracy": {
+        "n": 46,
+        "hits": 44,
+        "rate": 0.9565217391304348
+      },
+      "inputKindAccuracy": {
+        "n": 68,
+        "hits": 68,
+        "rate": 1
+      },
+      "unleakedAccuracy": {
+        "n": 67,
+        "hits": 65,
+        "rate": 0.9701492537313433
+      },
+      "verdicts": {
+        "unanimous": {
+          "n": 31,
+          "hits": 30,
+          "rate": 0.967741935483871
+        },
+        "majority": {
+          "n": 10,
+          "hits": 10,
+          "rate": 1
+        },
+        "split": {
+          "n": 5,
+          "hits": 4,
+          "rate": 0.8
+        }
+      }
+    },
+    "all": {
+      "n": 235,
+      "accuracy": {
+        "n": 235,
+        "hits": 231,
+        "rate": 0.9829787234042553
+      },
+      "familyAccuracy": {
+        "n": 235,
+        "hits": 234,
+        "rate": 0.9957446808510638
+      },
+      "categoryAccuracy": {
+        "n": 167,
+        "hits": 163,
+        "rate": 0.9760479041916168
+      },
+      "inputKindAccuracy": {
+        "n": 214,
+        "hits": 214,
+        "rate": 1
+      },
+      "unleakedAccuracy": {
+        "n": 176,
+        "hits": 172,
+        "rate": 0.9772727272727273
+      },
+      "verdicts": {
+        "unanimous": {
+          "n": 130,
+          "hits": 129,
+          "rate": 0.9923076923076923
+        },
+        "majority": {
+          "n": 27,
+          "hits": 26,
+          "rate": 0.9629629629629629
+        },
+        "split": {
+          "n": 10,
+          "hits": 8,
+          "rate": 0.8
+        }
+      }
+    }
+  },
+  "eyes": {
+    "n": 167,
+    "nullRate": 0.2455,
+    "agree": {
+      "n": 126,
+      "hits": 116,
+      "rate": 0.9206349206349206
+    },
+    "accuracy": {
+      "n": 126,
+      "hits": 118,
+      "rate": 0.9365079365079365
+    }
+  },
+  "wet": {
+    "n": 24,
+    "hits": 24,
+    "rate": 1
+  },
+  "honorary": {
+    "n": 13,
+    "hits": 11,
+    "rate": 0.8461538461538461
+  },
+  "abuse": {
+    "threshold": 0.5,
+    "falsePositives": 0,
+    "maxProbability": 0.31,
+    "maxItem": "slippery nipple shot",
+    "minAbusiveProbability": 0.85,
+    "minAbusiveItem": "a2trIGZyaWVkIGNoaWNrZW4=",
+    "bySplit": {
+      "canon": {
+        "detected": {
+          "n": 0,
+          "hits": 0,
+          "rate": null
+        },
+        "falseDeclines": {
+          "n": 45,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      "tune": {
+        "detected": {
+          "n": 14,
+          "hits": 14,
+          "rate": 1
+        },
+        "falseDeclines": {
+          "n": 101,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      "holdout": {
+        "detected": {
+          "n": 7,
+          "hits": 7,
+          "rate": 1
+        },
+        "falseDeclines": {
+          "n": 68,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      "all": {
+        "detected": {
+          "n": 21,
+          "hits": 21,
+          "rate": 1
+        },
+        "falseDeclines": {
+          "n": 214,
+          "hits": 0,
+          "rate": 0
+        }
+      }
+    },
+    "sweep": [
+      {
+        "threshold": 0.3,
+        "detected": {
+          "n": 14,
+          "hits": 14,
+          "rate": 1
+        },
+        "falseDeclines": {
+          "n": 101,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.4,
+        "detected": {
+          "n": 14,
+          "hits": 14,
+          "rate": 1
+        },
+        "falseDeclines": {
+          "n": 101,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.5,
+        "detected": {
+          "n": 14,
+          "hits": 14,
+          "rate": 1
+        },
+        "falseDeclines": {
+          "n": 101,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.6,
+        "detected": {
+          "n": 14,
+          "hits": 14,
+          "rate": 1
+        },
+        "falseDeclines": {
+          "n": 101,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.7,
+        "detected": {
+          "n": 14,
+          "hits": 14,
+          "rate": 1
+        },
+        "falseDeclines": {
+          "n": 101,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.8,
+        "detected": {
+          "n": 14,
+          "hits": 14,
+          "rate": 1
+        },
+        "falseDeclines": {
+          "n": 101,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.85,
+        "detected": {
+          "n": 14,
+          "hits": 14,
+          "rate": 1
+        },
+        "falseDeclines": {
+          "n": 101,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.9,
+        "detected": {
+          "n": 14,
+          "hits": 11,
+          "rate": 0.7857142857142857
+        },
+        "falseDeclines": {
+          "n": 101,
+          "hits": 0,
+          "rate": 0
+        }
+      }
+    ],
+    "buckets": [
+      {
+        "from": 0,
+        "to": 0.1,
+        "abusive": 0,
+        "rudeFoods": 24,
+        "other": 184
+      },
+      {
+        "from": 0.1,
+        "to": 0.3,
+        "abusive": 0,
+        "rudeFoods": 1,
+        "other": 4
+      },
+      {
+        "from": 0.3,
+        "to": 0.5,
+        "abusive": 0,
+        "rudeFoods": 1,
+        "other": 0
+      },
+      {
+        "from": 0.5,
+        "to": 0.7,
+        "abusive": 0,
+        "rudeFoods": 0,
+        "other": 0
+      },
+      {
+        "from": 0.7,
+        "to": 0.85,
+        "abusive": 0,
+        "rudeFoods": 0,
+        "other": 0
+      },
+      {
+        "from": 0.85,
+        "to": 1,
+        "abusive": 21,
+        "rudeFoods": 0,
+        "other": 0
+      }
+    ]
+  },
+  "tokens": {
+    "totalInput": 2383316,
+    "totalOutput": 138288,
+    "avgInput": 10142,
+    "avgOutput": 588,
+    "maxInput": 10150
+  },
+  "latency": {
+    "p50": 235,
+    "p95": 487,
+    "max": 533,
+    "retried": 0
+  },
+  "cost": {
+    "pricePerMillionInputUsd": 0.042,
+    "perCallUsd": 0.00042595,
+    "runUsd": 0.100099
+  }
+}

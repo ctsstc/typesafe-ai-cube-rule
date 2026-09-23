@@ -310,7 +310,8 @@
     "item": "eggs benedict",
     "expected": "toast",
     "source": "consensus",
-    "note": "Each English muffin half is a bottom face under ham, egg and hollandaise. No top starch."
+    "note": "Each English muffin half is a bottom face under ham, egg and hollandaise. No top starch.",
+    "person": "none"
   },
   {
     "item": "tostada",
@@ -484,7 +485,8 @@
     "item": "beef wellington",
     "expected": "calzone",
     "source": "consensus",
-    "note": "Puff pastry fully encases the beef."
+    "note": "Puff pastry fully encases the beef.",
+    "person": "none"
   },
   {
     "item": "chicken nuggets",
@@ -856,7 +858,8 @@
     "expected": "nachos",
     "source": "probe",
     "note": "Croutons are part of a classic Caesar, and the site rules salad with croutons nachos. The name says salad.",
-    "tags": ["name_bias"]
+    "tags": ["name_bias"],
+    "person": "none"
   },
   {
     "item": "moon pie",
@@ -922,7 +925,8 @@
     "accept": ["toast"],
     "source": "probe",
     "note": "A real dish: loose meat in a split hamburger bun. Some serve it open-faced. Must not be declined.",
-    "tags": ["abuse_guard"]
+    "tags": ["abuse_guard"],
+    "person": "none"
   },
   {
     "item": "spotted dick",
@@ -1374,5 +1378,226 @@
     "source": "probe",
     "note": "Abstract things a person has, with no solid form. Honorary salad.",
     "honorary": "salad"
+  },
+  {
+    "item": "gordon ramsay",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A celebrity chef. A person, not a food, even with a food name attached to his fame.",
+    "person": "public"
+  },
+  {
+    "item": "taylor swift",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A pop star, one of the most widely known people alive.",
+    "person": "public"
+  },
+  {
+    "item": "abraham lincoln",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A historical figure.",
+    "person": "public"
+  },
+  {
+    "item": "albert einstein",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A historical figure.",
+    "person": "public"
+  },
+  {
+    "item": "cleopatra",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A historical figure known by one name.",
+    "person": "public"
+  },
+  {
+    "item": "beyonce",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A pop star known by one name, typed without the accent.",
+    "person": "public"
+  },
+  {
+    "item": "sherlock holmes",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A fictional character. Fictional characters count as public.",
+    "person": "public"
+  },
+  {
+    "item": "shrek",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A fictional ogre from the films. Fictional characters count as public.",
+    "person": "public"
+  },
+  {
+    "item": "santa claus",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A legendary figure. Legendary characters count as public.",
+    "person": "public"
+  },
+  {
+    "item": "gordon ramsay's beef wellington",
+    "expected": "calzone",
+    "source": "probe",
+    "note": "A real dish named with a public figure as its maker. Puff pastry fully encases the beef, like plain beef wellington.",
+    "person": "public"
+  },
+  {
+    "item": "my mom",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A specific real person the typer knows. Never list.",
+    "person": "private"
+  },
+  {
+    "item": "my boss",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A specific real person the typer knows. Never list.",
+    "person": "private"
+  },
+  {
+    "item": "dave from accounting",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A first name plus a workplace: a specific private person.",
+    "person": "private"
+  },
+  {
+    "item": "my sister's boyfriend",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A specific real person described through a relative.",
+    "person": "private"
+  },
+  {
+    "item": "mrs. patterson from third grade",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A teacher named by surname and class: a specific private person.",
+    "person": "private"
+  },
+  {
+    "item": "my neighbor gary",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A first name plus a relation: a specific private person.",
+    "person": "private"
+  },
+  {
+    "item": "aunt linda",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A relative named by first name: a specific private person.",
+    "person": "private"
+  },
+  {
+    "item": "jessica",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A first name on its own most likely means someone the typer knows.",
+    "person": "private"
+  },
+  {
+    "item": "greg",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A first name on its own most likely means someone the typer knows.",
+    "person": "private"
+  },
+  {
+    "item": "marcy feldstein",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A plausible full name that belongs to no public figure.",
+    "person": "private"
+  },
+  {
+    "item": "tyler okonkwo",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A plausible full name that belongs to no public figure.",
+    "person": "private"
+  },
+  {
+    "item": "my mom's lasagna",
+    "expected": "cake",
+    "source": "probe",
+    "note": "A real dish whose maker is a specific private person. Lasagna is cake on the site.",
+    "person": "private"
+  },
+  {
+    "item": "my dog max",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A pet with a human name. An animal is not a person.",
+    "person": "none"
+  },
+  {
+    "item": "the beatles",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A band: a group of people, not one specific person.",
+    "person": "none"
+  },
+  {
+    "item": "my coworkers",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A group of people, not one specific person.",
+    "person": "none"
+  },
+  {
+    "item": "my family",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A group of people, not one specific person.",
+    "person": "none"
+  },
+  {
+    "item": "arnold palmer",
+    "expected": "salad",
+    "source": "probe",
+    "note": "A drink of iced tea and lemonade named after the golfer. A drink with no starch is a wet salad.",
+    "wet": true,
+    "person": "none"
+  },
+  {
+    "item": "shirley temple",
+    "expected": "salad",
+    "source": "probe",
+    "note": "A mocktail named after the actress. A drink with no starch is a wet salad.",
+    "wet": true,
+    "person": "none"
+  },
+  {
+    "item": "tom collins",
+    "expected": "salad",
+    "source": "probe",
+    "note": "A gin cocktail whose name reads like a full name. A drink with no starch is a wet salad.",
+    "wet": true,
+    "person": "none"
+  },
+  {
+    "item": "earl grey tea",
+    "expected": "salad",
+    "source": "probe",
+    "note": "Tea named after a British prime minister. A drink with no starch is a wet salad.",
+    "wet": true,
+    "person": "none"
+  },
+  {
+    "item": "baby ruth",
+    "expected": "salad",
+    "source": "probe",
+    "note": "A candy bar of peanuts, caramel and nougat in chocolate, with no structural starch.",
+    "person": "none"
   }
 ]

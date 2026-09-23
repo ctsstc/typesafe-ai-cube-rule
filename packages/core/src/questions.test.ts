@@ -19,6 +19,7 @@ const REQUEST_FINGERPRINTS: Readonly<Record<string, string>> = {
   "4": "14fed537b0b04ec38f84e94ad339b4850c91966fd7d63137fd7578d39a5ff118",
   "5": "61d9417f49a8dbcf681c6de702b71251e5f7443b1eeae8aa66489dc486d2ce52",
   "6": "448fce356e7da96f651c196bfca1e9125abe0f46d7448f84ddcf580362a0b28b",
+  "7": "134fae84df89d9115020c217e74a57c277c1b7b8812a4134ec83e3a81b70d530",
 };
 
 const sha256 = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -97,6 +98,7 @@ describe("TypeSafeClient round trip with a fake fetch", () => {
     expect(Object.entries(sent.questions ?? {}).map(([id, q]) => `${id}:${q.type}`)).toEqual([
       "is_abusive:noul",
       "input_kind:choice",
+      "person_kind:choice",
       "category:choice",
       "honorary_category:choice",
       "starch:choice",

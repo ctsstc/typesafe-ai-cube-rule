@@ -232,4 +232,7 @@ export const STARCHES: Readonly<Record<StarchId, { label: string; color: string 
 export const INPUT_KIND_IDS = ["food", "not_food", "nonsense"] as const;
 export type InputKindId = (typeof INPUT_KIND_IDS)[number];
 
+export const PERSON_KIND_IDS = ["none", "public", "private"] as const;
+export type PersonKindId = (typeof PERSON_KIND_IDS)[number];
+
 export const RICE_CLAUSE = "You are free to interpret the nature of rice however you wish.";

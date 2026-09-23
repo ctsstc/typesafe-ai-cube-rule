@@ -6,6 +6,7 @@ export type AnswerType = (typeof CUBE_ANSWER_TYPES)[QuestionId];
 const ASKS: Readonly<Record<QuestionId, string>> = {
   is_abusive: "is it abusive",
   input_kind: "what kind of thing it is (food, not food or nonsense)",
+  person_kind: "does it name a specific person (famous or not)",
   category: "which of the nine cubes",
   honorary_category: "which cube it would be if it were food",
   starch: "what the starch is made of",

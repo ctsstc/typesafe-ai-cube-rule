@@ -5,6 +5,8 @@ import {
   type CategoryId,
   INPUT_KIND_IDS,
   type InputKindId,
+  PERSON_KIND_IDS,
+  type PersonKindId,
   STARCH_IDS,
   type StarchId,
 } from "./categories";
@@ -13,6 +15,10 @@ import { type CubeResponse, DEBATE_LEVELS } from "./questions";
 
 // Keyless development only: deterministic answers shaped like a live response, never real rulings.
 export const MOCK_DECLINE_TRIGGER = "slur";
+export const MOCK_PRIVATE_PERSON_TRIGGER = "my boss";
+const MOCK_PRIVATE_PERSON =
+  /\bmy (boss|mom|dad|ex|coworker|neighbor|teacher)\b|\bfrom (accounting|homeroom|work)\b/;
+const MOCK_PUBLIC_PERSON = /\b(gordon ramsay|taylor swift|elvis|oprah|shrek|santa claus)\b/;
 const MOCK_NONSENSE = /[bcdfghjklmnpqrstvwxz]{5,}/;
 const MOCK_NOT_FOOD =
   /\b(humans?|person|cat|car|moon|brick|stapler|chair|phone|sleeping bag|canoe|house|shoe|book)s?\b/;
@@ -73,9 +79,14 @@ export function mockCubeResponse(item: string): CubeResponse {
       : "food"
     : /\p{L}/u.test(item) && (!/[aeiouy]/.test(item) || MOCK_NONSENSE.test(item))
       ? "nonsense"
-      : MOCK_NOT_FOOD.test(item)
+      : MOCK_NOT_FOOD.test(item) || MOCK_PRIVATE_PERSON.test(item) || MOCK_PUBLIC_PERSON.test(item)
         ? "not_food"
         : "food";
+  const person: PersonKindId = MOCK_PRIVATE_PERSON.test(item)
+    ? "private"
+    : MOCK_PUBLIC_PERSON.test(item)
+      ? "public"
+      : "none";
   const category = official?.category ?? CATEGORY_IDS[seed % CATEGORY_IDS.length] ?? "salad";
   const sibling = CATEGORY_IDS.find(
     (id) => id !== category && CATEGORIES[id].family === CATEGORIES[category].family,
@@ -90,6 +101,7 @@ export function mockCubeResponse(item: string): CubeResponse {
     answers: {
       is_abusive: mockNoul(item.split(/\W+/).includes(MOCK_DECLINE_TRIGGER)),
       input_kind: mockChoice(INPUT_KIND_IDS, kind, 0),
+      person_kind: mockChoice(PERSON_KIND_IDS, person, 0, person === "none" ? "public" : "none"),
       category: mockChoice(CATEGORY_IDS, category, seed, sibling),
       honorary_category: mockChoice(CATEGORY_IDS, category, seed, sibling),
       starch: mockChoice(STARCH_IDS, starch, 0),

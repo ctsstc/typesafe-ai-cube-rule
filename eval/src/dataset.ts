@@ -4,6 +4,8 @@ import {
   CATEGORY_IDS,
   type CategoryId,
   normalizeItem,
+  PERSON_KIND_IDS,
+  type PersonKindId,
   precheckItem,
 } from "@cube/core";
 
@@ -32,6 +34,7 @@ export interface EvalItem {
   readonly tags?: readonly Tag[];
   readonly wet?: boolean;
   readonly honorary?: CategoryId;
+  readonly person?: PersonKindId;
   readonly encoded?: true;
 }
 
@@ -111,6 +114,7 @@ function parseItem(raw: unknown, index: number): EvalItem {
     "tags",
     "wet",
     "honorary",
+    "person",
     "encoded",
   ]);
   const extra = Object.keys(raw).filter((field) => !known.has(field));
@@ -124,6 +128,7 @@ function parseItem(raw: unknown, index: number): EvalItem {
     tags,
     wet,
     honorary,
+    person,
     encoded,
   } = raw as Record<string, unknown>;
 
@@ -157,6 +162,9 @@ function parseItem(raw: unknown, index: number): EvalItem {
   if (honorary !== undefined && (!isCategoryId(honorary) || expected !== "not_food")) {
     fail(index, "honorary must be a category id on a not_food item");
   }
+  if (person !== undefined && (!isOneOf(PERSON_KIND_IDS, person) || expected === "declined")) {
+    fail(index, "person must be a person kind on an item that is not declined");
+  }
 
   return {
     key,
@@ -168,6 +176,7 @@ function parseItem(raw: unknown, index: number): EvalItem {
     ...(tags === undefined ? {} : { tags: tags as Tag[] }),
     ...(wet === undefined ? {} : { wet }),
     ...(honorary === undefined ? {} : { honorary }),
+    ...(person === undefined ? {} : { person }),
     ...(encoded === true ? { encoded } : {}),
   };
 }
@@ -200,4 +209,9 @@ export function loadDataset(path: URL | string = DATASET_PATH): LabelledItem[] {
 
 export function acceptedLabels(item: EvalItem): readonly Label[] {
   return [item.expected, ...(item.accept ?? [])];
+}
+
+/** Items without a `person` label name no specific person. Abusive probes are not scored. */
+export function expectedPerson(item: EvalItem): PersonKindId | null {
+  return item.expected === "declined" ? null : (item.person ?? "none");
 }
