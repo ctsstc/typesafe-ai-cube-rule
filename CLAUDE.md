@@ -21,6 +21,8 @@ The repo is public at https://github.com/ctsstc/typesafe-ai-cube-rule under the 
 
 - `pnpm dev` runs Vite (5173) and the Pages Function (8788). `pnpm dev:challenge` does the same with the Turnstile check on. `pnpm preview:pages` serves the production build with the Function and `_headers`. `pnpm eval` runs the Jev eval (see `docs/eval.md`).
 - Deploy with `pnpm deploy:pages`. Bare `pnpm deploy` is pnpm's own built-in command and does not run the script.
+- `pnpm spend [--detail]` prints a read-only Jev spend report from the production D1 counters.
+- Bumping `QUESTION_SET_VERSION` fails the build until `eval/results/v<version>/summary.json` holds a complete run, so commit the bump together with a full `pnpm eval`.
 
 ## Git workflow
 

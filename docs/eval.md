@@ -28,6 +28,8 @@ A full pass over the 204 items costs about $0.083: roughly 9,640 input tokens pe
 
 > [!IMPORTANT]
 > The cache is keyed by `QUESTION_SET_VERSION` and a SHA-256 fingerprint of the full request. If a question changes without a version bump, the runner refuses to reuse the old answers. Bump the version (the core fingerprint test asks for that too) and run `pnpm eval` to get a new `results/v<version>/` folder next to the old one.
+>
+> The bump also gates the build. The site's How Jev rules section reads its numbers from `results/v<QUESTION_SET_VERSION>/summary.json` at build time (`apps/web/plugins/evalStats.ts`), so `pnpm build`, `pnpm check` and CI fail until that summary exists, has `missing: 0` and was scored on `CUBE_MODEL`. A tune-only run writes a summary with items missing, so commit the bump together with a complete run, or keep it uncommitted while you tune. Renaming or dropping a summary field that `readEvalStats` reads breaks the build the same way.
 
 Rescoring is deterministic: the report and summary depend only on the dataset, the cache and the code, so running `pnpm eval` twice produces identical files.
 
@@ -124,7 +126,7 @@ What the tune split says:
 - **The eyes abstain on shells.** 44 of 140 food items got a null reading, mostly quiche, calzone and taco items. In 27 of them a wall Noul landed between 0.3 and 0.7, and in 14 the lid did.
 
 > [!TIP]
-> Run question experiments against the tune split, bump `QUESTION_SET_VERSION`, and compare the new `results/v<version>/report.md` with this one. Look at holdout only once a candidate is final.
+> Run question experiments against the tune split, bump `QUESTION_SET_VERSION`, and compare the new `results/v<version>/report.md` with this one. Look at holdout only once a candidate is final, and commit the bump only after holdout and canon are in too, since the build needs a complete summary.
 
 ### Label decisions
 

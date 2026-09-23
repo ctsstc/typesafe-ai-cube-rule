@@ -89,7 +89,7 @@ Read the local counters with `pnpm exec wrangler d1 execute cube-rule-oracle --l
 
 ## One-time setup
 
-1. Log in to the personal Cloudflare account and confirm the account id matches the one pinned in `scripts/deploy.sh`:
+1. Log in to the personal Cloudflare account and confirm the account id matches the one pinned in `scripts/deploy.sh` and `scripts/spend.mjs` (a fork replaces it in both):
 
    ```sh
    pnpm exec wrangler login
@@ -102,7 +102,7 @@ Read the local counters with `pnpm exec wrangler d1 execute cube-rule-oracle --l
    pnpm exec wrangler pages project create cube-rule-oracle --production-branch main
    ```
 
-3. Create the KV namespace that keeps rulings across data centers, then paste its id into `apps/web/wrangler.jsonc` and uncomment the `kv_namespaces` line:
+3. Create the KV namespace that keeps rulings across data centers, then put its id in the `kv_namespaces` binding in `apps/web/wrangler.jsonc`, in place of the id already there:
 
    ```sh
    pnpm exec wrangler kv namespace create CLASSIFICATIONS
@@ -110,14 +110,14 @@ Read the local counters with `pnpm exec wrangler d1 execute cube-rule-oracle --l
 
    Production needs it, and `scripts/deploy.sh` refuses to run without the binding. Without KV a ruling lives only in the edge cache of the data center that asked, so a visitor elsewhere gets the human check and a second billed Jev call for the same food. Local dev binds a local namespace either way.
 
-4. Create the D1 database, put its id in place of the zero placeholder `database_id` in `apps/web/wrangler.jsonc`, and apply the migrations:
+4. Create the D1 database, put its id in place of the `database_id` in `apps/web/wrangler.jsonc`, and apply the migrations:
 
    ```sh
    pnpm exec wrangler d1 create cube-rule-oracle
    pnpm exec wrangler d1 migrations apply cube-rule-oracle --remote
    ```
 
-   `scripts/deploy.sh` refuses to run while the placeholder is there or while a migration is unapplied. `wrangler.jsonc` is the source of truth for Pages bindings, so do not add the binding in the dashboard.
+   `scripts/deploy.sh` refuses to run while a migration is unapplied. `wrangler.jsonc` is the source of truth for Pages bindings, so do not add the binding in the dashboard.
 
 5. Store the TypeSafe key as a production secret. Wrangler prompts for the value, so it never lands in shell history:
 
@@ -161,7 +161,7 @@ pnpm deploy:pages
 `scripts/deploy.sh` refuses to run unless all of these hold:
 
 - `VITE_TURNSTILE_SITE_KEY` is set (in the environment or the root `.env`) and is not one of Cloudflare's test sitekeys
-- `apps/web/wrangler.jsonc` has a real D1 `database_id` and an uncommented `CLASSIFICATIONS` KV binding
+- `apps/web/wrangler.jsonc` has a D1 `database_id` other than the all-zero placeholder and a `CLASSIFICATIONS` KV binding
 - the working tree is clean and on `main`
 - the source repo the site links to (`SOURCE_URL` in `apps/web/src/lib/links.ts`) answers 200, which GitHub only does once the repo is public
 - `wrangler whoami` lists the pinned account (`CLOUDFLARE_ACCOUNT_ID` is exported, so the deploy cannot land anywhere else)

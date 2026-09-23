@@ -67,6 +67,7 @@ Open http://localhost:5173. `pnpm dev` runs Vite on 5173 and the Pages Function 
 | `pnpm format` | Biome format and safe fixes |
 | `pnpm eval` | Runs the labelled food set against Jev (see below) |
 | `pnpm deploy:pages` | Guarded production deploy. Bare `pnpm deploy` is pnpm's own command and does not run it |
+| `pnpm spend [--detail]` | Read-only Jev spend report from the production D1 counters (see [docs/deploy.md](docs/deploy.md#watching-spend)) |
 
 ## Evaluation
 
@@ -81,6 +82,8 @@ Open http://localhost:5173. `pnpm dev` runs Vite on 5173 and the Pages Function 
 
 Labels outside canon are this project's reading of the site's rules. Answers are cached per question set, so `pnpm eval --offline` rescores for free, and a full live pass costs about $0.08. [docs/eval.md](docs/eval.md) explains the splits and records every tuning round.
 
+The site's [How Jev rules](https://cube-rule-oracle.pages.dev/#how-jev-rules) section shows these numbers, read from `eval/results/v<QUESTION_SET_VERSION>/summary.json` at build time. Bumping `QUESTION_SET_VERSION` therefore fails `pnpm build` and `pnpm check` until a complete run for the new version is committed.
+
 The 21 abusive probes are stored base64-encoded so they never show up as plain text in the code, but decoding them shows offensive text. Real dishes with rude-sounding names appear in plain text on purpose, as tests that the guard does not decline them.
 
 ## Deploying your own
@@ -89,7 +92,8 @@ The app is one Cloudflare Pages project: the static SPA plus a Pages Function fo
 
 A fork has to replace a few values that point at this project's Cloudflare account:
 
-- `scripts/deploy.sh` pins the owner's Cloudflare account id and refuses to deploy anywhere else.
+- `scripts/deploy.sh` pins the owner's Cloudflare account id and refuses to deploy anywhere else. `scripts/spend.mjs` pins the same id for `pnpm spend`.
+- `apps/web/src/lib/links.ts` holds the author and source repo links, and `scripts/deploy.sh` refuses to deploy until `SOURCE_URL` answers 200.
 - `apps/web/wrangler.jsonc` holds the owner's KV namespace id and D1 database id.
 - `SITE_URL`, which fills the canonical and Open Graph URLs, defaults to https://cube-rule-oracle.pages.dev in `scripts/deploy.sh` and `apps/web/vite.config.ts`.
 
@@ -101,19 +105,19 @@ A fork has to replace a few values that point at this project's Cloudflare accou
 
 ```text
 apps/web/                 Vite + React SPA and the Pages project
-  src/                    App shell, ruling card, CSS 3D cube, gallery, about
+  src/                    App shell, ruling card, CSS 3D cube, gallery, How Jev rules, about
   functions/api/          Pages Functions: classify.ts, session.ts and a JSON 404 for other /api paths
   functions/_lib/         Handlers, session cookie, D1 spend caps, HTTP helpers, rate limiter, tests
   migrations/             D1 schema for the spend caps
   public/                 _headers (CSP), _routes.json, icons, og.png
   og/                     SVG sources for the link preview card and icons
-  plugins/                Vite plugins: font preload, site URL, keyless mock API
+  plugins/                Vite plugins: font preload, site URL, eval stats, keyless mock API
   wrangler.jsonc          Pages config
 packages/core/            @cube/core: categories, Jev questions and thresholds, input
                           normalization, official rulings, result logic, mock, wire types
 eval/                     Labelled dataset, eval harness and results per question set
 docs/                     Question design, eval, UX spec, canon audit and deploy runbook
-scripts/                  pages-dev.sh (local wrangler), dev-challenge.sh and deploy.sh
+scripts/                  pages-dev.sh (local wrangler), dev-challenge.sh, deploy.sh and spend.mjs
 ```
 
 ## License
