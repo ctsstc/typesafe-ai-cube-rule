@@ -2,26 +2,27 @@
   "questionSetVersion": "5",
   "model": "jev-1.13.0",
   "fingerprint": "61d9417f49a8dbcf681c6de702b71251e5f7443b1eeae8aa66489dc486d2ce52",
-  "datasetSize": 156,
-  "scored": 156,
+  "datasetSize": 204,
+  "scored": 204,
   "missing": 0,
   "headline": {
-    "tuneN": 67,
-    "tuneAccuracy": 0.9851,
-    "tuneFamilyAccuracy": 1,
-    "holdoutN": 44,
-    "holdoutAccuracy": 0.9545,
-    "holdoutFamilyAccuracy": 0.9773,
+    "tuneN": 97,
+    "tuneAccuracy": 0.9485,
+    "tuneFamilyAccuracy": 0.9691,
+    "holdoutN": 62,
+    "holdoutAccuracy": 0.9516,
+    "holdoutFamilyAccuracy": 0.9677,
     "canonN": 45,
     "canonJevAgreement": 1,
     "inputKindAccuracy": 1,
     "abuseFalsePositives": 0,
-    "eyesAgreeRate": 0.9072,
-    "eyesNullRate": 0.3071,
-    "avgInputTokens": 9568,
-    "p50LatencyMs": 218,
-    "p95LatencyMs": 356,
-    "runCostUsd": 0.062693
+    "abuseDetection": 0.8095,
+    "eyesAgreeRate": 0.9167,
+    "eyesNullRate": 0.325,
+    "avgInputTokens": 9569,
+    "p50LatencyMs": 223,
+    "p95LatencyMs": 411,
+    "runCostUsd": 0.081985
   },
   "splits": {
     "canon": {
@@ -70,42 +71,42 @@
       }
     },
     "tune": {
-      "n": 67,
+      "n": 97,
       "accuracy": {
-        "n": 67,
-        "hits": 66,
-        "rate": 0.9850746268656716
+        "n": 97,
+        "hits": 92,
+        "rate": 0.9484536082474226
       },
       "familyAccuracy": {
-        "n": 67,
-        "hits": 67,
-        "rate": 1
+        "n": 97,
+        "hits": 94,
+        "rate": 0.9690721649484536
       },
       "categoryAccuracy": {
-        "n": 58,
-        "hits": 57,
-        "rate": 0.9827586206896551
+        "n": 70,
+        "hits": 68,
+        "rate": 0.9714285714285714
       },
       "inputKindAccuracy": {
-        "n": 67,
-        "hits": 67,
+        "n": 83,
+        "hits": 83,
         "rate": 1
       },
       "unleakedAccuracy": {
-        "n": 53,
-        "hits": 52,
-        "rate": 0.9811320754716981
+        "n": 83,
+        "hits": 78,
+        "rate": 0.9397590361445783
       },
       "verdicts": {
         "unanimous": {
-          "n": 47,
-          "hits": 47,
+          "n": 55,
+          "hits": 55,
           "rate": 1
         },
         "majority": {
-          "n": 11,
-          "hits": 10,
-          "rate": 0.9090909090909091
+          "n": 15,
+          "hits": 13,
+          "rate": 0.8666666666666667
         },
         "split": {
           "n": 0,
@@ -115,142 +116,344 @@
       }
     },
     "holdout": {
-      "n": 44,
+      "n": 62,
       "accuracy": {
-        "n": 44,
-        "hits": 42,
-        "rate": 0.9545454545454546
+        "n": 62,
+        "hits": 59,
+        "rate": 0.9516129032258065
       },
       "familyAccuracy": {
-        "n": 44,
-        "hits": 43,
-        "rate": 0.9772727272727273
+        "n": 62,
+        "hits": 60,
+        "rate": 0.967741935483871
       },
       "categoryAccuracy": {
-        "n": 38,
-        "hits": 36,
-        "rate": 0.9473684210526315
+        "n": 46,
+        "hits": 44,
+        "rate": 0.9565217391304348
       },
       "inputKindAccuracy": {
-        "n": 44,
-        "hits": 44,
+        "n": 55,
+        "hits": 55,
         "rate": 1
       },
       "unleakedAccuracy": {
-        "n": 36,
-        "hits": 34,
+        "n": 54,
+        "hits": 51,
         "rate": 0.9444444444444444
       },
       "verdicts": {
         "unanimous": {
-          "n": 26,
-          "hits": 25,
-          "rate": 0.9615384615384616
+          "n": 31,
+          "hits": 30,
+          "rate": 0.967741935483871
         },
         "majority": {
-          "n": 12,
-          "hits": 11,
-          "rate": 0.9166666666666666
+          "n": 14,
+          "hits": 13,
+          "rate": 0.9285714285714286
         },
         "split": {
-          "n": 0,
-          "hits": 0,
-          "rate": null
+          "n": 1,
+          "hits": 1,
+          "rate": 1
         }
       }
     },
     "all": {
-      "n": 156,
+      "n": 204,
       "accuracy": {
-        "n": 156,
-        "hits": 153,
-        "rate": 0.9807692307692307
+        "n": 204,
+        "hits": 196,
+        "rate": 0.9607843137254902
       },
       "familyAccuracy": {
-        "n": 156,
-        "hits": 155,
-        "rate": 0.9935897435897436
+        "n": 204,
+        "hits": 199,
+        "rate": 0.9754901960784313
       },
       "categoryAccuracy": {
-        "n": 140,
-        "hits": 137,
-        "rate": 0.9785714285714285
+        "n": 160,
+        "hits": 156,
+        "rate": 0.975
       },
       "inputKindAccuracy": {
-        "n": 156,
-        "hits": 156,
+        "n": 183,
+        "hits": 183,
         "rate": 1
       },
       "unleakedAccuracy": {
-        "n": 97,
-        "hits": 94,
-        "rate": 0.9690721649484536
+        "n": 145,
+        "hits": 137,
+        "rate": 0.9448275862068966
       },
       "verdicts": {
         "unanimous": {
-          "n": 116,
-          "hits": 115,
-          "rate": 0.9913793103448276
+          "n": 129,
+          "hits": 128,
+          "rate": 0.9922480620155039
         },
         "majority": {
-          "n": 24,
-          "hits": 22,
-          "rate": 0.9166666666666666
+          "n": 30,
+          "hits": 27,
+          "rate": 0.9
         },
         "split": {
-          "n": 0,
-          "hits": 0,
-          "rate": null
+          "n": 1,
+          "hits": 1,
+          "rate": 1
         }
       }
     }
   },
   "eyes": {
-    "n": 140,
-    "nullRate": 0.3071,
+    "n": 160,
+    "nullRate": 0.325,
     "agree": {
-      "n": 97,
-      "hits": 88,
-      "rate": 0.9072164948453608
+      "n": 108,
+      "hits": 99,
+      "rate": 0.9166666666666666
     },
     "accuracy": {
-      "n": 97,
-      "hits": 89,
-      "rate": 0.9175257731958762
+      "n": 108,
+      "hits": 100,
+      "rate": 0.9259259259259259
     }
   },
   "wet": {
-    "n": 17,
-    "hits": 17,
+    "n": 20,
+    "hits": 20,
     "rate": 1
   },
   "honorary": {
-    "n": 7,
-    "hits": 5,
-    "rate": 0.7142857142857143
+    "n": 13,
+    "hits": 11,
+    "rate": 0.8461538461538461
   },
   "abuse": {
     "threshold": 0.85,
     "falsePositives": 0,
     "maxProbability": 0.23,
-    "maxItem": "slippery nipple shot"
+    "maxItem": "slippery nipple shot",
+    "minAbusiveProbability": 0.62,
+    "minAbusiveItem": "a2trIGZyaWVkIGNoaWNrZW4=",
+    "bySplit": {
+      "canon": {
+        "detected": {
+          "n": 0,
+          "hits": 0,
+          "rate": null
+        },
+        "falseDeclines": {
+          "n": 45,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      "tune": {
+        "detected": {
+          "n": 14,
+          "hits": 11,
+          "rate": 0.7857142857142857
+        },
+        "falseDeclines": {
+          "n": 83,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      "holdout": {
+        "detected": {
+          "n": 7,
+          "hits": 6,
+          "rate": 0.8571428571428571
+        },
+        "falseDeclines": {
+          "n": 55,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      "all": {
+        "detected": {
+          "n": 21,
+          "hits": 17,
+          "rate": 0.8095238095238095
+        },
+        "falseDeclines": {
+          "n": 183,
+          "hits": 0,
+          "rate": 0
+        }
+      }
+    },
+    "sweep": [
+      {
+        "threshold": 0.3,
+        "detected": {
+          "n": 14,
+          "hits": 14,
+          "rate": 1
+        },
+        "falseDeclines": {
+          "n": 83,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.4,
+        "detected": {
+          "n": 14,
+          "hits": 14,
+          "rate": 1
+        },
+        "falseDeclines": {
+          "n": 83,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.5,
+        "detected": {
+          "n": 14,
+          "hits": 14,
+          "rate": 1
+        },
+        "falseDeclines": {
+          "n": 83,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.6,
+        "detected": {
+          "n": 14,
+          "hits": 14,
+          "rate": 1
+        },
+        "falseDeclines": {
+          "n": 83,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.7,
+        "detected": {
+          "n": 14,
+          "hits": 12,
+          "rate": 0.8571428571428571
+        },
+        "falseDeclines": {
+          "n": 83,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.8,
+        "detected": {
+          "n": 14,
+          "hits": 11,
+          "rate": 0.7857142857142857
+        },
+        "falseDeclines": {
+          "n": 83,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.85,
+        "detected": {
+          "n": 14,
+          "hits": 11,
+          "rate": 0.7857142857142857
+        },
+        "falseDeclines": {
+          "n": 83,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "threshold": 0.9,
+        "detected": {
+          "n": 14,
+          "hits": 11,
+          "rate": 0.7857142857142857
+        },
+        "falseDeclines": {
+          "n": 83,
+          "hits": 0,
+          "rate": 0
+        }
+      }
+    ],
+    "buckets": [
+      {
+        "from": 0,
+        "to": 0.1,
+        "abusive": 0,
+        "rudeFoods": 25,
+        "other": 155
+      },
+      {
+        "from": 0.1,
+        "to": 0.3,
+        "abusive": 0,
+        "rudeFoods": 1,
+        "other": 2
+      },
+      {
+        "from": 0.3,
+        "to": 0.5,
+        "abusive": 0,
+        "rudeFoods": 0,
+        "other": 0
+      },
+      {
+        "from": 0.5,
+        "to": 0.7,
+        "abusive": 2,
+        "rudeFoods": 0,
+        "other": 0
+      },
+      {
+        "from": 0.7,
+        "to": 0.85,
+        "abusive": 2,
+        "rudeFoods": 0,
+        "other": 0
+      },
+      {
+        "from": 0.85,
+        "to": 1,
+        "abusive": 17,
+        "rudeFoods": 0,
+        "other": 0
+      }
+    ]
   },
   "tokens": {
-    "totalInput": 1492681,
-    "totalOutput": 86219,
-    "avgInput": 9568,
+    "totalInput": 1952027,
+    "totalOutput": 112718,
+    "avgInput": 9569,
     "avgOutput": 553,
-    "maxInput": 9576
+    "maxInput": 9577
   },
   "latency": {
-    "p50": 218,
-    "p95": 356,
-    "max": 476,
+    "p50": 223,
+    "p95": 411,
+    "max": 555,
     "retried": 0
   },
   "cost": {
     "pricePerMillionInputUsd": 0.042,
-    "perCallUsd": 0.00040188,
-    "runUsd": 0.062693
+    "perCallUsd": 0.00040189,
+    "runUsd": 0.081985
   }
 }
