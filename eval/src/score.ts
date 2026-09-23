@@ -145,7 +145,7 @@ export function jevHonoraryResult(response: CubeResponse): HonoraryResult {
 const JOINS: Readonly<Record<ListName, (entry: ListEntry) => boolean>> = {
   latest: () => true,
   mostDebated: (entry) => entry.confidence < THRESHOLDS.unanimous,
-  jevDissents: (entry) => entry.official !== null && entry.official !== entry.category,
+  honoraryCourt: (entry) => entry.kind === "honorary",
   friendshipEnding: (entry) => entry.debateLevel > 0,
 };
 

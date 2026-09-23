@@ -296,7 +296,7 @@ describe("person kind and public listing", () => {
     });
     expect(summary.listing.reasons).toMatchObject({ listed: 2, private_person: 2, abusive: 1 });
     expect(summary.listing.lists.latest).toBe(2);
-    expect(summary.listing.lists.jevDissents).toBe(0);
+    expect(summary.listing.lists.honoraryCourt).toBe(1);
     expect(summary.headline.personKindAccuracy).toBe(0.8);
   });
 
