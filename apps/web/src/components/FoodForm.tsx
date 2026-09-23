@@ -83,7 +83,7 @@ export function FoodForm({ value, onChange, onSubmit, onSurprise, inputRef }: Fo
 
   return (
     <form className="food-form" onSubmit={submit} noValidate>
-      <label className="food-form__label" htmlFor="food-input">
+      <label id="food-label" className="food-form__label" htmlFor="food-input">
         Name a food
       </label>
       <div className="food-form__row">

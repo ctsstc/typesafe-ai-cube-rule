@@ -188,7 +188,7 @@ Mobile first. The content column is `min(100% - 32px, 640px)`. The gallery and, 
 - **Input:** visible label "Name a food", 56px tall, 18px text, `enterkeyhint="go"`, autocomplete, autocorrect, and autocapitalize off, `maxlength="80"`. Hint: "Singular works best. Jev only sees the name." Below 400px the button drops under the input.
 - **Examples:** hot dog, cereal, pop-tart, lasagna, pizza, and Surprise me (from `SURPRISE_FOODS`). Examples are real `?food=` links, a plain click is handled in the app, and hovering or focusing one for 150ms prefetches its ruling.
 - **Validation** runs on submit only: "Type a food first." or "That needs at least one letter." The input gets `aria-invalid` and the error joins its description.
-- With a ruling showing, the hero compacts: smaller question, no subhead, no examples, no hero cube.
+- With a ruling showing, the hero compacts to the form: no subhead, no examples, no hero cube, and the section is labelled by the input's label. The daily question stays, small and not a heading, only when the ruling is about its food. A shared link for hot dog never opens under "Is a burrito sushi?".
 
 ### 7.3 Ruling card
 
@@ -376,7 +376,7 @@ Only `transform`, the individual transform properties, and `opacity` animate. Th
 ## 12. Accessibility
 
 - Landmarks: header, nav, main, footer. The mock banner is a labelled `aside`. Skip link first.
-- One h1 (the daily question). The ruling, gallery, and about headings are h2; cards and error titles are h3.
+- One h1. On the home page it is the daily question. Once a ruling shows, typed or deep linked, the ruling heading is the h1 ("Consulting the cube" while a deep link loads) and its probability list and error title are h2. The gallery and about headings are h2 and their cards are h3. `RulingCard` takes a `level` so the v0.2 debate cards can sit lower.
 - The form has a visible label, the hint and error are linked by `aria-describedby`, and `aria-invalid` is set on error.
 - One polite live region carries loading ("Ruling on hot dog."), error titles, toasts, and the verdict of a deep-linked ruling. A typed ruling moves focus to its heading instead; a deep link never steals focus.
 - The cube is `role="img"` with a description built from its geometry. Stamps and bars are `aria-hidden` because the heading and the list text carry them.

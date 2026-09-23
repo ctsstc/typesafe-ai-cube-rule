@@ -28,11 +28,11 @@ function failed(code: RulingErrorCode, retryAfter: number | null = null): Active
   };
 }
 
-function renderCard(state: ActiveState) {
+function renderCard(state: ActiveState, level?: 1 | 2) {
   const handlers = { onRetry: vi.fn(), onEdit: vi.fn(), onCubeAnother: vi.fn() };
   const view = render(
     <AnnouncerProvider>
-      <RulingCard state={state} {...handlers} />
+      <RulingCard state={state} level={level} {...handlers} />
     </AnnouncerProvider>,
   );
   return { ...view, ...handlers };
@@ -60,6 +60,17 @@ describe("RulingCard", () => {
     expect(rows[0]).toHaveTextContent("Sandwich97%");
     expect(screen.getByText(/Jev is sure|No notes|didn't even blink/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Share ruling" })).toBeInTheDocument();
+    await expectNoAxeViolations(container);
+  });
+
+  it("leads the page as an h1 with its sections one level down", async () => {
+    const { container } = renderCard(done(scenarios.honorary(), "link"), 1);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveAccessibleName(
+      "Canoe: Not food. Probably.",
+    );
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "If it were food: Jev's probabilities",
+    );
     await expectNoAxeViolations(container);
   });
 

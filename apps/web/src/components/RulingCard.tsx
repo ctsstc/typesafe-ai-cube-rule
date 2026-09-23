@@ -33,6 +33,7 @@ const SLOW_MS = 4000;
 
 interface RulingCardProps {
   readonly state: ActiveState;
+  readonly level?: 1 | 2;
   readonly onRetry: () => void;
   readonly onEdit: () => void;
   readonly onCubeAnother: () => void;
@@ -99,7 +100,7 @@ function OfficialBadge({ result }: { result: FoodResult | HonoraryResult }) {
   );
 }
 
-function FoodDetails({ result }: { result: FoodResult }) {
+function FoodDetails({ result, level }: { result: FoodResult; level: 2 | 3 }) {
   const official = officialCopy(result);
   const chips = extraChips(result);
   const notes = extraNotes(result);
@@ -135,19 +136,24 @@ function FoodDetails({ result }: { result: FoodResult }) {
       <ProbabilityList
         ruling={result.ruling}
         canon={result.official && !result.official.jevAgrees ? result.official.category : null}
+        level={level}
       />
     </>
   );
 }
 
-function HonoraryDetails({ result }: { result: HonoraryResult }) {
+function HonoraryDetails({ result, level }: { result: HonoraryResult; level: 2 | 3 }) {
   return (
     <>
       <div className="ruling__reveal-late">
         <p className="ruling__confidence">{result.headline}</p>
         <OfficialBadge result={result} />
       </div>
-      <ProbabilityList ruling={result.ruling} title="If it were food: Jev's probabilities" />
+      <ProbabilityList
+        ruling={result.ruling}
+        title="If it were food: Jev's probabilities"
+        level={level}
+      />
     </>
   );
 }
@@ -179,7 +185,7 @@ function cubeFor(result: CubeResult) {
   return { category: null, starchColor: null, muted: true };
 }
 
-export function RulingCard({ state, onRetry, onEdit, onCubeAnother }: RulingCardProps) {
+export function RulingCard({ state, level = 2, onRetry, onEdit, onCubeAnother }: RulingCardProps) {
   const reduced = useReducedMotion();
   const { announce } = useAnnouncer();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -218,6 +224,8 @@ export function RulingCard({ state, onRetry, onEdit, onCubeAnother }: RulingCard
   const cube = result ? cubeFor(result) : { category: null, starchColor: null, muted: false };
   const phase = state.status === "loading" ? "loading" : revealing ? "reveal" : "static";
   const stamp = result ? stampFor(result) : null;
+  const Heading = level === 1 ? "h1" : "h2";
+  const subLevel = level === 1 ? 2 : 3;
 
   return (
     <article
@@ -234,7 +242,7 @@ export function RulingCard({ state, onRetry, onEdit, onCubeAnother }: RulingCard
           Ruling
           {simulated && <span className="pill pill--warn">Simulated</span>}
         </p>
-        <h2 id={headingId} ref={headingRef} tabIndex={-1} className="ruling__heading">
+        <Heading id={headingId} ref={headingRef} tabIndex={-1} className="ruling__heading">
           {result?.kind === "declined" ? (
             <span className="ruling__verdict ruling__verdict--solo">
               Jev declines to cube that.
@@ -248,7 +256,7 @@ export function RulingCard({ state, onRetry, onEdit, onCubeAnother }: RulingCard
           ) : (
             <span className="ruling__food">{heading}</span>
           )}
-        </h2>
+        </Heading>
 
         {showStage && (
           <div className="ruling__stage">
@@ -288,8 +296,8 @@ export function RulingCard({ state, onRetry, onEdit, onCubeAnother }: RulingCard
 
         {result && result.kind !== "declined" && (
           <>
-            {result.kind === "food" && <FoodDetails result={result} />}
-            {result.kind === "honorary" && <HonoraryDetails result={result} />}
+            {result.kind === "food" && <FoodDetails result={result} level={subLevel} />}
+            {result.kind === "honorary" && <HonoraryDetails result={result} level={subLevel} />}
             {result.kind === "nonsense" && (
               <p className="ruling__confidence">
                 Jev can't find a food, or anything else, in that. Try a dish, a snack, or a drink.

@@ -162,10 +162,6 @@
   font-size: 1.5rem;
 }
 
-.hero[data-compact] .hero__sub {
-  display: none;
-}
-
 .food-form {
   display: grid;
   gap: var(--space-2);

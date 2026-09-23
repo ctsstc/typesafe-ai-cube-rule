@@ -6,19 +6,22 @@ interface ProbabilityListProps {
   readonly ruling: CubeRuling;
   readonly canon?: CategoryId | null;
   readonly title?: string;
+  readonly level?: 2 | 3;
 }
 
 export function ProbabilityList({
   ruling,
   canon = null,
   title = "Jev's probabilities, highest first",
+  level = 3,
 }: ProbabilityListProps) {
   const headingId = useId();
+  const Heading = level === 2 ? "h2" : "h3";
   return (
     <div className="odds">
-      <h3 id={headingId} className="odds__title">
+      <Heading id={headingId} className="odds__title">
         {title}
-      </h3>
+      </Heading>
       <ol className="odds__list" aria-labelledby={headingId}>
         {ruling.odds.map((odds, index) => {
           const category = CATEGORIES[odds.id];

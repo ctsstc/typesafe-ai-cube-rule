@@ -1,3 +1,4 @@
+import { normalizeItem } from "@cube/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { About } from "./components/About";
 import { AnnouncerProvider } from "./components/Announcer";
@@ -37,6 +38,7 @@ export function App() {
   const inputRef = useRef<HTMLInputElement>(null);
   const rulingRef = useRef<HTMLDivElement>(null);
   const hero = useRef(heroQuestion()).current;
+  const heroItem = normalizeItem(hero.food);
 
   const submit = useCallback(
     (item: string) => {
@@ -107,19 +109,23 @@ export function App() {
             id="oracle"
             className="hero container"
             data-compact={active ? true : undefined}
-            aria-labelledby="hero-title"
+            aria-labelledby={active ? "food-label" : "hero-title"}
           >
-            <div className="hero__top">
-              <div className="hero__text">
-                <h1 id="hero-title" className="hero__title">
-                  {hero.question}
-                </h1>
-                <p className="hero__sub">
-                  Name any food. Jev finds the structural starch, and the cube rules.
-                </p>
+            {active ? (
+              active.item === heroItem && <p className="hero__title">{hero.question}</p>
+            ) : (
+              <div className="hero__top">
+                <div className="hero__text">
+                  <h1 id="hero-title" className="hero__title">
+                    {hero.question}
+                  </h1>
+                  <p className="hero__sub">
+                    Name any food. Jev finds the structural starch, and the cube rules.
+                  </p>
+                </div>
+                <HeroArt hero={hero} onPick={submit} />
               </div>
-              {!active && <HeroArt hero={hero} onPick={submit} />}
-            </div>
+            )}
             <FoodForm
               value={query}
               onChange={setQuery}
@@ -133,6 +139,7 @@ export function App() {
               <RulingCard
                 key={active.id}
                 state={active}
+                level={1}
                 onRetry={() => rule(active.item, active.origin)}
                 onEdit={focusInput}
                 onCubeAnother={cubeAnother}
