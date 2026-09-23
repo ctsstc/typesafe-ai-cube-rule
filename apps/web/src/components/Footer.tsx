@@ -20,6 +20,7 @@ export function Footer({ model }: { model: string | null }) {
           <span>question set {QUESTION_SET_VERSION}</span>
           {model && <span>{model}</span>}
           <a href="#about">About and privacy</a>
+          <a href="#how-jev-rules">How Jev rules</a>
           <a href="#gallery">The nine cubes</a>
         </p>
       </div>

@@ -1,5 +1,13 @@
 import { normalizeItem } from "@cube/core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type ComponentType,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { About } from "./components/About";
 import { AnnouncerProvider } from "./components/Announcer";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -16,6 +24,14 @@ import { APP_NAME, HOME_TITLE, heroQuestion, resultTitle } from "./lib/copy";
 import { surpriseFood } from "./lib/foods";
 import { sentenceCase } from "./lib/format";
 import { foodFromSearch, foodHref } from "./lib/url";
+
+// Below the fold and mostly text, so it stays out of the initial bundle.
+const HowJevRules = lazy(() =>
+  import("./components/HowJevRules").then(
+    (m): { default: ComponentType } => ({ default: m.HowJevRules }),
+    () => ({ default: () => null }),
+  ),
+);
 
 function titleFor(state: OracleState): string {
   if (state.status === "idle") return HOME_TITLE;
@@ -70,6 +86,14 @@ export function App() {
   useEffect(() => {
     const fromUrl = foodFromSearch(location.search);
     if (fromUrl) rule(fromUrl, "link");
+    // The sections render after the browser's own jump to #about or #how-jev-rules, and the
+    // display font can still move them, so this waits for it.
+    else if (location.hash) {
+      const id = location.hash.slice(1);
+      void (document.fonts?.ready ?? Promise.resolve()).then(() =>
+        document.getElementById(id)?.scrollIntoView(),
+      );
+    }
     const onPop = () => {
       const typed = isTyped(history.state);
       // In-page anchors fire popstate too. They keep the search, so the ruling stays as it is.
@@ -172,6 +196,9 @@ export function App() {
             )}
           </div>
           <Gallery onPick={submit} />
+          <Suspense fallback={<section id="how-jev-rules" className="jev container" />}>
+            <HowJevRules />
+          </Suspense>
           <About />
         </main>
       </ErrorBoundary>

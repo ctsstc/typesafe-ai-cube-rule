@@ -12,6 +12,7 @@ export function Header() {
         <nav className="site-nav" aria-label="Sections">
           <a href="#oracle">Rule</a>
           <a href="#gallery">Cubes</a>
+          <a href="#how-jev-rules">How Jev rules</a>
           <a href="#about">About</a>
         </nav>
         <ThemeToggle />

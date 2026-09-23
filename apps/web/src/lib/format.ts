@@ -12,3 +12,8 @@ export function lowerFirst(text: string): string {
   const [first = "", ...rest] = Array.from(text);
   return first.toLocaleLowerCase("en") + rest.join("");
 }
+
+export function joinList(items: readonly string[], conjunction = "and"): string {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} ${conjunction} ${items.at(-1)}`;
+}

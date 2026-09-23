@@ -13,5 +13,14 @@ describe("Footer", () => {
     expect(link("@Phosphatide")).toHaveAttribute("href", "https://twitter.com/Phosphatide");
     expect(link("cuberule.com")).toHaveAttribute("href", "https://cuberule.com/");
     expect(link("@indirect")).toHaveAttribute("href", "https://twitter.com/indirect");
+    expect(link("TypeSafe")).toHaveAttribute("href", "https://typesafe.ai/");
+  });
+
+  it("links to How Jev rules", () => {
+    render(<Footer model={null} />);
+    expect(screen.getByRole("link", { name: "How Jev rules" })).toHaveAttribute(
+      "href",
+      "#how-jev-rules",
+    );
   });
 });
