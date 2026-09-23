@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-22
+
 ### Added
 
 - **Human check for new foods.** A food nobody has asked about needs a `cube_session` cookie. Only then does the SPA load Cloudflare Turnstile (never on page load), run an interaction-only check, and trade the token at the new `POST /api/session` for a signed, HttpOnly cookie that lasts an hour. Foods already ruled are served with no check.
