@@ -402,7 +402,7 @@ Crawlers do not run JavaScript, so the share text carries the food and verdict a
 ## 14. Mock mode
 
 - The Function returns `mockCubeResponse(item)` with `mock: true` and `no-store` when `TYPESAFE_API_KEY` is unset.
-- `pnpm --filter @cube/web dev:mock` serves the same mock straight from Vite, without wrangler, plus trigger foods for every state: `mock sure`, `mock leans`, `mock torn`, `mock family`, `mock baffled`, `mock 429`, `mock 502`, `mock 503`, `mock 504`, `mock 500`, `mock slow` (5s), `mock timeout` (12s). Core's own mock declines any item containing the word `slur` and treats consonant mash as nonsense.
+- `pnpm --filter @cube/web dev:mock` serves the same mock straight from Vite, without wrangler, plus trigger foods for every state: `mock sure`, `mock leans`, `mock torn`, `mock family`, `mock baffled`, `mock 429`, `mock 502`, `mock 503`, `mock 504`, `mock 500`, `mock challenge` (401), `mock daily` (503 `daily_limit`, resets in 3 hours), `mock client` (429 `client_limit`), `mock stale` (409 `stale_client`), `mock slow` (5s), `mock timeout` (12s). `/api/session` accepts any token, so `VITE_TURNSTILE_SITE_KEY=3x00000000000000000000FF pnpm --filter @cube/web dev:mock` shows the check card for `mock challenge`. Core's own mock declines any item containing the word `slur` and treats consonant mash as nonsense.
 - The UI shows the banner, the Simulated pill and caption, and `#about-mock`.
 
 ## 15. Performance budget

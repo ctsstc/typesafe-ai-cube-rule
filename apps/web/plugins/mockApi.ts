@@ -31,11 +31,21 @@ const SCENARIOS: Record<string, [CategoryId, Odds, number]> = {
 };
 
 const ERRORS: Record<string, ClassifyErrorCode> = {
+  "mock challenge": "challenge_required",
+  "mock daily": "daily_limit",
+  "mock client": "client_limit",
+  "mock stale": "stale_client",
   "mock 429": "rate_limited",
   "mock 502": "upstream_error",
   "mock 503": "upstream_busy",
   "mock 504": "timeout",
   "mock 500": "internal",
+};
+
+const RETRY_AFTER: Partial<Record<ClassifyErrorCode, string>> = {
+  rate_limited: "7",
+  daily_limit: "10800",
+  client_limit: "10800",
 };
 
 const DELAYS: Record<string, number> = { "mock slow": 5000, "mock timeout": 12000 };
@@ -47,9 +57,19 @@ export function mockApi(): Plugin {
     configureServer(server) {
       // Loaded through Vite so the workspace package's extensionless TS imports resolve.
       const core = server.ssrLoadModule("@cube/core") as Promise<Core>;
+      // Accepts any token, so a real test sitekey shows the check card against the mock.
+      server.middlewares.use("/api/session", (req, res) => {
+        res.writeHead(req.method === "POST" ? 204 : 405, { "cache-control": "no-store" });
+        res.end();
+      });
       server.middlewares.use("/api/classify", async (req, res) => {
-        const { CATEGORY_IDS, CLASSIFY_ERROR_CODES, mockCubeResponse, parseClassifyQuery } =
-          await core;
+        const {
+          CATEGORY_IDS,
+          CLASSIFY_ERROR_CODES,
+          isStaleClassifyQuery,
+          mockCubeResponse,
+          parseClassifyQuery,
+        } = await core;
         const send = (status: number, body: unknown, headers: Record<string, string> = {}) => {
           res.writeHead(status, {
             "content-type": "application/json; charset=utf-8",
@@ -61,13 +81,14 @@ export function mockApi(): Plugin {
         const search = (req.url ?? "").split("?")[1] ?? "";
         const item = parseClassifyQuery(search);
         if (item === null) {
-          send(400, { error: { code: "bad_request", message: "Not a canonical query." } });
+          const code = isStaleClassifyQuery(search) ? "stale_client" : "bad_request";
+          send(CLASSIFY_ERROR_CODES[code], { error: { code, message: "Not a canonical query." } });
           return;
         }
         const errorCode = ERRORS[item];
         if (errorCode) {
-          const headers: Record<string, string> =
-            errorCode === "rate_limited" ? { "retry-after": "7" } : {};
+          const retryAfter = RETRY_AFTER[errorCode];
+          const headers: Record<string, string> = retryAfter ? { "retry-after": retryAfter } : {};
           send(
             CLASSIFY_ERROR_CODES[errorCode],
             { error: { code: errorCode, message: `Simulated ${errorCode}.` } },
