@@ -90,6 +90,28 @@ describe("classify", () => {
     expect(cachedClassified("taco")).toBeUndefined();
   });
 
+  it.each([
+    [true, "network"],
+    [false, "offline"],
+  ] as const)(
+    "reads a 200 whose body drops mid-download (online: %s) as %s",
+    async (online, code) => {
+      const half = JSON.stringify(mockCubeResponse("taco")).slice(0, 40);
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(half));
+          controller.error(new TypeError("terminated"));
+        },
+      });
+      vi.stubGlobal(
+        "fetch",
+        async () => new Response(body, { headers: { "content-type": "application/json" } }),
+      );
+      vi.spyOn(navigator, "onLine", "get").mockReturnValue(online);
+      expect((await failure("taco")).code).toBe(code);
+    },
+  );
+
   it("keeps a JSON ruling sent without a JSON content type", async () => {
     vi.stubGlobal("fetch", async () => new Response(JSON.stringify(mockCubeResponse("taco"))));
     await expect(classify("taco")).resolves.toMatchObject({ response: { model: "mock" } });
@@ -134,6 +156,23 @@ describe("classify", () => {
           init.signal?.addEventListener("abort", () => reject(new DOMException("", "AbortError")));
         }),
     );
+    const pending = failure("taco");
+    await vi.advanceTimersByTimeAsync(CLIENT_TIMEOUT_MS);
+    expect((await pending).code).toBe("timeout");
+  });
+
+  it("times out a body that stalls after the headers", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", async (_url: string, init: RequestInit) => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          init.signal?.addEventListener("abort", () =>
+            controller.error(new DOMException("", "AbortError")),
+          );
+        },
+      });
+      return new Response(body, { headers: { "content-type": "application/json" } });
+    });
     const pending = failure("taco");
     await vi.advanceTimersByTimeAsync(CLIENT_TIMEOUT_MS);
     expect((await pending).code).toBe("timeout");

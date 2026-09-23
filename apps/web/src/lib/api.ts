@@ -65,11 +65,19 @@ function servedFromBrowserCache(url: string): boolean {
   }
 }
 
-async function send(url: string, init: RequestInit): Promise<Response> {
+interface Sent {
+  readonly res: Response;
+  readonly text: string;
+}
+
+// Reads the body inside the timeout too: a connection that drops or stalls after the headers is a
+// network failure, not a body that failed to parse.
+async function send(url: string, init: RequestInit): Promise<Sent> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS);
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    const res = await fetch(url, { ...init, signal: controller.signal });
+    return { res, text: await res.text() };
   } catch {
     if (controller.signal.aborted) throw new RulingError("timeout");
     throw new RulingError(navigator.onLine === false ? "offline" : "network");
@@ -87,6 +95,14 @@ function failure(res: Response, body: unknown): RulingError {
 
 const NOT_JSON = Symbol("not JSON");
 
+function parseBody(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return NOT_JSON;
+  }
+}
+
 // Once the Free plan's daily Functions requests run out, Pages fails open and answers /api/* with
 // the SPA's index.html and a 200, so a success that is not JSON means the API is over capacity.
 function isHtml(res: Response): boolean {
@@ -98,9 +114,9 @@ async function request(item: string, prefetch = false): Promise<Classified | nul
   const started = performance.now();
   const headers: Record<string, string> = { accept: "application/json" };
   if (prefetch) headers[PREFETCH_HEADER] = "1";
-  const res = await send(url, { headers });
+  const { res, text } = await send(url, { headers });
   if (prefetch && res.status === 204) return null;
-  const body: unknown = await res.json().catch(() => NOT_JSON);
+  const body = parseBody(text);
   const latencyMs = Math.round(performance.now() - started);
   if (!res.ok) throw failure(res, body);
   if (body === NOT_JSON || isHtml(res)) throw new RulingError("over_capacity");
@@ -158,12 +174,12 @@ async function startSession(signal: AbortSignal): Promise<void> {
     setChecking(false);
   }
   if (signal.aborted) throw new RulingError("challenge_skipped");
-  const res = await send(SESSION_PATH, {
+  const { res, text } = await send(SESSION_PATH, {
     method: "POST",
     headers: { accept: "application/json", "content-type": "application/json" },
     body: JSON.stringify({ token }),
   });
-  if (!res.ok) throw failure(res, await res.json().catch(() => null));
+  if (!res.ok) throw failure(res, parseBody(text));
 }
 
 // Rulings that miss together share one challenge. It is abandoned once no caller waits on a ruling.

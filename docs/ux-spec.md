@@ -150,7 +150,7 @@ The SPA runs `toCubeResult(item, body)` itself, so a copy or threshold change is
 - One request per food per session: a promise cache for in-flight requests and a settled cache that lets back and forward render synchronously.
 - A `401` runs one shared Turnstile check for every ruling that needs it, then retries each ruling once. When no ruling waits on the check any more (Back to home, a newer ruling that is cached), the card is removed and nothing is retried.
 - A response must carry every answer with the right type (`isClassifyResponse`), or it is treated as `internal`.
-- A 10 second client timeout maps to `timeout`. A rejected fetch maps to `offline` when `navigator.onLine` is false, otherwise `network`. An error body that is not ours falls back to the HTTP status.
+- A 10 second client timeout, covering the body download as well as the headers, maps to `timeout`. A rejected fetch, or a body that fails to download, maps to `offline` when `navigator.onLine` is false, otherwise `network`. An error body that is not ours falls back to the HTTP status.
 - `Retry-After` accepts seconds or an HTTP date.
 
 ## 6. Interpretation rules
