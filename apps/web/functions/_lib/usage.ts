@@ -27,7 +27,8 @@ RETURNING calls`;
 const READ_SPENT = `SELECT (SELECT calls FROM usage WHERE day = ?1) AS day_calls,
 (SELECT calls FROM clients WHERE key = ?2) AS client_calls`;
 
-const ADD_INPUT_TOKENS = "UPDATE usage SET input_tokens = input_tokens + ?2 WHERE day = ?1";
+const ADD_INPUT_TOKENS =
+  "UPDATE usage SET input_tokens = input_tokens + ?2, token_calls = token_calls + 1 WHERE day = ?1";
 
 export function dailyCallLimit(env: Env): number {
   const limit = Number(env.DAILY_CALL_LIMIT?.trim() || Number.NaN);

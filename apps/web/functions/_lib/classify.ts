@@ -120,7 +120,7 @@ async function classify(
   if (refused) return refused;
 
   let body: string;
-  let tokens: number;
+  let tokens = 0;
   try {
     const client = new TypeSafeClient({
       apiKey,
@@ -132,11 +132,12 @@ async function classify(
     const result: unknown = await client.systemOne(buildCubeRequest(item), {
       signal: AbortSignal.timeout(JEV_DEADLINE_MS),
     });
+    tokens = inputTokens(result);
     // Anything cached here is immutable for a year, so never cache a malformed 200.
     if (!isClassifyResponse(result)) throw new UnexpectedUpstreamShape();
     body = JSON.stringify({ model: result.model, answers: result.answers });
-    tokens = inputTokens(result);
   } catch (error) {
+    background(waitUntil, "token count", recordInputTokens(env, tokens, now));
     return upstreamFailure(error);
   }
 
@@ -146,7 +147,7 @@ async function classify(
   return jsonResponse(body, { cacheControl: CACHE_IMMUTABLE, cache: "MISS" });
 }
 
-function inputTokens(result: ClassifyResponse): number {
+function inputTokens(result: unknown): number {
   const tokens = (result as { usage?: { input_tokens?: unknown } }).usage?.input_tokens;
   return typeof tokens === "number" && Number.isSafeInteger(tokens) && tokens > 0 ? tokens : 0;
 }

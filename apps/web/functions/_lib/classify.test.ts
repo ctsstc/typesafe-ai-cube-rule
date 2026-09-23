@@ -600,8 +600,20 @@ describe("challenge and spend caps", () => {
     });
     expect((await ask("taco", env, await cookie())).status).toBe(200);
     await Promise.all(pending);
-    const rows = d1.sqlite.prepare("SELECT day, calls, input_tokens FROM usage").all();
-    expect(rows).toEqual([{ day: "2026-09-22", calls: 1, input_tokens: 12 }]);
+    const rows = d1.sqlite.prepare("SELECT day, calls, input_tokens, token_calls FROM usage").all();
+    expect(rows).toEqual([{ day: "2026-09-22", calls: 1, input_tokens: 12, token_calls: 1 }]);
+  });
+
+  it("records the tokens of a malformed 200, since Jev may still bill it", async () => {
+    const { d1, env } = guardedEnv();
+    const { debate_heat: _missing, ...answers } = mockCubeResponse("taco").answers;
+    fetchMock.mockResolvedValueOnce(
+      upstream(200, { model: "jev-1.13.0", answers, usage: { input_tokens: 12 } }),
+    );
+    expect((await ask("taco", env, await cookie())).status).toBe(502);
+    await Promise.all(pending);
+    const rows = d1.sqlite.prepare("SELECT calls, input_tokens, token_calls FROM usage").all();
+    expect(rows).toEqual([{ calls: 1, input_tokens: 12, token_calls: 1 }]);
   });
 
   it("still answers when the token count cannot be written", async () => {

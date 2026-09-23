@@ -54,9 +54,9 @@ describe("summarize", () => {
   it("prices recorded tokens exactly and estimates days without them", () => {
     const summary = summarize(
       [
-        { day: "2026-10-05", calls: 10, input_tokens: 100_000 },
+        { day: "2026-10-05", calls: 10, input_tokens: 100_000, token_calls: 10 },
         { day: "2026-10-04", calls: 500 },
-        { day: "2026-10-03", calls: 3, input_tokens: 0 },
+        { day: "2026-10-03", calls: 3, input_tokens: 0, token_calls: 0 },
       ],
       options,
     );
@@ -69,9 +69,24 @@ describe("summarize", () => {
     expect(estimated).toMatchObject({ inputTokens: null, exact: false });
   });
 
+  it("adds an estimate for the calls that recorded no tokens and marks the day", () => {
+    const [day] = summarize(
+      [{ day: today, calls: 900, input_tokens: 964_200, token_calls: 100 }],
+      options,
+    ).days;
+    expect(day).toMatchObject({ calls: 900, inputTokens: 964_200, exact: false });
+    expect(day?.usd).toBeCloseTo(((964_200 + 800 * TOKENS) * 0.042) / 1e6, 10);
+  });
+
+  it("estimates every call when input_tokens has no token_calls to say which calls it covers", () => {
+    const [day] = summarize([{ day: today, calls: 10, input_tokens: 50 }], options).days;
+    expect(day).toMatchObject({ exact: false });
+    expect(day?.usd).toBeCloseTo(10 * PER_CALL, 10);
+  });
+
   it("totals today, 7 days, 30 days and the month to date", () => {
     const rows = [
-      { day: today, calls: 1, input_tokens: TOKENS },
+      { day: today, calls: 1, input_tokens: TOKENS, token_calls: 1 },
       { day: daysBefore(today, 6), calls: 2 },
       { day: daysBefore(today, 7), calls: 4 },
       { day: daysBefore(today, 29), calls: 8 },
@@ -117,7 +132,7 @@ describe("formatReport", () => {
   it("prints a row per day, marks estimates and prices the ceiling", () => {
     const report = format([
       { day: "2026-10-04", calls: 1234 },
-      { day: today, calls: 10, input_tokens: 96_420 },
+      { day: today, calls: 10, input_tokens: 96_420, token_calls: 10 },
     ]);
     expect(report).toContain("Daily limit 1,000 calls");
     expect(report).toContain("9,642 input tokens per call (eval v6 average) at $0.042 per million");
@@ -130,6 +145,12 @@ describe("formatReport", () => {
     );
     expect(report).toContain("https://console.typesafe.ai");
     expect(report).not.toContain("Clients today");
+  });
+
+  it("never prints a partly recorded day as exact", () => {
+    const report = format([{ day: today, calls: 900, input_tokens: 964_200, token_calls: 100 }]);
+    expect(report).toMatch(/^2026-10-05\s+900\s+90\.0%\s+964,200\s+~\$0\.3645$/m);
+    expect(report).toMatch(/^Today\s+900\s+~\$0\.3645$/m);
   });
 
   it("says so when there were no calls", () => {

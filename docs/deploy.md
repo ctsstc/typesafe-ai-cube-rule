@@ -27,7 +27,7 @@ Every uncached ruling calls Jev, about $0.0004 each. Cached rulings stay free an
 
 Each charge is one atomic `INSERT ... ON CONFLICT DO UPDATE ... WHERE calls < limit RETURNING calls`. No row back means refused, and a refusal gives back the charges already made, since Jev was never asked. A Jev call that fails after the charge stays counted, because it may still be billed.
 
-After a successful call the Function adds the `usage.input_tokens` Jev reports to today's `usage.input_tokens` column (migration 0004), in the background. That write never delays or fails the ruling; a failure is logged as `classify: token count failed`. `pnpm spend` reads it (see [Watching spend](#watching-spend)).
+After each Jev call that reports usage, including a malformed 200 it may still bill, the Function adds the `usage.input_tokens` Jev reports to today's `usage.input_tokens` column (migration 0004) and counts the call in `usage.token_calls` (migration 0005), in the background. That write never delays or fails the ruling; a failure is logged as `classify: token count failed`. `pnpm spend` reads both (see [Watching spend](#watching-spend)).
 
 The per-session count lives in D1, not in the cookie. A stateless cookie cannot count: a client could replay its first cookie forever. With the count in D1, every Turnstile solve buys at most 60 Jev calls.
 
@@ -171,7 +171,7 @@ pnpm deploy:pages
 It then builds the SPA with the sitekey and runs `wrangler pages deploy dist --project-name cube-rule-oracle --branch main` from `apps/web`.
 
 > [!IMPORTANT]
-> Apply new migrations to the remote database before the next deploy. Since v1.0.0 that is `0003_cleanup_indexes.sql` and `0004_usage_input_tokens.sql`:
+> Apply new migrations to the remote database before the next deploy. Since v1.0.0 that is `0003_cleanup_indexes.sql`, `0004_usage_input_tokens.sql` and `0005_usage_token_calls.sql`:
 >
 > ```sh
 > pnpm exec wrangler d1 migrations apply cube-rule-oracle --remote
@@ -277,9 +277,9 @@ pnpm spend --detail   # adds today's distinct clients and the live sessions
 
 For each day it shows the Jev calls, the share of `DAILY_CALL_LIMIT` (read from `apps/web/wrangler.jsonc`), the input tokens and the dollars at $0.042 per million input tokens ([TypeSafe's list price](https://docs.typesafe.ai/models.md); output tokens are free). Totals cover today, the last 7 days, the last 30 days and the month to date. The ceiling is the most a day can cost at the current limit.
 
-- Days with a recorded `usage.input_tokens` are priced exactly.
-- Days without one are estimated as calls times the average input tokens in `eval/results/v<QUESTION_SET_VERSION>/raw.jsonl` (9,642 for question set 6, and the fallback when that file is missing), and marked `~`.
-- The day migration 0004 lands mixes both: calls charged before the deploy that records tokens have none, so that day's exact figure runs low.
+- A day is priced exactly only when every call recorded its tokens, that is when `usage.token_calls` equals `usage.calls`.
+- Every other call is estimated at the average input tokens in `eval/results/v<QUESTION_SET_VERSION>/raw.jsonl` (9,642 for question set 6, and the fallback when that file is missing), added to the recorded tokens, and the day is marked `~`. That covers calls charged before migrations 0004 and 0005 and the code that fills them (so the day they land, and any day after a rollback to an older deployment), a Jev call that failed or timed out after the charge, and a token write that failed.
+- Before migration 0005 there is no `token_calls`, so every call is estimated.
 - `usage.calls` counts reserved calls. A call that failed after the charge stays counted, so estimates run slightly high. The SDK also retries once on a 5xx, so if TypeSafe bills failed attempts, one counted call can cost up to two.
 
 > [!IMPORTANT]

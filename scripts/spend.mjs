@@ -41,11 +41,14 @@ export function averageInputTokens(jsonl) {
   return tokens.reduce((sum, value) => sum + value, 0) / tokens.length;
 }
 
-// input_tokens is absent before migration 0004 and 0 on days nothing recorded it: estimate those.
-function costOf(calls, inputTokens, tokensPerCall) {
-  const exact = inputTokens > 0;
-  const tokens = exact ? inputTokens : calls * tokensPerCall;
-  return { exact: exact || calls === 0, usd: (tokens * USD_PER_MILLION_INPUT_TOKENS) / 1e6 };
+// Without token_calls (before migration 0005) input_tokens cannot say which calls it covers, so
+// every call is estimated rather than trusting a partial total as the day's spend.
+function costOf(row, tokensPerCall) {
+  const calls = Number(row.calls) || 0;
+  const recorded = row.token_calls == null ? 0 : Math.min(Number(row.token_calls) || 0, calls);
+  const tokens =
+    (recorded > 0 ? Number(row.input_tokens) || 0 : 0) + (calls - recorded) * tokensPerCall;
+  return { calls, exact: recorded === calls, usd: (tokens * USD_PER_MILLION_INPUT_TOKENS) / 1e6 };
 }
 
 export function summarize(rows, { today, limit, tokensPerCall }) {
@@ -54,23 +57,19 @@ export function summarize(rows, { today, limit, tokensPerCall }) {
     .filter((row) => row.day >= windowStart && row.day <= today)
     .sort((a, b) => a.day.localeCompare(b.day))
     .map((row) => {
-      const calls = Number(row.calls) || 0;
+      const cost = costOf(row, tokensPerCall);
       const inputTokens = Number(row.input_tokens) || 0;
       return {
         day: row.day,
-        calls,
         inputTokens: inputTokens > 0 ? inputTokens : null,
-        share: limit > 0 ? calls / limit : null,
-        ...costOf(calls, inputTokens, tokensPerCall),
+        share: limit > 0 ? cost.calls / limit : null,
+        ...cost,
       };
     });
   const total = (from) => {
     const picked = rows
       .filter((row) => row.day >= from && row.day <= today)
-      .map((row) => {
-        const calls = Number(row.calls) || 0;
-        return { calls, ...costOf(calls, Number(row.input_tokens) || 0, tokensPerCall) };
-      });
+      .map((row) => costOf(row, tokensPerCall));
     return {
       calls: picked.reduce((sum, day) => sum + day.calls, 0),
       usd: picked.reduce((sum, day) => sum + day.usd, 0),
