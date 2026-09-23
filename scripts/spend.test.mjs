@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  accountIdFrom,
   averageInputTokens,
   daysBefore,
   FALLBACK_TOKENS_PER_CALL,
@@ -171,5 +172,20 @@ describe("formatReport", () => {
       "Clients today: 12, 9 with calls kept, 40 calls, busiest client 15 calls.",
     );
     expect(report).toContain("Live sessions: 3, 7 calls.");
+  });
+});
+
+describe("accountIdFrom", () => {
+  const id = "0123456789abcdef0123456789abcdef";
+
+  it("prefers the environment, then the root .env", () => {
+    expect(accountIdFrom({ CLOUDFLARE_ACCOUNT_ID: id }, "CLOUDFLARE_ACCOUNT_ID=nope")).toBe(id);
+    expect(accountIdFrom({}, `TYPESAFE_API_KEY=x\nCLOUDFLARE_ACCOUNT_ID=${id}\n`)).toBe(id);
+  });
+
+  it("refuses a missing or malformed id", () => {
+    expect(accountIdFrom({}, "")).toBeNull();
+    expect(accountIdFrom({}, "CLOUDFLARE_ACCOUNT_ID=")).toBeNull();
+    expect(accountIdFrom({ CLOUDFLARE_ACCOUNT_ID: "not-an-account-id" }, "")).toBeNull();
   });
 });

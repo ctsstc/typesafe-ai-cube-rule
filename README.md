@@ -92,7 +92,7 @@ The app is one Cloudflare Pages project: the static SPA plus a Pages Function fo
 
 A fork has to replace a few values that point at this project's Cloudflare account:
 
-- `scripts/deploy.sh` pins the owner's Cloudflare account id and refuses to deploy anywhere else. `scripts/spend.mjs` pins the same id for `pnpm spend`.
+- `scripts/deploy.sh` and `scripts/spend.mjs` only act on the Cloudflare account set as `CLOUDFLARE_ACCOUNT_ID` in your root `.env` (see `.env.example`), and refuse to run without it.
 - `apps/web/src/lib/links.ts` holds the author and source repo links, and `scripts/deploy.sh` refuses to deploy until `SOURCE_URL` answers 200.
 - `apps/web/wrangler.jsonc` holds the owner's KV namespace id and D1 database id.
 - `SITE_URL`, which fills the canonical and Open Graph URLs, defaults to https://cube-rule-oracle.pages.dev in `scripts/deploy.sh` and `apps/web/vite.config.ts`.

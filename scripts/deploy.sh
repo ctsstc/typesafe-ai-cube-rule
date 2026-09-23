@@ -2,8 +2,6 @@
 # Production deploy of apps/web (SPA + Pages Function) to Cloudflare Pages. See docs/deploy.md.
 set -euo pipefail
 
-# Pinned so a deploy can never land in another account, whatever wrangler is logged in to.
-readonly ACCOUNT_ID="00000000000000000000000000000000"
 readonly PROJECT="cube-rule-oracle"
 readonly BRANCH="main"
 readonly DATABASE="cube-rule-oracle"
@@ -21,10 +19,20 @@ if [[ -z "${VITE_TURNSTILE_SITE_KEY:-}" && -f "$root/.env" ]]; then
 fi
 VITE_TURNSTILE_SITE_KEY="${VITE_TURNSTILE_SITE_KEY:-}"
 
+# The deploy only ever targets this account, whatever wrangler is logged in to. It lives in the
+# gitignored root .env rather than in the repo.
+if [[ -z "${CLOUDFLARE_ACCOUNT_ID:-}" && -f "$root/.env" ]]; then
+  CLOUDFLARE_ACCOUNT_ID="$(sed -n 's/^CLOUDFLARE_ACCOUNT_ID=//p' "$root/.env" | tail -n 1)"
+fi
+readonly ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID:-}"
+
 fail() {
   echo "deploy: $*" >&2
   exit 1
 }
+
+[[ "$ACCOUNT_ID" =~ ^[0-9a-f]{32}$ ]] ||
+  fail "set CLOUDFLARE_ACCOUNT_ID in the root .env to your Cloudflare account id ('wrangler whoami' shows it)."
 
 wrangler() {
   (cd "$web" && pnpm exec wrangler "$@")

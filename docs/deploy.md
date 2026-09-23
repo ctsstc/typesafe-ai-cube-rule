@@ -89,7 +89,7 @@ Read the local counters with `pnpm exec wrangler d1 execute cube-rule-oracle --l
 
 ## One-time setup
 
-1. Log in to the personal Cloudflare account and confirm the account id matches the one pinned in `scripts/deploy.sh` and `scripts/spend.mjs` (a fork replaces it in both):
+1. Log in to the personal Cloudflare account and put its account id in the root `.env` as `CLOUDFLARE_ACCOUNT_ID`. `scripts/deploy.sh` and `scripts/spend.mjs` read it from there (it is kept out of the repo) and refuse to touch any other account:
 
    ```sh
    pnpm exec wrangler login
@@ -164,7 +164,7 @@ pnpm deploy:pages
 - `apps/web/wrangler.jsonc` has a D1 `database_id` other than the all-zero placeholder and a `CLASSIFICATIONS` KV binding
 - the working tree is clean and on `main`
 - the source repo the site links to (`SOURCE_URL` in `apps/web/src/lib/links.ts`) answers 200, which GitHub only does once the repo is public
-- `wrangler whoami` lists the pinned account (`CLOUDFLARE_ACCOUNT_ID` is exported, so the deploy cannot land anywhere else)
+- `CLOUDFLARE_ACCOUNT_ID` is set in the root `.env` and `wrangler whoami` lists that account (it is exported, so the deploy cannot land anywhere else)
 - the project has the `TYPESAFE_API_KEY`, `TURNSTILE_SECRET_KEY` and `SESSION_SECRET` secrets
 - the remote D1 database has no unapplied migrations
 - `pnpm check` passes
@@ -196,7 +196,7 @@ The custom domain, `typesafe-ai-cube-rule.codyswartz.us`, is a subdomain of a zo
    pnpm exec wrangler auth token --json |
      node -e 'process.stdout.write(`Authorization: Bearer ${JSON.parse(require("node:fs").readFileSync(0, "utf8")).token}`)' |
      curl --fail-with-body --header @- \
-       "https://api.cloudflare.com/client/v4/accounts/00000000000000000000000000000000/pages/projects/cube-rule-oracle/domains" \
+       "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/cube-rule-oracle/domains" \
        --json '{"name": "typesafe-ai-cube-rule.codyswartz.us"}'
    ```
 
@@ -268,7 +268,7 @@ Other levers:
 
 ## Watching spend
 
-`pnpm spend` prints the Jev spend from the production D1 counters. It only runs `SELECT`s, through `wrangler d1 execute cube-rule-oracle --remote` from `apps/web`, with `CLOUDFLARE_ACCOUNT_ID` pinned to the same account as `scripts/deploy.sh`. The daily query reads at most 31 rows; `--detail` also reads today's client rows and the live session rows, through the migration 0003 indexes.
+`pnpm spend` prints the Jev spend from the production D1 counters. It only runs `SELECT`s, through `wrangler d1 execute cube-rule-oracle --remote` from `apps/web`, with `CLOUDFLARE_ACCOUNT_ID` from the root `.env`, the same account `scripts/deploy.sh` uses. The daily query reads at most 31 rows; `--detail` also reads today's client rows and the live session rows, through the migration 0003 indexes.
 
 ```sh
 pnpm spend            # per UTC day for the last 30 days, then totals and the ceiling

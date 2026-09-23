@@ -5,8 +5,6 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-// Pinned like scripts/deploy.sh, so the report can never read another account.
-const ACCOUNT_ID = "00000000000000000000000000000000";
 const DATABASE = "cube-rule-oracle";
 // Jev's public list price (https://docs.typesafe.ai/models.md). Output tokens are free.
 export const USD_PER_MILLION_INPUT_TOKENS = 0.042;
@@ -16,6 +14,28 @@ const WINDOW_DAYS = 30;
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const web = `${root}apps/web`;
+
+// Same source as scripts/deploy.sh, so the report only ever reads that account.
+export function accountIdFrom(env, dotenv) {
+  const fromFile = dotenv.match(/^CLOUDFLARE_ACCOUNT_ID=(.*)$/m)?.[1]?.trim();
+  const id = env.CLOUDFLARE_ACCOUNT_ID || fromFile || "";
+  return /^[0-9a-f]{32}$/.test(id) ? id : null;
+}
+
+function accountId() {
+  const dotenvPath = `${root}.env`;
+  const id = accountIdFrom(
+    process.env,
+    existsSync(dotenvPath) ? readFileSync(dotenvPath, "utf8") : "",
+  );
+  if (!id) {
+    console.error(
+      "spend: set CLOUDFLARE_ACCOUNT_ID in the root .env to your Cloudflare account id ('wrangler whoami' shows it).",
+    );
+    process.exit(1);
+  }
+  return id;
+}
 
 export function utcDay(ms) {
   return new Date(ms).toISOString().slice(0, 10);
@@ -161,7 +181,7 @@ function query(sql) {
       ["exec", "wrangler", "d1", "execute", DATABASE, "--remote", "--json", "--command", sql],
       {
         cwd: web,
-        env: { ...process.env, CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID },
+        env: { ...process.env, CLOUDFLARE_ACCOUNT_ID: accountId() },
         encoding: "utf8",
         stdio: ["ignore", "pipe", "pipe"],
       },
