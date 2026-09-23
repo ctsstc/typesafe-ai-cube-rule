@@ -26,6 +26,8 @@ RETURNING calls`;
 
 const READ_DAILY_CALLS = "SELECT calls FROM usage WHERE day = ?1";
 
+const ADD_INPUT_TOKENS = "UPDATE usage SET input_tokens = input_tokens + ?2 WHERE day = ?1";
+
 export function dailyCallLimit(env: Env): number {
   const limit = Number(env.DAILY_CALL_LIMIT?.trim() || Number.NaN);
   return Number.isSafeInteger(limit) && limit >= 0 ? limit : DEFAULT_DAILY_CALL_LIMIT;
@@ -138,6 +140,12 @@ export async function refuseSpentDay(env: Env, now: number): Promise<Response | 
     });
     return null;
   }
+}
+
+/** `now` must be the time the call was charged, so its tokens land on the same UTC day. */
+export async function recordInputTokens(env: Env, tokens: number, now: number): Promise<void> {
+  if (!env.DB || tokens <= 0) return;
+  await env.DB.prepare(ADD_INPUT_TOKENS).bind(utcDay(now), tokens).run();
 }
 
 export async function forgetExpired(db: D1Database, now: number): Promise<void> {

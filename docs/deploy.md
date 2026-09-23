@@ -27,6 +27,8 @@ Every uncached ruling calls Jev, about $0.0004 each. Cached rulings stay free an
 
 Each charge is one atomic `INSERT ... ON CONFLICT DO UPDATE ... WHERE calls < limit RETURNING calls`. No row back means refused, and a refusal gives back the charges already made, since Jev was never asked. A Jev call that fails after the charge stays counted, because it may still be billed.
 
+After a successful call the Function adds the `usage.input_tokens` Jev reports to today's `usage.input_tokens` column (migration 0004), in the background. That write never delays or fails the ruling; a failure is logged as `classify: token count failed`.
+
 The per-session count lives in D1, not in the cookie. A stateless cookie cannot count: a client could replay its first cookie forever. With the count in D1, every Turnstile solve buys at most 60 Jev calls.
 
 > [!IMPORTANT]
@@ -169,7 +171,7 @@ pnpm deploy:pages
 It then builds the SPA with the sitekey and runs `wrangler pages deploy dist --project-name cube-rule-oracle --branch main` from `apps/web`.
 
 > [!IMPORTANT]
-> Apply new migrations to the remote database before the next deploy. Since v1.0.0 that is `0003_cleanup_indexes.sql`:
+> Apply new migrations to the remote database before the next deploy. Since v1.0.0 that is `0003_cleanup_indexes.sql` and `0004_usage_input_tokens.sql`:
 >
 > ```sh
 > pnpm exec wrangler d1 migrations apply cube-rule-oracle --remote
@@ -256,7 +258,7 @@ Every Jev call costs money, so the Function only calls Jev on a full cache miss,
 
 The in-code limiter is a speed bump, not a quota: each location runs many isolates and they restart often. The D1 caps are the real limits, because D1 is one database with serialized writes.
 
-D1 on the Free plan allows 100,000 rows written and 5 million rows read a day, with limits resetting at 00:00 UTC. A Jev call writes three rows (the session, the client and the day), so 1,000 calls use 3,000 writes. Starting a session also deletes expired session rows and past days' client rows. Migration 0003 indexes `sessions.exp` and `clients.day`, so that cleanup reads only the rows it deletes instead of scanning both tables on every human check; `functions/_lib/usage.test.ts` fails if any spend-cap statement goes back to a table scan. Each index costs one extra row write when a session or client row is created. If D1 itself hits its daily limit, the spend check fails and new rulings are refused until midnight UTC, which is the safe direction.
+D1 on the Free plan allows 100,000 rows written and 5 million rows read a day, with limits resetting at 00:00 UTC. A Jev call writes four rows (the session, the client, the day and the day's token count), so 1,000 calls use 4,000 writes. Starting a session also deletes expired session rows and past days' client rows. Migration 0003 indexes `sessions.exp` and `clients.day`, so that cleanup reads only the rows it deletes instead of scanning both tables on every human check; `functions/_lib/usage.test.ts` fails if any spend-cap statement goes back to a table scan. Each index costs one extra row write when a session or client row is created. If D1 itself hits its daily limit, the spend check fails and new rulings are refused until midnight UTC, which is the safe direction.
 
 Other levers:
 

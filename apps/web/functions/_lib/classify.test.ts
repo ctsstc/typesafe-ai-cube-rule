@@ -546,6 +546,41 @@ describe("challenge and spend caps", () => {
     expect(d1.sqlite.prepare("SELECT calls FROM sessions").all()).toEqual([{ calls: 1 }]);
   });
 
+  it("adds each call's input tokens to the day it was charged to", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-22T23:59:59Z"));
+    const { d1, env } = guardedEnv();
+    fetchMock.mockImplementation(async () => {
+      vi.setSystemTime(new Date("2026-09-23T00:00:01Z"));
+      return jevOk("taco");
+    });
+    expect((await ask("taco", env, await cookie())).status).toBe(200);
+    await Promise.all(pending);
+    const rows = d1.sqlite.prepare("SELECT day, calls, input_tokens FROM usage").all();
+    expect(rows).toEqual([{ day: "2026-09-22", calls: 1, input_tokens: 12 }]);
+  });
+
+  it("still answers when the token count cannot be written", async () => {
+    const { d1, env } = guardedEnv();
+    d1.sqlite.exec("ALTER TABLE usage DROP COLUMN input_tokens");
+    fetchMock.mockResolvedValueOnce(jevOk("taco"));
+    const response = await ask("taco", env, await cookie());
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Cube-Cache")).toBe("MISS");
+    await Promise.all(pending);
+    expect(JSON.stringify(logs)).toContain("classify: token count failed");
+  });
+
+  it("skips the token count when Jev reports no usage", async () => {
+    const { d1, env } = guardedEnv();
+    fetchMock.mockResolvedValueOnce(
+      upstream(200, { model: "jev-1.13.0", answers: mockCubeResponse("taco").answers }),
+    );
+    expect((await ask("taco", env, await cookie())).status).toBe(200);
+    await Promise.all(pending);
+    expect(d1.calls.filter((sql) => sql.includes("input_tokens"))).toEqual([]);
+  });
+
   it("refuses Jev past DAILY_CALL_LIMIT until UTC midnight, but keeps serving the cache", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-09-22T23:00:00Z"));

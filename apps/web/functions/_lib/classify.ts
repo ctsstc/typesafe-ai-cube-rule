@@ -24,7 +24,7 @@ import { clientIp, type Env, type WaitUntil } from "./env";
 import { CACHE_IMMUTABLE, CACHE_NONE, errorResponse, jsonResponse, noContent } from "./http";
 import { createRateLimiter, type RateLimiter } from "./rate-limit";
 import { clientKey, requireSession } from "./session";
-import { refuseSpentDay, reserveJevCall, utcDay } from "./usage";
+import { recordInputTokens, refuseSpentDay, reserveJevCall, utcDay } from "./usage";
 
 export type { Env } from "./env";
 
@@ -120,6 +120,7 @@ async function classify(
   if (refused) return refused;
 
   let body: string;
+  let tokens: number;
   try {
     const client = new TypeSafeClient({
       apiKey,
@@ -134,13 +135,20 @@ async function classify(
     // Anything cached here is immutable for a year, so never cache a malformed 200.
     if (!isClassifyResponse(result)) throw new UnexpectedUpstreamShape();
     body = JSON.stringify({ model: result.model, answers: result.answers });
+    tokens = inputTokens(result);
   } catch (error) {
     return upstreamFailure(error);
   }
 
   background(waitUntil, "cache put", fillCache(body));
   background(waitUntil, "kv put", env.CLASSIFICATIONS?.put(kvKey, body));
+  background(waitUntil, "token count", recordInputTokens(env, tokens, now));
   return jsonResponse(body, { cacheControl: CACHE_IMMUTABLE, cache: "MISS" });
+}
+
+function inputTokens(result: ClassifyResponse): number {
+  const tokens = (result as { usage?: { input_tokens?: unknown } }).usage?.input_tokens;
+  return typeof tokens === "number" && Number.isSafeInteger(tokens) && tokens > 0 ? tokens : 0;
 }
 
 async function settle<T>(promise: Promise<T> | undefined): Promise<T | undefined> {

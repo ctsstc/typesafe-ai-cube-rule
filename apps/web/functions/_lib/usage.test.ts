@@ -8,6 +8,7 @@ import {
   DEFAULT_DAILY_CALL_LIMIT,
   dailyCallLimit,
   forgetExpired,
+  recordInputTokens,
   refuseSpentDay,
   reserveJevCall,
 } from "./usage";
@@ -53,9 +54,10 @@ describe("D1 statements", () => {
     await reserveJevCall(env, { session, client: "client-key" }, NOW);
     await reserveJevCall(env, { session, client: "client-key" }, NOW);
     await refuseSpentDay(env, NOW);
+    await recordInputTokens(env, 9642, NOW);
     await forgetExpired(d1.binding, NOW);
     const statements = new Set(d1.calls);
-    expect(statements.size).toBeGreaterThanOrEqual(8);
+    expect(statements.size).toBeGreaterThanOrEqual(9);
     for (const sql of statements) {
       const plan = d1.sqlite.prepare(`EXPLAIN QUERY PLAN ${sql}`).all();
       const scans = plan
