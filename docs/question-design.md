@@ -121,7 +121,7 @@ The honorary card is the more fun answer, and it is no riskier: the nonsense car
 - **Eyes limits.** They cannot express two adjacent walls or a corner, contradictory face answers give `null` or a wrong reading, and cheesecake or an uncut sub may disagree with the ruling. Frame a disagreement as "Jev's eyes vs Jev's gut", not as a correction.
 - **Honorary path.** "Treat the shell as starch" is an indirection, which the Jev jaggedness page lists as a weak spot. Expect noisier answers there.
 - **Abuse guard coverage.** One Noul will not catch everything. The eval's 21 abusive probes avoid extreme slurs and all scored high, so a novel slur or coded hate term may score lower than they did. Cached answers are public by URL, but the canonical key limits any damage to that one query.
-- **Official lookup scope.** Only exact names match, after stripping a leading article and a trailing plural. Plain "pie", "quesadilla" and "sub" are left out on purpose because the site qualifies them.
+- **Official lookup scope.** Only exact names match, after stripping a leading article and a trailing plural. Plain "pie", "quesadilla", "sub" and "sub sandwich" are left out on purpose because the site qualifies them. [canon-audit.md](canon-audit.md) records the audit behind the table.
 - **Model upgrades.** Moving to a new Jev means rerunning the eval, then bumping `CUBE_MODEL` and `QUESTION_SET_VERSION` together.
 - **Attribution.** The rice clause and "humans are just ravioli" quote cuberule.com, so the UI credits the site. Brand names appear only as text.
 
