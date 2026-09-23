@@ -34,6 +34,12 @@ export { MOCK_DECLINE_TRIGGER, MOCK_PRIVATE_PERSON_TRIGGER, mockCubeResponse } f
 export { findOfficialRuling, OFFICIAL_RULINGS, type OfficialRuling } from "./official";
 export {
   hasPersonalInfo,
+  type ListingBars,
+  type ListingScores,
+  listingBar,
+  listingBars,
+  listingScores,
+  mayNamePrivatePerson,
   type PublicListing,
   type PublicListingOptions,
   type PublicListingReason,

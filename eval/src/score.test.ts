@@ -254,12 +254,16 @@ describe("person kind and public listing", () => {
   ];
 
   it("counts what the private gate hides at each bar", () => {
-    expect(privateGate(outcomes, 0.15)).toEqual({
-      threshold: 0.15,
+    expect(privateGate(outcomes, { privatePerson: 0.15, personSure: 0 })).toEqual({
+      privatePerson: 0.15,
+      personSure: 0,
       privateHidden: { n: 2, hits: 2, rate: 1 },
       othersHidden: { n: 3, hits: 0, rate: 0 },
     });
-    expect(privateGate(outcomes, 0.3).privateHidden.hits).toBe(1);
+    expect(privateGate(outcomes, { privatePerson: 0.3, personSure: 0 }).privateHidden.hits).toBe(1);
+    const sure = { privatePerson: Number.POSITIVE_INFINITY, personSure: 0.9 };
+    expect(privateGate(outcomes, sure).privateHidden.hits).toBe(2);
+    expect(privateGate(outcomes, sure).othersHidden.hits).toBe(0);
   });
 
   it("sweeps the abusive bar over items that reach it, skipping canon and people", () => {
@@ -279,7 +283,10 @@ describe("person kind and public listing", () => {
       fingerprint: "f",
       datasetSize: 5,
     });
-    expect(summary.person.gate.threshold).toBe(THRESHOLDS.publicPrivatePerson);
+    expect(summary.person.gate).toMatchObject({
+      privatePerson: THRESHOLDS.publicPrivatePerson,
+      personSure: THRESHOLDS.publicPersonSure,
+    });
     expect(summary.person.minPrivate).toEqual({ item: "tyler okonkwo", probability: 0.29 });
     expect(summary.listing).toMatchObject({
       privateListed: 0,

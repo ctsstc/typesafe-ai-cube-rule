@@ -3,6 +3,10 @@ import { CATEGORY_IDS, type CategoryId, INPUT_KIND_IDS, type InputKindId } from 
 import { mockCubeResponse } from "./mock";
 import {
   hasPersonalInfo,
+  type ListingScores,
+  listingBar,
+  listingBars,
+  listingScores,
   type PublicListingReason,
   parseBlocklist,
   publicListing,
@@ -15,6 +19,7 @@ interface Reading {
   readonly kind?: InputKindId;
   readonly abusive?: number;
   readonly privateP?: number;
+  readonly publicP?: number;
   readonly category?: CategoryId;
   readonly runnerUp?: CategoryId;
 }
@@ -28,7 +33,14 @@ const spread = <K extends string>(ids: readonly K[], top: K, p: number, second?:
   ) as Record<K, number>;
 
 function jev(item: string, reading: Reading = {}): CubeResponse {
-  const { kind = "food", abusive = 0.01, privateP = 0, category = "taco", runnerUp } = reading;
+  const {
+    kind = "food",
+    abusive = 0.01,
+    privateP = 0,
+    publicP = 0,
+    category = "taco",
+    runnerUp,
+  } = reading;
   return {
     model: "jev-1.13.0",
     answers: {
@@ -44,7 +56,7 @@ function jev(item: string, reading: Reading = {}): CubeResponse {
         type: "choice",
         choice: privateP > 0.5 ? "private" : "none",
         confidence: 0.9,
-        probabilities: { none: 1 - privateP, public: 0, private: privateP },
+        probabilities: { none: 1 - privateP - publicP, public: publicP, private: privateP },
       },
       category: {
         type: "choice",
@@ -87,6 +99,17 @@ describe("publicListing", () => {
       "listed",
     ],
     ["gyro", { abusive: Number.NaN }, "abusive"],
+    ["tyler okonkwo's jollof rice", { privateP: 0.11, publicP: 0.86 }, "private_person"],
+    ["sven lindqvist's grilled cheese", { privateP: 0.13, publicP: 0.75 }, "private_person"],
+    ["tyler okonkwo sandwich", { privateP: 0.06, publicP: 0.63 }, "private_person"],
+    ["shirley temple", { publicP: 0.6 }, "private_person"],
+    ["arnold palmer", { publicP: 0.96 }, "listed"],
+    ["gordon ramsay", { kind: "not_food", publicP: THRESHOLDS.publicPersonSure }, "listed"],
+    [
+      "a stapler",
+      { kind: "not_food", publicP: 1.001 - THRESHOLDS.publicPersonSure },
+      "private_person",
+    ],
   ])("%s %j is %s", (item, reading, reason) => {
     expect(publicListing(item, jev(item, reading))).toEqual({
       listed: reason === "listed",
@@ -107,6 +130,41 @@ describe("publicListing", () => {
     expect(publicListing("pad thai", jev("pad thai"), { blocklist }).reason).toBe("blocked");
     expect(publicListing("hot dogs", jev("hot dogs"), { blocklist }).reason).toBe("listed");
     expect(parseBlocklist(undefined).size).toBe(0);
+  });
+});
+
+describe("listingBar", () => {
+  const scores: ListingScores = {
+    personNone: 0.99,
+    personPublic: 0,
+    personPrivate: 0.01,
+    abusive: 0.01,
+  };
+
+  it("reads the four scores from a response and drops anything not a number", () => {
+    const response = jev("gyro", { privateP: 0.02, publicP: 0.03, abusive: 0.04 });
+    expect(listingScores(response)).toEqual({
+      personNone: 0.95,
+      personPublic: 0.03,
+      personPrivate: 0.02,
+      abusive: 0.04,
+    });
+    const broken = jev("gyro", { abusive: Number.NaN });
+    expect(listingScores(broken).abusive).toBeNull();
+  });
+
+  it("fails closed on a missing score", () => {
+    expect(listingBar("gyro", scores)).toBeNull();
+    expect(listingBar("gyro", { ...scores, personNone: null })).toBe("private_person");
+    expect(listingBar("gyro", { ...scores, personPrivate: null })).toBe("private_person");
+    expect(listingBar("gyro", { ...scores, abusive: null })).toBe("abusive");
+    expect(listingBar("humans", { ...scores, abusive: null })).toBeNull();
+  });
+
+  it("applies the bars it is given", () => {
+    const stricter = { ...listingBars(), privatePerson: 0.01 };
+    expect(listingBar("gyro", scores, stricter)).toBe("private_person");
+    expect(listingBar("gyro", scores, { ...listingBars(), abusive: 0.01 })).toBe("abusive");
   });
 });
 

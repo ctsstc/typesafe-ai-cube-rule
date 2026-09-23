@@ -103,6 +103,69 @@ const listing = (reason: PublicListingReason): PublicListing => ({
   reason,
 });
 
+/** Jev's answers behind the person and abuse bars, kept with each recorded ruling. */
+export interface ListingScores {
+  readonly personNone: number | null;
+  readonly personPublic: number | null;
+  readonly personPrivate: number | null;
+  readonly abusive: number | null;
+}
+
+export interface ListingBars {
+  readonly privatePerson: number;
+  readonly personSure: number;
+  readonly abusive: number;
+}
+
+export function listingBars(): ListingBars {
+  return {
+    privatePerson: THRESHOLDS.publicPrivatePerson,
+    personSure: THRESHOLDS.publicPersonSure,
+    abusive: THRESHOLDS.publicAbusive,
+  };
+}
+
+const finite = (value: unknown): number | null =>
+  typeof value === "number" && Number.isFinite(value) ? value : null;
+
+export function listingScores(response: CubeResponse): ListingScores {
+  const person = response.answers.person_kind?.probabilities;
+  return {
+    personNone: finite(person?.none),
+    personPublic: finite(person?.public),
+    personPrivate: finite(person?.private),
+    abusive: finite(response.answers.is_abusive?.noul),
+  };
+}
+
+const under = (value: number | null, bar: number): boolean => value !== null && value < bar;
+
+/** A missing score counts as a possible private person. */
+export function mayNamePrivatePerson(
+  scores: ListingScores,
+  bars: Pick<ListingBars, "privatePerson" | "personSure"> = listingBars(),
+): boolean {
+  const { personNone, personPublic, personPrivate } = scores;
+  // Jev cannot tell an invented full name from an obscure famous one, so it must place the item
+  // clearly as nobody or a public figure, not only score private low.
+  const placed = Math.max(personNone ?? Number.NaN, personPublic ?? Number.NaN) >= bars.personSure;
+  return !under(personPrivate, bars.privatePerson) || !placed;
+}
+
+/** The person or abuse bar a ruling fails, or null. A missing score fails. */
+export function listingBar(
+  item: string,
+  scores: ListingScores,
+  bars: ListingBars = listingBars(),
+): "private_person" | "abusive" | null {
+  if (mayNamePrivatePerson(scores, bars)) return "private_person";
+  const { abusive } = scores;
+  // Canon names skip the abusive bar because they are cuberule.com's own rulings, and Jev scores
+  // "humans" 0.12.
+  if (!findOfficialRuling(item) && !under(abusive, bars.abusive)) return "abusive";
+  return null;
+}
+
 export function publicListing(
   item: string,
   response: CubeResponse,
@@ -112,16 +175,7 @@ export function publicListing(
   if (kind === "declined" || kind === "nonsense") return listing(kind);
   if (options.blocklist?.has(normalizeItem(item))) return listing("blocked");
   if (hasPersonalInfo(item)) return listing("personal_info");
-  // Negated so a missing or NaN answer hides the item. Canon names skip the abusive bar because
-  // they are cuberule.com's own rulings, and Jev scores "humans" 0.12.
-  const { is_abusive, person_kind } = response.answers;
-  if (!(person_kind?.probabilities.private < THRESHOLDS.publicPrivatePerson)) {
-    return listing("private_person");
-  }
-  if (!findOfficialRuling(item) && !(is_abusive?.noul < THRESHOLDS.publicAbusive)) {
-    return listing("abusive");
-  }
-  return listing("listed");
+  return listing(listingBar(item, listingScores(response)) ?? "listed");
 }
 
 const round3 = (value: number): number => Math.round(value * 1000) / 1000;

@@ -168,7 +168,7 @@ function renderPublicListing(summary: Summary, outcomes: readonly ItemOutcome[])
     (o) => o.person.labelled || (o.person.expected !== null && o.person.correct === false),
   );
   return [
-    `\`person_kind\` is scored on every item except abusive probes. Items without a person label name no specific person. A public list hides an item when p(private) >= ${person.gate.threshold} or \`is_abusive\` >= ${listing.abusiveThreshold} (canon names skip the abusive bar), and never lists a declined or nonsense ruling.`,
+    `\`person_kind\` is scored on every item except abusive probes. Items without a person label name no specific person. A public list hides an item when p(private) >= ${person.gate.privatePerson}, when neither p(none) nor p(public) reaches ${person.gate.personSure}, or when \`is_abusive\` >= ${listing.abusiveThreshold} (canon names skip the abusive bar), and never lists a declined or nonsense ruling.`,
     table(
       ["Split", "Person kind"],
       splits.map((name) => [name, pct(person.accuracy[name])]),
@@ -179,11 +179,20 @@ function renderPublicListing(summary: Summary, outcomes: readonly ItemOutcome[])
       `- **Leaks:** ${listing.privateListed} private people and ${listing.declinedListed} abusive probes would be listed.`,
       `- **Hidden by the abusive bar:** ${listing.hiddenByAbuse.length === 0 ? "none" : listing.hiddenByAbuse.join(", ")}.`,
     ].join("\n"),
-    "Private gate sweep on the tune split:",
+    "Private bar sweep on the tune split, with the sure bar off:",
     table(
       ["p(private) >=", "Private people hidden", "Others hidden"],
       person.sweep.map((row) => [
-        String(row.threshold),
+        String(row.privatePerson),
+        pct(row.privateHidden),
+        pct(row.othersHidden),
+      ]),
+    ),
+    "Sure bar sweep on the tune split, with the private bar off. Hides an item when neither p(none) nor p(public) reaches the bar:",
+    table(
+      ["max(none, public) <", "Private people hidden", "Others hidden"],
+      person.sureSweep.map((row) => [
+        String(row.personSure),
         pct(row.privateHidden),
         pct(row.othersHidden),
       ]),

@@ -2,28 +2,28 @@
   "questionSetVersion": "7",
   "model": "jev-1.13.0",
   "fingerprint": "134fae84df89d9115020c217e74a57c277c1b7b8812a4134ec83e3a81b70d530",
-  "datasetSize": 235,
-  "scored": 235,
+  "datasetSize": 251,
+  "scored": 251,
   "missing": 0,
   "headline": {
-    "tuneN": 115,
-    "tuneAccuracy": 0.9826,
+    "tuneN": 125,
+    "tuneAccuracy": 0.984,
     "tuneFamilyAccuracy": 1,
-    "holdoutN": 75,
-    "holdoutAccuracy": 0.9733,
-    "holdoutFamilyAccuracy": 0.9867,
+    "holdoutN": 81,
+    "holdoutAccuracy": 0.9753,
+    "holdoutFamilyAccuracy": 0.9877,
     "canonN": 45,
     "canonJevAgreement": 1,
     "inputKindAccuracy": 1,
-    "personKindAccuracy": 0.986,
+    "personKindAccuracy": 0.9696,
     "abuseFalsePositives": 0,
     "abuseDetection": 1,
-    "eyesAgreeRate": 0.9206,
-    "eyesNullRate": 0.2455,
+    "eyesAgreeRate": 0.927,
+    "eyesNullRate": 0.2303,
     "avgInputTokens": 10142,
-    "p50LatencyMs": 235,
-    "p95LatencyMs": 487,
-    "runCostUsd": 0.100099
+    "p50LatencyMs": 237,
+    "p95LatencyMs": 500,
+    "runCostUsd": 0.106917
   },
   "splits": {
     "canon": {
@@ -72,36 +72,36 @@
       }
     },
     "tune": {
-      "n": 115,
+      "n": 125,
       "accuracy": {
-        "n": 115,
-        "hits": 113,
-        "rate": 0.9826086956521739
+        "n": 125,
+        "hits": 123,
+        "rate": 0.984
       },
       "familyAccuracy": {
-        "n": 115,
-        "hits": 115,
+        "n": 125,
+        "hits": 125,
         "rate": 1
       },
       "categoryAccuracy": {
-        "n": 77,
-        "hits": 75,
-        "rate": 0.974025974025974
+        "n": 84,
+        "hits": 82,
+        "rate": 0.9761904761904762
       },
       "inputKindAccuracy": {
-        "n": 101,
-        "hits": 101,
+        "n": 111,
+        "hits": 111,
         "rate": 1
       },
       "unleakedAccuracy": {
-        "n": 101,
-        "hits": 99,
-        "rate": 0.9801980198019802
+        "n": 111,
+        "hits": 109,
+        "rate": 0.9819819819819819
       },
       "verdicts": {
         "unanimous": {
-          "n": 57,
-          "hits": 57,
+          "n": 64,
+          "hits": 64,
           "rate": 1
         },
         "majority": {
@@ -117,37 +117,37 @@
       }
     },
     "holdout": {
-      "n": 75,
+      "n": 81,
       "accuracy": {
-        "n": 75,
-        "hits": 73,
-        "rate": 0.9733333333333334
+        "n": 81,
+        "hits": 79,
+        "rate": 0.9753086419753086
       },
       "familyAccuracy": {
-        "n": 75,
-        "hits": 74,
-        "rate": 0.9866666666666667
+        "n": 81,
+        "hits": 80,
+        "rate": 0.9876543209876543
       },
       "categoryAccuracy": {
-        "n": 46,
-        "hits": 44,
-        "rate": 0.9565217391304348
+        "n": 50,
+        "hits": 48,
+        "rate": 0.96
       },
       "inputKindAccuracy": {
-        "n": 68,
-        "hits": 68,
+        "n": 74,
+        "hits": 74,
         "rate": 1
       },
       "unleakedAccuracy": {
-        "n": 67,
-        "hits": 65,
-        "rate": 0.9701492537313433
+        "n": 73,
+        "hits": 71,
+        "rate": 0.9726027397260274
       },
       "verdicts": {
         "unanimous": {
-          "n": 31,
-          "hits": 30,
-          "rate": 0.967741935483871
+          "n": 35,
+          "hits": 34,
+          "rate": 0.9714285714285714
         },
         "majority": {
           "n": 10,
@@ -162,37 +162,37 @@
       }
     },
     "all": {
-      "n": 235,
+      "n": 251,
       "accuracy": {
-        "n": 235,
-        "hits": 231,
-        "rate": 0.9829787234042553
+        "n": 251,
+        "hits": 247,
+        "rate": 0.9840637450199203
       },
       "familyAccuracy": {
-        "n": 235,
-        "hits": 234,
-        "rate": 0.9957446808510638
+        "n": 251,
+        "hits": 250,
+        "rate": 0.9960159362549801
       },
       "categoryAccuracy": {
-        "n": 167,
-        "hits": 163,
-        "rate": 0.9760479041916168
+        "n": 178,
+        "hits": 174,
+        "rate": 0.9775280898876404
       },
       "inputKindAccuracy": {
-        "n": 214,
-        "hits": 214,
+        "n": 230,
+        "hits": 230,
         "rate": 1
       },
       "unleakedAccuracy": {
-        "n": 176,
-        "hits": 172,
-        "rate": 0.9772727272727273
+        "n": 192,
+        "hits": 188,
+        "rate": 0.9791666666666666
       },
       "verdicts": {
         "unanimous": {
-          "n": 130,
-          "hits": 129,
-          "rate": 0.9923076923076923
+          "n": 141,
+          "hits": 140,
+          "rate": 0.9929078014184397
         },
         "majority": {
           "n": 27,
@@ -208,17 +208,17 @@
     }
   },
   "eyes": {
-    "n": 167,
-    "nullRate": 0.2455,
+    "n": 178,
+    "nullRate": 0.2303,
     "agree": {
-      "n": 126,
-      "hits": 116,
-      "rate": 0.9206349206349206
+      "n": 137,
+      "hits": 127,
+      "rate": 0.927007299270073
     },
     "accuracy": {
-      "n": 126,
-      "hits": 118,
-      "rate": 0.9365079365079365
+      "n": 137,
+      "hits": 129,
+      "rate": 0.9416058394160584
     }
   },
   "wet": {
@@ -258,7 +258,7 @@
           "rate": 1
         },
         "falseDeclines": {
-          "n": 101,
+          "n": 111,
           "hits": 0,
           "rate": 0
         }
@@ -270,7 +270,7 @@
           "rate": 1
         },
         "falseDeclines": {
-          "n": 68,
+          "n": 74,
           "hits": 0,
           "rate": 0
         }
@@ -282,7 +282,7 @@
           "rate": 1
         },
         "falseDeclines": {
-          "n": 214,
+          "n": 230,
           "hits": 0,
           "rate": 0
         }
@@ -297,7 +297,7 @@
           "rate": 1
         },
         "falseDeclines": {
-          "n": 101,
+          "n": 111,
           "hits": 0,
           "rate": 0
         }
@@ -310,7 +310,7 @@
           "rate": 1
         },
         "falseDeclines": {
-          "n": 101,
+          "n": 111,
           "hits": 0,
           "rate": 0
         }
@@ -323,7 +323,7 @@
           "rate": 1
         },
         "falseDeclines": {
-          "n": 101,
+          "n": 111,
           "hits": 0,
           "rate": 0
         }
@@ -336,7 +336,7 @@
           "rate": 1
         },
         "falseDeclines": {
-          "n": 101,
+          "n": 111,
           "hits": 0,
           "rate": 0
         }
@@ -349,7 +349,7 @@
           "rate": 1
         },
         "falseDeclines": {
-          "n": 101,
+          "n": 111,
           "hits": 0,
           "rate": 0
         }
@@ -362,7 +362,7 @@
           "rate": 1
         },
         "falseDeclines": {
-          "n": 101,
+          "n": 111,
           "hits": 0,
           "rate": 0
         }
@@ -375,7 +375,7 @@
           "rate": 1
         },
         "falseDeclines": {
-          "n": 101,
+          "n": 111,
           "hits": 0,
           "rate": 0
         }
@@ -388,7 +388,7 @@
           "rate": 0.7857142857142857
         },
         "falseDeclines": {
-          "n": 101,
+          "n": 111,
           "hits": 0,
           "rate": 0
         }
@@ -400,14 +400,14 @@
         "to": 0.1,
         "abusive": 0,
         "rudeFoods": 24,
-        "other": 184
+        "other": 197
       },
       {
         "from": 0.1,
         "to": 0.3,
         "abusive": 0,
         "rudeFoods": 1,
-        "other": 4
+        "other": 7
       },
       {
         "from": 0.3,
@@ -447,47 +447,48 @@
         "rate": 1
       },
       "tune": {
-        "n": 101,
-        "hits": 98,
-        "rate": 0.9702970297029703
+        "n": 111,
+        "hits": 104,
+        "rate": 0.9369369369369369
       },
       "holdout": {
-        "n": 68,
-        "hits": 68,
+        "n": 74,
+        "hits": 74,
         "rate": 1
       },
       "all": {
-        "n": 214,
-        "hits": 211,
-        "rate": 0.985981308411215
+        "n": 230,
+        "hits": 223,
+        "rate": 0.9695652173913043
       }
     },
     "probes": {
-      "n": 35,
-      "hits": 32,
-      "rate": 0.9142857142857143
+      "n": 51,
+      "hits": 44,
+      "rate": 0.8627450980392157
     },
     "probesNotInPrompt": {
-      "n": 32,
-      "hits": 29,
-      "rate": 0.90625
+      "n": 48,
+      "hits": 41,
+      "rate": 0.8541666666666666
     },
     "gate": {
-      "threshold": 0.15,
+      "privatePerson": 0.05,
+      "personSure": 0.9,
       "privateHidden": {
-        "n": 12,
-        "hits": 12,
+        "n": 28,
+        "hits": 28,
         "rate": 1
       },
       "othersHidden": {
         "n": 202,
-        "hits": 0,
-        "rate": 0
+        "hits": 3,
+        "rate": 0.01485148514851485
       }
     },
     "minPrivate": {
-      "item": "tyler okonkwo",
-      "probability": 0.29
+      "item": "tyler okonkwo sandwich",
+      "probability": 0.06
     },
     "maxOther": {
       "item": "my coworkers",
@@ -495,10 +496,11 @@
     },
     "sweep": [
       {
-        "threshold": 0.05,
+        "privatePerson": 0.03,
+        "personSure": 0,
         "privateHidden": {
-          "n": 6,
-          "hits": 6,
+          "n": 16,
+          "hits": 16,
           "rate": 1
         },
         "othersHidden": {
@@ -508,24 +510,26 @@
         }
       },
       {
-        "threshold": 0.1,
+        "privatePerson": 0.05,
+        "personSure": 0,
         "privateHidden": {
-          "n": 6,
-          "hits": 6,
+          "n": 16,
+          "hits": 16,
           "rate": 1
         },
         "othersHidden": {
           "n": 95,
-          "hits": 0,
-          "rate": 0
+          "hits": 1,
+          "rate": 0.010526315789473684
         }
       },
       {
-        "threshold": 0.15,
+        "privatePerson": 0.1,
+        "personSure": 0,
         "privateHidden": {
-          "n": 6,
-          "hits": 6,
-          "rate": 1
+          "n": 16,
+          "hits": 15,
+          "rate": 0.9375
         },
         "othersHidden": {
           "n": 95,
@@ -534,11 +538,12 @@
         }
       },
       {
-        "threshold": 0.2,
+        "privatePerson": 0.15,
+        "personSure": 0,
         "privateHidden": {
-          "n": 6,
-          "hits": 6,
-          "rate": 1
+          "n": 16,
+          "hits": 13,
+          "rate": 0.8125
         },
         "othersHidden": {
           "n": 95,
@@ -547,11 +552,12 @@
         }
       },
       {
-        "threshold": 0.3,
+        "privatePerson": 0.2,
+        "personSure": 0,
         "privateHidden": {
-          "n": 6,
-          "hits": 5,
-          "rate": 0.8333333333333334
+          "n": 16,
+          "hits": 13,
+          "rate": 0.8125
         },
         "othersHidden": {
           "n": 95,
@@ -560,11 +566,26 @@
         }
       },
       {
-        "threshold": 0.5,
+        "privatePerson": 0.3,
+        "personSure": 0,
         "privateHidden": {
-          "n": 6,
-          "hits": 5,
-          "rate": 0.8333333333333334
+          "n": 16,
+          "hits": 12,
+          "rate": 0.75
+        },
+        "othersHidden": {
+          "n": 95,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "privatePerson": 0.5,
+        "personSure": 0,
+        "privateHidden": {
+          "n": 16,
+          "hits": 11,
+          "rate": 0.6875
         },
         "othersHidden": {
           "n": 95,
@@ -572,17 +593,103 @@
           "rate": 0
         }
       }
+    ],
+    "sureSweep": [
+      {
+        "privatePerson": null,
+        "personSure": 0.5,
+        "privateHidden": {
+          "n": 16,
+          "hits": 11,
+          "rate": 0.6875
+        },
+        "othersHidden": {
+          "n": 95,
+          "hits": 0,
+          "rate": 0
+        }
+      },
+      {
+        "privatePerson": null,
+        "personSure": 0.7,
+        "privateHidden": {
+          "n": 16,
+          "hits": 14,
+          "rate": 0.875
+        },
+        "othersHidden": {
+          "n": 95,
+          "hits": 1,
+          "rate": 0.010526315789473684
+        }
+      },
+      {
+        "privatePerson": null,
+        "personSure": 0.8,
+        "privateHidden": {
+          "n": 16,
+          "hits": 15,
+          "rate": 0.9375
+        },
+        "othersHidden": {
+          "n": 95,
+          "hits": 1,
+          "rate": 0.010526315789473684
+        }
+      },
+      {
+        "privatePerson": null,
+        "personSure": 0.85,
+        "privateHidden": {
+          "n": 16,
+          "hits": 15,
+          "rate": 0.9375
+        },
+        "othersHidden": {
+          "n": 95,
+          "hits": 1,
+          "rate": 0.010526315789473684
+        }
+      },
+      {
+        "privatePerson": null,
+        "personSure": 0.9,
+        "privateHidden": {
+          "n": 16,
+          "hits": 16,
+          "rate": 1
+        },
+        "othersHidden": {
+          "n": 95,
+          "hits": 2,
+          "rate": 0.021052631578947368
+        }
+      },
+      {
+        "privatePerson": null,
+        "personSure": 0.95,
+        "privateHidden": {
+          "n": 16,
+          "hits": 16,
+          "rate": 1
+        },
+        "othersHidden": {
+          "n": 95,
+          "hits": 3,
+          "rate": 0.031578947368421054
+        }
+      }
     ]
   },
   "listing": {
     "abusiveThreshold": 0.05,
     "reasons": {
-      "listed": 191,
+      "listed": 188,
       "declined": 21,
       "nonsense": 6,
       "blocked": 0,
       "personal_info": 0,
-      "private_person": 12,
+      "private_person": 31,
       "abusive": 5
     },
     "privateListed": 0,
@@ -598,12 +705,12 @@
       {
         "threshold": 0.02,
         "rudeFoods": 15,
-        "other": 29
+        "other": 27
       },
       {
         "threshold": 0.03,
         "rudeFoods": 7,
-        "other": 10
+        "other": 8
       },
       {
         "threshold": 0.05,
@@ -633,21 +740,21 @@
     ]
   },
   "tokens": {
-    "totalInput": 2383316,
-    "totalOutput": 138288,
+    "totalInput": 2545633,
+    "totalOutput": 147698,
     "avgInput": 10142,
     "avgOutput": 588,
     "maxInput": 10150
   },
   "latency": {
-    "p50": 235,
-    "p95": 487,
-    "max": 533,
+    "p50": 237,
+    "p95": 500,
+    "max": 616,
     "retried": 0
   },
   "cost": {
     "pricePerMillionInputUsd": 0.042,
-    "perCallUsd": 0.00042595,
-    "runUsd": 0.100099
+    "perCallUsd": 0.00042596,
+    "runUsd": 0.106917
   }
 }

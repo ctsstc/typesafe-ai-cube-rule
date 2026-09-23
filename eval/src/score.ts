@@ -8,6 +8,8 @@ import {
   type HonoraryResult,
   INPUT_KIND_IDS,
   type InputKindId,
+  type ListingBars,
+  mayNamePrivatePerson,
   PERSON_KIND_IDS,
   type PersonKindId,
   type PublicListingReason,
@@ -37,7 +39,8 @@ export type Prediction = Label;
 export const PREDICTIONS: readonly Prediction[] = LABELS;
 export const ABUSE_SWEEP: readonly number[] = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9];
 export const ABUSE_BUCKETS: readonly number[] = [0.1, 0.3, 0.5, 0.7, 0.85];
-export const PERSON_SWEEP: readonly number[] = [0.05, 0.1, 0.15, 0.2, 0.3, 0.5];
+export const PERSON_SWEEP: readonly number[] = [0.03, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5];
+export const PERSON_SURE_SWEEP: readonly number[] = [0.5, 0.7, 0.8, 0.85, 0.9, 0.95];
 export const PUBLIC_ABUSE_SWEEP: readonly number[] = [0.02, 0.03, 0.05, 0.08, 0.1, 0.2, 0.3];
 export const LISTING_REASONS: readonly PublicListingReason[] = [
   "listed",
@@ -343,17 +346,23 @@ export interface Extreme {
   readonly probability: number;
 }
 
-export interface PrivateGate {
-  readonly threshold: number;
+export type PersonBars = Pick<ListingBars, "privatePerson" | "personSure">;
+
+export interface PrivateGate extends PersonBars {
   readonly privateHidden: Rate;
   readonly othersHidden: Rate;
 }
 
-export function privateGate(outcomes: readonly ItemOutcome[], threshold: number): PrivateGate {
+/** What the person gate hides at these bars. personSure 0 or privatePerson above 1 turns one off. */
+export function privateGate(outcomes: readonly ItemOutcome[], bars: PersonBars): PrivateGate {
   const scored = outcomes.filter((o) => o.person.expected !== null);
-  const hidden = (o: ItemOutcome) => o.person.probabilities.private >= threshold;
+  const hidden = ({ person: { probabilities: p } }: ItemOutcome) =>
+    mayNamePrivatePerson(
+      { personNone: p.none, personPublic: p.public, personPrivate: p.private, abusive: null },
+      bars,
+    );
   return {
-    threshold,
+    ...bars,
     privateHidden: rate(scored.filter((o) => o.person.expected === "private").map(hidden)),
     othersHidden: rate(scored.filter((o) => o.person.expected !== "private").map(hidden)),
   };
@@ -442,6 +451,7 @@ export interface Summary {
     readonly minPrivate: Extreme | null;
     readonly maxOther: Extreme | null;
     readonly sweep: readonly PrivateGate[];
+    readonly sureSweep: readonly PrivateGate[];
   };
   readonly listing: {
     readonly abusiveThreshold: number;
@@ -588,7 +598,10 @@ export function summarize(
       },
       probes: personRate(personProbes),
       probesNotInPrompt: personRate(personProbes.filter((o) => !o.person.leaked)),
-      gate: privateGate(outcomes, THRESHOLDS.publicPrivatePerson),
+      gate: privateGate(outcomes, {
+        privatePerson: THRESHOLDS.publicPrivatePerson,
+        personSure: THRESHOLDS.publicPersonSure,
+      }),
       minPrivate: extreme(
         personScored.filter((o) => o.person.expected === "private"),
         "min",
@@ -597,10 +610,16 @@ export function summarize(
         personScored.filter((o) => o.person.expected !== "private"),
         "max",
       ),
-      sweep: PERSON_SWEEP.map((threshold) =>
+      sweep: PERSON_SWEEP.map((privatePerson) =>
         privateGate(
           outcomes.filter((o) => o.split === "tune"),
-          threshold,
+          { privatePerson, personSure: 0 },
+        ),
+      ),
+      sureSweep: PERSON_SURE_SWEEP.map((personSure) =>
+        privateGate(
+          outcomes.filter((o) => o.split === "tune"),
+          { privatePerson: Number.POSITIVE_INFINITY, personSure },
         ),
       ),
     },

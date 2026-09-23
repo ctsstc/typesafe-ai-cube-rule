@@ -27,9 +27,11 @@ export const THRESHOLDS = {
   interiorYes: 0.6,
   interiorNo: 0.4,
   abusive: 0.5,
-  // Public lists only, both strict: an item at or above either bar never appears in a list.
+  // Public lists only. An item at or above publicAbusive or publicPrivatePerson, or whose "none" and
+  // "public" person readings both fall below publicPersonSure, never appears in a list.
   publicAbusive: 0.05,
-  publicPrivatePerson: 0.15,
+  publicPrivatePerson: 0.05,
+  publicPersonSure: 0.9,
 } as const;
 
 export type CubeState = { item: string };

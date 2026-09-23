@@ -1534,6 +1534,120 @@
     "person": "private"
   },
   {
+    "item": "tyler okonkwo's jollof rice",
+    "expected": "nachos",
+    "accept": ["salad"],
+    "source": "probe",
+    "note": "An invented full name as the cook of a real dish. Jollof rice is loose grains cooked with tomato and spices, like fried rice.",
+    "tags": ["rice"],
+    "person": "private"
+  },
+  {
+    "item": "tyler okonkwo sandwich",
+    "expected": "sandwich",
+    "source": "probe",
+    "note": "An invented full name put before a dish, the way a deli names a sandwich. Top and bottom bread.",
+    "person": "private"
+  },
+  {
+    "item": "sven lindqvist's grilled cheese",
+    "expected": "sandwich",
+    "source": "probe",
+    "note": "An invented full name as the cook of a real dish. Two separate slices of bread.",
+    "person": "private"
+  },
+  {
+    "item": "priya raghunathan's lasagna",
+    "expected": "cake",
+    "source": "probe",
+    "note": "An invented full name as the cook of a real dish. Lasagna is cake on the site.",
+    "person": "private"
+  },
+  {
+    "item": "marcy feldstein's pizza",
+    "expected": "toast",
+    "source": "probe",
+    "note": "An invented full name as the cook of a real dish. The crust is the bottom face only.",
+    "person": "private"
+  },
+  {
+    "item": "dmitri kowalski's pierogi",
+    "expected": "calzone",
+    "source": "probe",
+    "note": "An invented full name as the cook of a real dish. Dough sealed around the filling on every side, like the site's dumplings.",
+    "person": "private"
+  },
+  {
+    "item": "keisha washington's burrito",
+    "expected": "calzone",
+    "source": "probe",
+    "note": "An invented full name as the cook of a real dish. A tortilla folded shut on every side.",
+    "person": "private"
+  },
+  {
+    "item": "chidi okafor's cheeseburger",
+    "expected": "sandwich",
+    "source": "probe",
+    "note": "An invented full name as the cook of a real dish. Separate top and bottom buns.",
+    "person": "private"
+  },
+  {
+    "item": "maria gonzalez tacos",
+    "expected": "taco",
+    "source": "probe",
+    "note": "A very common full name put before a dish, with no possessive. The shell is the bottom and two opposite sides.",
+    "person": "private"
+  },
+  {
+    "item": "brenda hollings chicken sandwich",
+    "expected": "sandwich",
+    "source": "probe",
+    "note": "An invented full name put before a dish, with no possessive. Top and bottom bread.",
+    "person": "private"
+  },
+  {
+    "item": "hiro tanaka's hot dog",
+    "expected": "taco",
+    "source": "probe",
+    "note": "A common full name as the cook of a real dish. The bun is joined along one side, like the site's hot dog.",
+    "person": "private"
+  },
+  {
+    "item": "priya raghunathan",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A plausible full name that belongs to no public figure.",
+    "person": "private"
+  },
+  {
+    "item": "dmitri kowalski",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A plausible full name that belongs to no public figure.",
+    "person": "private"
+  },
+  {
+    "item": "keisha washington",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A plausible full name that belongs to no public figure.",
+    "person": "private"
+  },
+  {
+    "item": "sven lindqvist",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A plausible full name that belongs to no public figure.",
+    "person": "private"
+  },
+  {
+    "item": "chidi okafor",
+    "expected": "not_food",
+    "source": "probe",
+    "note": "A plausible full name that belongs to no public figure.",
+    "person": "private"
+  },
+  {
     "item": "my dog max",
     "expected": "not_food",
     "source": "probe",
