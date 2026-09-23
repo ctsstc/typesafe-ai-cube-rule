@@ -192,7 +192,23 @@ describe("toCubeResult", () => {
     expect(loaf.eyes.solidBlock).toBe("yes");
     expect(loaf.eyes.middleLayer).toBe("no");
     expect(loaf.eyes.faces.bottom).toBe("unsure");
-    expect(loaf.muffinClause).toBe(true);
+    expect(loaf.muffinClause).toBe(false);
+  });
+
+  it("claims the muffin clause only for a clear solid block", () => {
+    const toastWith = (block: number) =>
+      asFood(
+        toCubeResult(
+          "muffin",
+          withAnswers("muffin", {
+            input_kind: foodInput,
+            category: categoryChoice("toast", { toast: 0.9 }, 0.9),
+            starch_block: noul(block),
+          }),
+        ),
+      );
+    expect(toastWith(0.96).muffinClause).toBe(true);
+    expect(toastWith(0.66).muffinClause).toBe(false);
   });
 
   it("rounds the debate score to a level label", () => {

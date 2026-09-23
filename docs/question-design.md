@@ -44,7 +44,7 @@ The SPA bundle never sees the SDK or the rubric text. `@cube/core` is marked `"s
 | `starch_side_wall`, `starch_opposite_walls`, `starch_all_walls` | Noul, nested: at least 1, at least 2 opposite, all 4 | Jev's eyes: walls. The single-wall question is what reads a pie slice as a taco on its side |
 | `starch_middle_layer` | Noul | Jev's eyes: cake layers. Read on the interior bars |
 | `starch_loose_pieces` | Noul | Jev's eyes: nachos core. Read on the interior bars |
-| `starch_block` | Noul | Jev's eyes: the muffin clause. Read on the interior bars |
+| `starch_block` | Noul | Jev's eyes: the muffin clause. Read on the interior bars for `eyes`, but the muffin clause chip keeps the face bar (0.7) |
 | `varies_by_serving` | Noul. A form word in `item` (slice, whole, folded, uncut) means no | "It depends how it's served" chip |
 | `debate_heat` | Score, 4 situational levels | Share label: Settled, Mild, Spicy, Friendship-ending |
 
@@ -99,7 +99,7 @@ Thresholds are applied in code and never sent to Jev, so changing one needs no v
 | `rice` | 0.4 | Mochi picks rice at 0.47 to 0.50, and nothing else sits between 0.01 and 0.69 |
 | `dependsOnServing` | 0.5 | Show the chip when Jev leans yes. Plain pie (0.56) gets it, philly cheesesteak (0.46) does not |
 | `yes` / `no` | 0.7 / 0.3 | Face Nouls. The Noul page's three-way split. Middle values show as unsure. A 0.6 / 0.4 band cut more nulls on tune but added wrong readings on canon |
-| `interiorYes` / `interiorNo` | 0.6 / 0.4 | Solid block, middle layer and loose pieces. Cut eyes nulls on tune from 31% to 23% with no new wrong reading |
+| `interiorYes` / `interiorNo` | 0.6 / 0.4 | Solid block, middle layer and loose pieces. Cut eyes nulls on tune from 31% to 23% with no new wrong reading. The muffin clause chip stays on `yes` (0.7): its note says "raw and unsliced", and the lower bar added it to flat fried dough such as beaver tails |
 | `abusive` | 0.5 | Midway between the highest score on anything that should get a ruling (0.22) and the lowest on an abusive probe (0.86). Declining a real dish is embarrassing, but a shared link must never show hateful text as a ruling |
 
 ## Abstract phrases

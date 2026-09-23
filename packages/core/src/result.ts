@@ -281,7 +281,9 @@ export function toCubeResult(item: string, { answers, model }: CubeResponse): Cu
     wet,
     starch: category === "salad" || starch === "none" ? null : starch,
     riceClause: prob(answers.starch.probabilities.rice) >= THRESHOLDS.rice,
-    muffinClause: category === "toast" && eyes.solidBlock === "yes",
+    // The chip says "raw and unsliced", so it keeps the stricter face bar: the interior band
+    // also passes slices and flat bases that are toast for their bottom face.
+    muffinClause: category === "toast" && tri(prob(answers.starch_block.noul, 0.5)) === "yes",
     dependsOnServing: prob(answers.varies_by_serving.noul) >= THRESHOLDS.dependsOnServing,
     debate: { level, label: DEBATE_LABELS[level] },
     nameTraps: CATEGORY_IDS.filter((id) => id !== category && item.includes(CATEGORIES[id].stem)),
