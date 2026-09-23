@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-23
+
 ### Added
 
 - **How Jev rules.** A new section between the gallery and About, linked from the header and footer. It opens by saying the app is unofficial, then covers what a System One model is, the 16 typed questions in one request, confidence against probability, a cost and speed receipt, how the tune, holdout and canon piles are graded (with every leak into the questions disclosed), and honest limits. It loads as its own chunk and takes every number from `eval/results/v<QUESTION_SET_VERSION>/summary.json` at build time, so the build fails if the current question set's summary is missing, incomplete or scored on another model.
@@ -26,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- The home page no longer scrolls sideways on 320px phones. A long word in the daily question pushed the title column past the screen edge; the title now hyphenates and the column can shrink.
 - About no longer says people wrote every word on the page. The words are templates in our code, filled in from Jev's numbers.
 - Opening `/#about` or `/#how-jev-rules` directly scrolls to that section. The scroll waits for How Jev rules to render, so About lands in view on Safari before 27, which has no scroll anchoring.
 - A response whose body drops mid-download shows the network or offline panel instead of "Something broke on our side", and a body that stalls ends at the 10 second timeout instead of hanging.
