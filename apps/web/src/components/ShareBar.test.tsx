@@ -66,7 +66,7 @@ describe("ShareBar", () => {
     renderBar();
     await click("Share ruling");
     expect(writeText).toHaveBeenCalledWith(`${location.origin}/?food=hot+dog`);
-    expect(screen.getByText("Link copied.")).toBeInTheDocument();
+    expect(screen.getByText("Link copied.", { selector: ".toast" })).toBeInTheDocument();
   });
 
   it("shows a selectable link when the clipboard refuses", async () => {
@@ -78,7 +78,9 @@ describe("ShareBar", () => {
     const field = screen.getByRole("textbox", { name: "Link to this ruling" });
     expect(field).toHaveValue(`${location.origin}/?food=hot+dog`);
     expect(field).toHaveAttribute("readonly");
-    expect(screen.getByText("Couldn't copy. Here's the link:")).toBeInTheDocument();
+    expect(
+      screen.getByText("Couldn't copy. Here's the link:", { selector: ".toast" }),
+    ).toBeInTheDocument();
   });
 
   it("hides the share button when there is nothing to share", () => {
