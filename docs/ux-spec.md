@@ -214,7 +214,7 @@ Every simulated ruling shows a "Simulated" pill beside the eyebrow and a "SIMULA
 
 | Code | Title | Body | Action |
 |---|---|---|---|
-| `rate_limited` | Too many cubes in the oven. | Jev is fielding a lot of rulings. Try again in {n} seconds. | disabled "Try again in {n}s" countdown, then "Try again". Never retries on its own |
+| `rate_limited` | Too many cubes in the oven. | Jev is fielding a lot of rulings. The button below counts down to your next try. (No number in the body, so it never disagrees with the live countdown.) | disabled "Try again in {n}s" countdown, then "Try again". Never retries on its own |
 | `upstream_busy` | The oracle is overheated. | Give it a moment and try again. | Try again |
 | `upstream_error`, `internal` | Something broke on our side. | It's not you, and it's not the food. | Try again |
 | `timeout` | Jev is thinking unusually hard. | That took too long. Want to try again? | Try again |
@@ -228,7 +228,7 @@ Every simulated ruling shows a "Simulated" pill beside the eyebrow and a "SIMULA
 
 ### 7.4 Gallery: "The nine cubes"
 
-A face legend, then one card per category: a static cube at its hero angle, the number badge and name, core's summary, the family, and three canon example links. Rows on mobile, two columns from 640px, three from 900px. Cubes turn 20 degrees on hover or focus within the card. The section uses `content-visibility: auto`.
+A face legend, then one card per category: a static cube at its hero angle, the number badge and name, core's summary, the family, and three canon example links. Rows on mobile, two columns from 640px, three from 900px. Cubes turn 20 degrees on hover or focus within the card. The section uses `content-visibility: auto` with a placeholder height per breakpoint close to the real one, so the page does not jump when the gallery renders.
 
 ### 7.5 About (`#about`)
 

@@ -99,8 +99,9 @@ describe("declined results", () => {
 });
 
 describe("errorCopy", () => {
-  it("counts down from Retry-After on a 429", () => {
-    expect(errorCopy("rate_limited", 7).body).toContain("7 seconds");
+  it("leaves the 429 countdown to the retry button so the body never goes stale", () => {
+    expect(errorCopy("rate_limited", 7).body).not.toMatch(/\d/);
+    expect(errorCopy("rate_limited", 7).body).toContain("counts down");
     expect(errorCopy("rate_limited", null).body).toContain("in a moment");
   });
 

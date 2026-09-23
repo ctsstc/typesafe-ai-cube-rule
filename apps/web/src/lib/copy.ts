@@ -277,7 +277,7 @@ export function errorCopy(code: RulingErrorCode, retryAfter: number | null): Err
         title: "Too many cubes in the oven.",
         body:
           retryAfter && retryAfter > 0
-            ? `Jev is fielding a lot of rulings. Try again in ${retryAfter} seconds.`
+            ? "Jev is fielding a lot of rulings. The button below counts down to your next try."
             : "Jev is fielding a lot of rulings. Try again in a moment.",
         action: "retry",
       };
