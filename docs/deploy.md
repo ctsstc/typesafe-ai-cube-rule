@@ -163,6 +163,7 @@ pnpm deploy:pages
 - `VITE_TURNSTILE_SITE_KEY` is set (in the environment or the root `.env`) and is not one of Cloudflare's test sitekeys
 - `apps/web/wrangler.jsonc` has a real D1 `database_id` and an uncommented `CLASSIFICATIONS` KV binding
 - the working tree is clean and on `main`
+- the source repo the site links to (`SOURCE_URL` in `apps/web/src/lib/links.ts`) answers 200, which GitHub only does once the repo is public
 - `wrangler whoami` lists the pinned account (`CLOUDFLARE_ACCOUNT_ID` is exported, so the deploy cannot land anywhere else)
 - the project has the `TYPESAFE_API_KEY`, `TURNSTILE_SECRET_KEY` and `SESSION_SECRET` secrets
 - the remote D1 database has no unapplied migrations
@@ -171,13 +172,12 @@ pnpm deploy:pages
 It then builds the SPA with the sitekey and runs `wrangler pages deploy dist --project-name cube-rule-oracle --branch main` from `apps/web`.
 
 > [!IMPORTANT]
-> Apply new migrations to the remote database before the next deploy. Since v1.0.0 that is `0003_cleanup_indexes.sql`, `0004_usage_input_tokens.sql` and `0005_usage_token_calls.sql`:
+> Before the next deploy:
 >
-> ```sh
-> pnpm exec wrangler d1 migrations apply cube-rule-oracle --remote
-> ```
+> 1. Push `main` to https://github.com/ctsstc/typesafe-ai-cube-rule and make the repo public. The footer, About and How Jev rules link to it, and GitHub answers 404 for a private repo.
+> 2. Apply the migrations added since v1.0.0 (`0003_cleanup_indexes.sql`, `0004_usage_input_tokens.sql` and `0005_usage_token_calls.sql`) to the remote database with `pnpm exec wrangler d1 migrations apply cube-rule-oracle --remote`. Migrations are additive, so the running deployment keeps working after they land.
 >
-> `scripts/deploy.sh` refuses to deploy while any migration is unapplied. Migrations are additive, so the running deployment keeps working after they land.
+> `scripts/deploy.sh` refuses to deploy until both are done.
 
 > [!IMPORTANT]
 > Deploy from `apps/web`, never with `wrangler pages deploy apps/web/dist` from the repo root. Wrangler looks for `functions/` and `wrangler.jsonc` in its working directory. From the root it would upload the SPA without the API.
