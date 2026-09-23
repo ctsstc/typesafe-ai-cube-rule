@@ -38,6 +38,11 @@ wrangler() {
 if grep -q '"database_id": "00000000-0000-0000-0000-000000000000"' "$web/wrangler.jsonc"; then
   fail "apps/web/wrangler.jsonc still has the placeholder D1 database_id; see docs/deploy.md."
 fi
+# Without KV a ruling lives only in one data center's cache, so other data centers pay for it again.
+if ! grep -Eq '^[[:space:]]*"kv_namespaces"' "$web/wrangler.jsonc" ||
+  grep -Eq '^[[:space:]]*"kv_namespaces".*<namespace id>' "$web/wrangler.jsonc"; then
+  fail "apps/web/wrangler.jsonc has no CLASSIFICATIONS KV binding; see docs/deploy.md."
+fi
 
 [[ -z "$(git status --porcelain)" ]] || fail "working tree is dirty; commit or remove changes first."
 [[ "$(git branch --show-current)" == "$BRANCH" ]] || fail "production deploys run from $BRANCH only."

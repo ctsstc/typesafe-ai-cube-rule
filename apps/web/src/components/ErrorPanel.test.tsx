@@ -17,7 +17,7 @@ describe("ErrorPanel", () => {
     const { onEdit, onRetry } = show(new RulingError("daily_limit", 3 * 3600));
     expect(screen.getByText("The oracle is resting until tomorrow.")).toBeInTheDocument();
     expect(screen.getByText(/New foods open again at .+ your time\./)).toBeInTheDocument();
-    expect(screen.getByText(/already asked about still work/)).toBeInTheDocument();
+    expect(screen.getByText(/already asked about usually still work/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /try again/i })).toBeNull();
 
     await userEvent.click(screen.getByRole("button", { name: "Try another food" }));

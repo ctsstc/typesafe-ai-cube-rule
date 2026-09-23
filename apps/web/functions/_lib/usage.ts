@@ -2,7 +2,7 @@ import type { Env } from "./env";
 import { errorResponse } from "./http";
 import type { Session } from "./session";
 
-export const DEFAULT_DAILY_CALL_LIMIT = 2000;
+export const DEFAULT_DAILY_CALL_LIMIT = 1000;
 export const SESSION_CALL_LIMIT = 60;
 
 const RESERVE_SESSION_CALL = `INSERT INTO sessions (sid, calls, exp) VALUES (?1, 1, ?3)

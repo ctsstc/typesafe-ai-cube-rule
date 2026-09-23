@@ -131,7 +131,7 @@ describe("errorCopy", () => {
     });
     const copy = errorCopy("daily_limit", 4 * 3600);
     expect(copy.body).toContain(`open again at ${reset} your time`);
-    expect(copy.body).toContain("already asked about still work");
+    expect(copy.body).toContain("already asked about usually still work");
     expect(copy.action).toBe("edit");
     expect(errorCopy("daily_limit", null).body).toContain("midnight UTC");
   });

@@ -61,13 +61,13 @@ export function About() {
             </li>
             <li>
               Each ruling is stored by food name in Cloudflare, so the next person who asks gets the
-              same answer instantly and Jev isn't asked twice. Who asked is not stored.
+              same answer instantly and Jev usually isn't asked twice. Who asked is not stored.
             </li>
             <li>
               Asking Jev about a new food costs real money, so before the first one, Turnstile by
               Cloudflare checks that a person is asking. It usually runs unseen and now and then
               asks for a click. It loads from Cloudflare only at that moment, never when the page
-              opens, and foods someone already asked about never trigger it.
+              opens, and foods someone already asked about usually don't trigger it.
             </li>
             <li>
               Passing the check sets one cookie, <code>cube_session</code>, for an hour. It holds a

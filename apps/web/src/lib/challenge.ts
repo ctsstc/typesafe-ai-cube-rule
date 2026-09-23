@@ -94,7 +94,7 @@ function mountHost(): Host {
   const body = document.createElement("p");
   body.className = "challenge__body";
   body.textContent =
-    "Each new food costs real money to ask Jev about, so Cloudflare Turnstile checks that a person is asking. Foods someone already asked about never need this.";
+    "Each new food costs real money to ask Jev about, so Cloudflare Turnstile checks that a person is asking. Foods someone already asked about usually skip this.";
 
   const slot = document.createElement("div");
   slot.className = "challenge__widget";

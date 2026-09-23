@@ -22,7 +22,7 @@ Every uncached ruling calls Jev, about $0.0004 each. Cached rulings stay free an
 5. The SPA retries the ruling once. A second `challenge_required` is shown as an error, never looped.
 6. Before calling Jev the Function charges D1, in this order:
    - the session: 60 Jev calls per `sid`. A spent session gets `401 challenge_required`, so the SPA runs a fresh check and gets a new session. Charging the session first means a spent session can never use up the shared daily budget.
-   - the UTC day: `DAILY_CALL_LIMIT` calls (default 2000, about $0.80 a day). Past it the Function answers `503 daily_limit` with `Retry-After` until midnight UTC, and the SPA says when new foods open again. Cached foods keep working.
+   - the UTC day: `DAILY_CALL_LIMIT` calls (default 1000, about $0.40 a day). Past it the Function answers `503 daily_limit` with `Retry-After` until midnight UTC, and the SPA says when new foods open again. Cached foods keep working.
 
 Each charge is one atomic `INSERT ... ON CONFLICT DO UPDATE ... WHERE calls < limit RETURNING calls`. No row back means refused.
 
@@ -105,7 +105,7 @@ Read the local counters with `pnpm exec wrangler d1 execute cube-rule-oracle --l
    pnpm exec wrangler kv namespace create CLASSIFICATIONS
    ```
 
-   KV is optional. Without it the Function still works, backed by the per data center Cache API only.
+   Production needs it, and `scripts/deploy.sh` refuses to run without the binding. Without KV a ruling lives only in the edge cache of the data center that asked, so a visitor elsewhere gets the human check and a second billed Jev call for the same food. Local dev binds a local namespace either way.
 
 4. Create the D1 database, put its id in place of the zero placeholder `database_id` in `apps/web/wrangler.jsonc`, and apply the migrations:
 
@@ -158,7 +158,7 @@ pnpm deploy:pages
 `scripts/deploy.sh` refuses to run unless all of these hold:
 
 - `VITE_TURNSTILE_SITE_KEY` is set (in the environment or the root `.env`) and is not one of Cloudflare's test sitekeys
-- `apps/web/wrangler.jsonc` has a real D1 `database_id`
+- `apps/web/wrangler.jsonc` has a real D1 `database_id` and an uncommented `CLASSIFICATIONS` KV binding
 - the working tree is clean and on `main`
 - `wrangler whoami` lists the pinned account (`CLOUDFLARE_ACCOUNT_ID` is exported, so the deploy cannot land anywhere else)
 - the project has the `TYPESAFE_API_KEY`, `TURNSTILE_SECRET_KEY` and `SESSION_SECRET` secrets
@@ -229,7 +229,7 @@ A ruling is a pure function of the canonical URL `/api/classify?food=<item>&v=<Q
 
 Bumping `QUESTION_SET_VERSION` in `packages/core/src/questions.ts` changes every URL and KV key, which retires all cached rulings at once. A tab still open on the old version sends the old `v`, and the Function answers `409 stale_client` instead of `400`, so the SPA offers a reload rather than blaming the food. A rollback across question sets does the same to tabs loaded on the newer version.
 
-KV on the Free plan allows 1,000 writes and 100,000 reads a day. Writes happen only on a Jev call, so the write limit caps new rulings stored per day, not rulings served. A failed write is logged and the ruling is still returned.
+KV on the Free plan allows 1,000 writes and 100,000 reads a day, shared by the whole account. Writes happen only on a Jev call, so the write limit caps new rulings stored per day, not rulings served. A failed write is logged and the ruling is still returned, but it then lives only in one data center's cache. That is why `DAILY_CALL_LIMIT` defaults to 1000 and should stay at or under the KV write quota; `functions/_lib/usage.test.ts` pins the default.
 
 ## Rate limiting and spend
 
@@ -240,12 +240,12 @@ Every Jev call costs money, so the Function only calls Jev on a full cache miss,
 | Turnstile session | One check per hour, and again after 60 new foods | `401 challenge_required` |
 | In-code limiter | 20 Jev calls per minute per IP, per isolate. 10 session attempts per minute per IP. | `429 rate_limited` with `Retry-After` |
 | Per-session cap (D1) | 60 Jev calls per session | `401 challenge_required` |
-| Daily cap (D1) | `DAILY_CALL_LIMIT`, default 2000 per UTC day | `503 daily_limit` with `Retry-After` until midnight UTC |
+| Daily cap (D1) | `DAILY_CALL_LIMIT`, default 1000 per UTC day | `503 daily_limit` with `Retry-After` until midnight UTC |
 | Free plan request cap | 100,000 Functions requests a day, shared with Workers | Cloudflare's own error until midnight UTC |
 
 The in-code limiter is a speed bump, not a quota: each location runs many isolates and they restart often. The D1 caps are the real limits, because D1 is one database with serialized writes.
 
-D1 on the Free plan allows 100,000 rows written and 5 million rows read a day, with limits resetting at 00:00 UTC. A Jev call writes two rows (the session and the day), so 2,000 calls use 4,000 writes. Starting a session also deletes expired session rows. If D1 itself hits its daily limit, the spend check fails and new rulings are refused until midnight UTC, which is the safe direction.
+D1 on the Free plan allows 100,000 rows written and 5 million rows read a day, with limits resetting at 00:00 UTC. A Jev call writes two rows (the session and the day), so 1,000 calls use 2,000 writes. Starting a session also deletes expired session rows. If D1 itself hits its daily limit, the spend check fails and new rulings are refused until midnight UTC, which is the safe direction.
 
 Other levers:
 

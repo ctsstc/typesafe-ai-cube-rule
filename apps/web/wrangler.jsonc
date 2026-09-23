@@ -17,8 +17,9 @@
     }
   ],
   "vars": {
-    // Jev calls allowed per UTC day, about $0.0004 each. "0" stops every new ruling.
-    "DAILY_CALL_LIMIT": "2000"
+    // Jev calls allowed per UTC day, about $0.0004 each. "0" stops every new ruling. Keep it at or
+    // under the Free plan's 1,000 KV writes a day, or later rulings go unstored and get billed again.
+    "DAILY_CALL_LIMIT": "1000"
   },
   "dev": { "port": 8788 }
 }

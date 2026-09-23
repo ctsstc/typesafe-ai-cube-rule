@@ -324,7 +324,7 @@ export function errorCopy(code: RulingErrorCode, retryAfter: number | null): Err
     case "daily_limit":
       return {
         title: "The oracle is resting until tomorrow.",
-        body: `Jev has ruled on all the new foods it can today. New foods open again at ${resetTime(retryAfter)}. Foods someone has already asked about still work.`,
+        body: `Jev has ruled on all the new foods it can today. New foods open again at ${resetTime(retryAfter)}. Foods someone has already asked about usually still work.`,
         action: "edit",
       };
     case "stale_client":
