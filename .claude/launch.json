@@ -12,6 +12,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["dev"],
       "port": 5173
+    },
+    {
+      "name": "challenge-preview-interactive",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["scripts/dev-challenge.sh", "interactive", "--preview"],
+      "port": 8788
     }
   ]
 }
