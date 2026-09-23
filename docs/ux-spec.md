@@ -84,10 +84,11 @@ Single page. State lives in the query string. No router library.
 | `/?play=daily`, `/?play=endless` | Guess the cube | v0.3 |
 | `#gallery`, `#about`, `#about-mock` | In-page anchors | v0.1 |
 
-- Submitting pushes a history entry. Back and forward restore earlier rulings from the in-memory cache without refetching.
+- Submitting pushes a history entry with the state `{ typed: true }`. Back and forward restore earlier rulings from the in-memory cache without refetching. Any other entry, including the one a deep link opened, replays as a deep link, so its text stays hidden until Jev clears it.
+- In-page anchors fire `popstate` too. They keep the search, so the app ignores them and the ruling, the input and any error panel stay as they are.
 - The `food` param goes through `normalizeItem()`. An empty result is ignored.
 - `document.title` follows the view: `Hot dog: definitely a taco | Cube Rule Oracle`. While loading a typed food: `Hot dog | Cube Rule Oracle`. While loading a deep link: `Ruling | Cube Rule Oracle`. Declined: `Declined | Cube Rule Oracle`.
-- A declined ruling replaces the URL with `/` so the text never sits in the address bar or a copied link.
+- A declined ruling replaces the URL with `/` so the text never sits in the address bar or a copied link. So does a deep link with no letters: it never reaches Jev, so `is_abusive` never checked it, and the card says "That link has no food in it." instead of echoing it.
 
 ## 5. Data the UI consumes
 
@@ -203,6 +204,7 @@ Directly under the input. Loading reserves the card's height with skeleton rows 
 | baffled | "Arguably a quiche." | faces at 60% | QUICHE?, dashed and muted | bars still shown |
 | honorary | "Canoe: Not food. Probably." | honorary category layout | HONORARY TACO | "If it were food, it would probably be a taco." |
 | nonsense | "Qwrtzp: Uncubeable." | empty wireframe | UNCUBEABLE | "Jev can't find a food, or anything else, in that." |
+| nonsense (deep link, no letters) | "That link has no food in it." | empty wireframe | UNCUBEABLE | the text is never shown, and the URL is replaced with `/` |
 | declined | "Jev declines to cube that." | closed box icon | none | "Try a food. Any food." No share, no echo |
 | error | the food, or "Consulting the cube" for a deep link | none | none | error panel |
 

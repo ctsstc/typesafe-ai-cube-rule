@@ -107,6 +107,81 @@ describe("App", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("leaves the ruling and the input alone when an in-page anchor fires popstate", async () => {
+    const fetchMock = serve((item) => response(item));
+    render(<App />);
+    submit("hot dog");
+    const heading = await screen.findByRole("heading", { name: "Hot dog: Officially a taco." });
+    fireEvent.change(input(), { target: { value: "chicken po" } });
+    act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(screen.getByRole("heading", { level: 1 })).toBe(heading);
+    expect(input()).toHaveValue("chicken po");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps an uncleared deep link hidden when an in-page anchor fires popstate", async () => {
+    history.replaceState(null, "", "/?food=some+nasty+words");
+    const fetchMock = serve(() => ({ error: { code: "upstream_busy", message: "busy" } }), 503);
+    render(<App />);
+    await screen.findByText("The oracle is overheated.");
+    act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(document.title).toBe("Ruling | Cube Rule Oracle");
+    expect(document.body).not.toHaveTextContent(/nasty/);
+    expect(input()).toHaveValue("");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps an uncleared deep link hidden after Back", async () => {
+    history.replaceState(null, "", "/?food=some+nasty+words");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const item = new URL(url, location.origin).searchParams.get("food") ?? "";
+        return item === "pizza"
+          ? new Response(JSON.stringify(response(item)))
+          : new Response(JSON.stringify({ error: { code: "upstream_busy", message: "busy" } }), {
+              status: 503,
+            });
+      }),
+    );
+    render(<App />);
+    await screen.findByText("The oracle is overheated.");
+    submit("pizza");
+    await screen.findByRole("heading", { name: "Pizza: Officially toast." });
+    act(() => {
+      history.back();
+    });
+    await waitFor(() => expect(location.search).toBe("?food=some+nasty+words"));
+    await screen.findByText("The oracle is overheated.");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Consulting the cube");
+    expect(document.title).toBe("Ruling | Cube Rule Oracle");
+    expect(document.body).not.toHaveTextContent(/nasty/);
+    expect(input()).toHaveValue("");
+  });
+
+  it.each([
+    ["1488", "1488"],
+    ["14%2F88", "14/88"],
+    ["%E0%BF%95", "\u0FD5"],
+  ])("never shows a deep link with no letters (%s)", async (param, text) => {
+    history.replaceState(null, "", `/?food=${param}`);
+    const fetchMock = serve((item) => response(item));
+    render(<App />);
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "That link has no food in it." }),
+    ).toBeVisible();
+    const shown = JSON.parse(`"${text}"`) as string;
+    expect(document.body).not.toHaveTextContent(shown);
+    expect(document.title).toBe("Ruling | Cube Rule Oracle");
+    expect(input()).toHaveValue("");
+    await waitFor(() => expect(location.search).toBe(""));
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("maps a 503 to the overheated panel", async () => {
     serve(() => ({ error: { code: "upstream_busy", message: "busy" } }), 503);
     render(<App />);

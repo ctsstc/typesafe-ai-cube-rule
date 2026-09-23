@@ -10,7 +10,7 @@ import { Header } from "./components/Header";
 import { HeroArt } from "./components/HeroArt";
 import { MockBanner } from "./components/MockBanner";
 import { RulingCard } from "./components/RulingCard";
-import { type OracleState, useOracle } from "./hooks/useOracle";
+import { canEcho, type OracleState, useOracle } from "./hooks/useOracle";
 import { prefersReducedMotion } from "./hooks/useReducedMotion";
 import { APP_NAME, HOME_TITLE, heroQuestion, resultTitle } from "./lib/copy";
 import { surpriseFood } from "./lib/foods";
@@ -19,10 +19,21 @@ import { foodFromSearch, foodHref } from "./lib/url";
 
 function titleFor(state: OracleState): string {
   if (state.status === "idle") return HOME_TITLE;
-  if (state.status === "done") return resultTitle(state.result);
-  return state.origin === "link"
-    ? `Ruling | ${APP_NAME}`
-    : `${sentenceCase(state.item)} | ${APP_NAME}`;
+  const echo = canEcho(state);
+  if (state.status === "done" && (echo || state.result.kind === "declined")) {
+    return resultTitle(state.result);
+  }
+  return echo ? `${sentenceCase(state.item)} | ${APP_NAME}` : `Ruling | ${APP_NAME}`;
+}
+
+// Entries this tab pushed for a food the person picked carry this state. Anything else, including
+// the entry a deep link opened, is replayed as a link so its text stays hidden until Jev clears it.
+const TYPED = { typed: true } as const;
+
+function isTyped(state: unknown): boolean {
+  return (
+    typeof state === "object" && state !== null && (state as { typed?: unknown }).typed === true
+  );
 }
 
 function scrollBehavior(): ScrollBehavior {
@@ -39,12 +50,15 @@ export function App() {
   const rulingRef = useRef<HTMLDivElement>(null);
   const hero = useRef(heroQuestion()).current;
   const heroItem = normalizeItem(hero.food);
+  const shown = useRef({ search: location.search, typed: false });
 
   const submit = useCallback(
     (item: string) => {
       setQuery(item);
       const href = foodHref(item);
-      if (`${location.pathname}${location.search}` !== href) history.pushState(null, "", href);
+      if (`${location.pathname}${location.search}` === href) history.replaceState(TYPED, "");
+      else history.pushState(TYPED, "", href);
+      shown.current = { search: location.search, typed: true };
       rule(item, "typed");
       requestAnimationFrame(() =>
         rulingRef.current?.scrollIntoView({ behavior: scrollBehavior(), block: "start" }),
@@ -57,13 +71,23 @@ export function App() {
     const fromUrl = foodFromSearch(location.search);
     if (fromUrl) rule(fromUrl, "link");
     const onPop = () => {
+      const typed = isTyped(history.state);
+      // In-page anchors fire popstate too. They keep the search, so the ruling stays as it is.
+      if (location.search === shown.current.search) {
+        if (shown.current.typed && !typed) history.replaceState(TYPED, "");
+        return;
+      }
+      shown.current = { search: location.search, typed };
       const item = foodFromSearch(location.search);
-      if (item) {
+      if (!item) {
+        setQuery("");
+        reset();
+      } else if (typed) {
         setQuery(item);
         rule(item, "history");
       } else {
         setQuery("");
-        reset();
+        rule(item, "link");
       }
     };
     window.addEventListener("popstate", onPop);
@@ -75,9 +99,10 @@ export function App() {
     if (state.status !== "done") return;
     if (state.meta?.response.mock) setMockSeen(true);
     if (state.meta) setModel(state.meta.response.model);
-    if (state.result.kind === "declined") {
+    if (state.result.kind === "declined" || !canEcho(state)) {
       // Never leave abusive text in the address bar or the input of a shared link.
       history.replaceState(null, "", "/");
+      shown.current = { search: "", typed: false };
       if (state.origin !== "typed") setQuery("");
     } else if (state.origin === "link") {
       setQuery(state.item);

@@ -1,6 +1,6 @@
 import { type CubeResult, type FoodResult, type HonoraryResult, STARCHES } from "@cube/core";
 import { Fragment, useEffect, useId, useRef, useState } from "react";
-import type { ActiveState } from "../hooks/useOracle";
+import { type ActiveState, canEcho } from "../hooks/useOracle";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import {
   bandOf,
@@ -9,6 +9,7 @@ import {
   extraChips,
   extraNotes,
   LOADING_LINES,
+  NO_FOOD_IN_LINK,
   officialCopy,
   STILL_THINKING,
   shareText,
@@ -39,16 +40,11 @@ interface RulingCardProps {
   readonly onCubeAnother: () => void;
 }
 
-// Deep links are written by someone else, so their text is only shown once Jev has cleared it.
-function canEcho(state: ActiveState): boolean {
-  if (state.origin !== "link") return true;
-  return state.status === "done" && state.result.kind !== "declined";
-}
-
 function headingText(state: ActiveState): string {
   if (state.status === "done") {
     const { result } = state;
     if (result.kind === "declined") return "Jev declines to cube that.";
+    if (!canEcho(state)) return NO_FOOD_IN_LINK;
     return `${sentenceCase(result.item)}: ${verdictLine(result)}`;
   }
   return canEcho(state) ? sentenceCase(state.item) : "Consulting the cube";
@@ -243,10 +239,8 @@ export function RulingCard({ state, level = 2, onRetry, onEdit, onCubeAnother }:
           {simulated && <span className="pill pill--warn">Simulated</span>}
         </p>
         <Heading id={headingId} ref={headingRef} tabIndex={-1} className="ruling__heading">
-          {result?.kind === "declined" ? (
-            <span className="ruling__verdict ruling__verdict--solo">
-              Jev declines to cube that.
-            </span>
+          {result && (result.kind === "declined" || !echo) ? (
+            <span className="ruling__verdict ruling__verdict--solo">{heading}</span>
           ) : result ? (
             <>
               <span className="ruling__food">{sentenceCase(result.item)}</span>

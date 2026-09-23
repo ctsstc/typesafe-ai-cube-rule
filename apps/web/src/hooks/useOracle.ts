@@ -24,6 +24,15 @@ export type OracleState =
 
 export type ActiveState = Exclude<OracleState, { status: "idle" }>;
 
+// A deep link's text is shown only once Jev has cleared it. Text with no letters never reaches
+// Jev (so is_abusive never saw it), so a link to it is never shown at all.
+export function canEcho(state: ActiveState): boolean {
+  if (state.origin !== "link") return true;
+  return (
+    state.status === "done" && state.result.kind !== "declined" && state.result.model !== "precheck"
+  );
+}
+
 export function useOracle() {
   const [state, setState] = useState<OracleState>({ status: "idle" });
   const nextId = useRef(0);

@@ -260,6 +260,8 @@ export const LOADING_LINES = [
 
 export const STILL_THINKING = "Still thinking. Jev is usually faster than this.";
 
+export const NO_FOOD_IN_LINK = "That link has no food in it.";
+
 export interface ErrorCopy {
   readonly title: string;
   readonly body: string;
