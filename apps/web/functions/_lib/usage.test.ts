@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_DAILY_CALL_LIMIT, dailyCallLimit } from "./usage";
 
@@ -7,7 +8,10 @@ import { DEFAULT_DAILY_CALL_LIMIT, dailyCallLimit } from "./usage";
 const FREE_KV_WRITES_PER_DAY = 1000;
 
 function wranglerVars(): Record<string, string> {
-  const text = readFileSync(new URL("../../wrangler.jsonc", import.meta.url), "utf8");
+  const text = readFileSync(
+    fileURLToPath(new URL("../../wrangler.jsonc", import.meta.url).href),
+    "utf8",
+  );
   const json = JSON.parse(text.replace(/^\s*\/\/.*$/gm, "")) as { vars: Record<string, string> };
   return json.vars;
 }
