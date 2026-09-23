@@ -77,6 +77,26 @@ describe("page outline", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
+  it("puts the error title one level under the ruling heading", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ error: { code: "upstream_error", message: "no" } }), {
+            status: 502,
+          }),
+      ),
+    );
+    history.replaceState(null, "", "/?food=cheese+board");
+    render(<App />);
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Something broke on our side." }),
+    ).toBeVisible();
+    const levels = outline().map((line) => Number(line[1]));
+    expect(levels.every((level, i) => i === 0 || level <= (levels[i - 1] ?? 0) + 1)).toBe(true);
+    await expectNoAxeViolations();
+  });
+
   it("shows the deep-link placeholder as the page heading while loading", () => {
     history.replaceState(null, "", "/?food=hot+dog");
     render(<App />);

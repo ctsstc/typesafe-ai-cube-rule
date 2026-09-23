@@ -272,7 +272,7 @@ export function RulingCard({ state, level = 2, onRetry, onEdit, onCubeAnother }:
         )}
 
         {state.status === "error" && (
-          <ErrorPanel error={state.error} onRetry={onRetry} onEdit={onEdit} />
+          <ErrorPanel error={state.error} onRetry={onRetry} onEdit={onEdit} level={subLevel} />
         )}
 
         {result?.kind === "declined" && (

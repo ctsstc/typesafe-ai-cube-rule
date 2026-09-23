@@ -8,6 +8,7 @@ interface ErrorPanelProps {
   readonly error: RulingError;
   readonly onRetry: () => void;
   readonly onEdit: () => void;
+  readonly level?: 2 | 3;
 }
 
 function useCountdown(seconds: number | null): number {
@@ -25,7 +26,7 @@ function useCountdown(seconds: number | null): number {
   return left;
 }
 
-export function ErrorPanel({ error, onRetry, onEdit }: ErrorPanelProps) {
+export function ErrorPanel({ error, onRetry, onEdit, level = 3 }: ErrorPanelProps) {
   const online = useOnline();
   const waitSeconds = error.code === "rate_limited" ? error.retryAfter : null;
   const left = useCountdown(waitSeconds);
@@ -39,6 +40,7 @@ export function ErrorPanel({ error, onRetry, onEdit }: ErrorPanelProps) {
           error.code === "client_limit"
         ? ClockIcon
         : AlertIcon;
+  const Title = level === 2 ? "h2" : "h3";
   const editLabel =
     error.code === "daily_limit" || error.code === "client_limit"
       ? "Try another food"
@@ -57,7 +59,7 @@ export function ErrorPanel({ error, onRetry, onEdit }: ErrorPanelProps) {
       <span className="error-panel__icon">
         <Icon />
       </span>
-      <h3 className="error-panel__title">{copy.title}</h3>
+      <Title className="error-panel__title">{copy.title}</Title>
       <p className="error-panel__body">{copy.body}</p>
       {copy.action === "reload" ? (
         <button
