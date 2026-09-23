@@ -17,6 +17,10 @@ export type ClassifyErrorStatus = (typeof CLASSIFY_ERROR_CODES)[ClassifyErrorCod
 
 export type ClassifyResponse = CubeResponse & { readonly mock?: true };
 
+// A hover prefetch sends this header. The Function then serves only stored rulings and answers a
+// miss with 204, so a prefetch never starts a human check or spends a Jev call.
+export const PREFETCH_HEADER = "X-Cube-Prefetch";
+
 export interface ClassifyErrorBody {
   readonly error: { readonly code: ClassifyErrorCode; readonly message: string };
 }

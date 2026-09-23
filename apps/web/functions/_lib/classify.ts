@@ -4,6 +4,7 @@ import {
   type ClassifyResponse,
   classifyUrl,
   mockCubeResponse,
+  PREFETCH_HEADER,
   parseClassifyQuery,
   QUESTION_SET_VERSION,
 } from "@cube/core";
@@ -17,7 +18,7 @@ import {
   TypeSafeError,
 } from "@typesafe-ai/sdk";
 import { clientIp, type Env, type WaitUntil } from "./env";
-import { CACHE_IMMUTABLE, CACHE_NONE, errorResponse, jsonResponse } from "./http";
+import { CACHE_IMMUTABLE, CACHE_NONE, errorResponse, jsonResponse, noContent } from "./http";
 import { createRateLimiter, type RateLimiter } from "./rate-limit";
 import { requireSession } from "./session";
 import { reserveJevCall } from "./usage";
@@ -98,6 +99,8 @@ async function classify(
     background(waitUntil, "cache put", fillCache(stored));
     return jsonResponse(stored, { cacheControl: CACHE_IMMUTABLE, cache: "KV" });
   }
+
+  if (request.headers.get(PREFETCH_HEADER) === "1") return noContent({});
 
   const session = await requireSession(request, env, now);
   if (session instanceof Response) return session;

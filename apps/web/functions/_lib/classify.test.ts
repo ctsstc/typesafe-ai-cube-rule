@@ -5,6 +5,7 @@ import {
   classifyUrl,
   isClassifyErrorBody,
   mockCubeResponse,
+  PREFETCH_HEADER,
   QUESTION_SET_VERSION,
 } from "@cube/core";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
@@ -395,9 +396,9 @@ describe("challenge and spend caps", () => {
     return `${SESSION_COOKIE}=${await issueSession(SESSION_SECRET, now)}`;
   }
 
-  function ask(item: string, env: Env, sessionCookie?: string) {
+  function ask(item: string, env: Env, sessionCookie?: string, extra: Record<string, string> = {}) {
     const handler = createClassifyHandler(createRateLimiter({ limit: 100, windowMs: 60_000 }));
-    const headers: Record<string, string> = { "CF-Connecting-IP": "203.0.113.7" };
+    const headers: Record<string, string> = { "CF-Connecting-IP": "203.0.113.7", ...extra };
     if (sessionCookie) headers.Cookie = sessionCookie;
     return handler(new Request(`${ORIGIN}${classifyUrl(item)}`, { headers }), env, waitUntil);
   }
@@ -487,6 +488,23 @@ describe("challenge and spend caps", () => {
 
     vi.setSystemTime(new Date("2026-09-23T00:00:01Z"));
     expect((await ask("sushi", env, await cookie())).status).toBe(200);
+  });
+
+  it("answers a prefetch miss with 204, even with a session, and never calls Jev", async () => {
+    const cache = fakeCache();
+    const { d1, env } = guardedEnv();
+    const prefetch = { [PREFETCH_HEADER]: "1" };
+    const miss = await ask("taco", env, await cookie(), prefetch);
+    expect(miss.status).toBe(204);
+    expect(miss.headers.get("Cache-Control")).toBe("no-store");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(d1.calls).toEqual([]);
+
+    cache.store.set(
+      `${ORIGIN}${classifyUrl("taco")}`,
+      new Response(JSON.stringify(mockCubeResponse("taco"))),
+    );
+    expect((await ask("taco", env, undefined, prefetch)).status).toBe(200);
   });
 
   it("treats DAILY_CALL_LIMIT=0 as a kill switch", async () => {

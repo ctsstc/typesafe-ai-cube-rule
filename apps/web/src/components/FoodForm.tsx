@@ -1,6 +1,6 @@
 import { normalizeItem, precheckItem } from "@cube/core";
 import { type FormEvent, type MouseEvent, type RefObject, useRef, useState } from "react";
-import { classify } from "../lib/api";
+import { prefetch } from "../lib/api";
 import { HERO_CHIPS } from "../lib/foods";
 import { foodHref } from "../lib/url";
 import { DiceIcon } from "./Icons";
@@ -24,7 +24,7 @@ export function usePrefetch() {
   const start = (item: string) => {
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {
-      if (!precheckItem(item)) classify(item).catch(() => {});
+      if (!precheckItem(item)) prefetch(item);
     }, PREFETCH_DELAY_MS);
   };
   const cancel = () => clearTimeout(timer.current);

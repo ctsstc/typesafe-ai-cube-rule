@@ -1,10 +1,12 @@
-import { classifyUrl, mockCubeResponse } from "@cube/core";
+import { classifyUrl, mockCubeResponse, PREFETCH_HEADER } from "@cube/core";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import {
   CLIENT_TIMEOUT_MS,
+  cachedClassified,
   classify,
   clearClassifyCache,
   parseRetryAfter,
+  prefetch,
   RulingError,
   SESSION_URL,
 } from "./api";
@@ -214,6 +216,56 @@ describe("classify behind the human check", () => {
     await both;
     expect(solve).toHaveBeenCalledTimes(1);
     expect(urls().filter((u) => u.startsWith("POST"))).toHaveLength(1);
+  });
+
+  it("never starts a human check for a prefetch", async () => {
+    fetchMock.mockResolvedValueOnce(challenge());
+    prefetch("taco");
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(solve).not.toHaveBeenCalled();
+    expect(urls()).toEqual([`GET ${classifyUrl("taco")}`]);
+    expect(cachedClassified("taco")).toBeUndefined();
+  });
+
+  it("asks for stored rulings only when prefetching, and keeps a hit", async () => {
+    fetchMock.mockResolvedValueOnce(ruling("taco"));
+    prefetch("taco");
+    await vi.waitFor(() => expect(cachedClassified("taco")).toBeDefined());
+    const init = fetchMock.mock.calls[0]?.[1];
+    expect(new Headers(init?.headers).get(PREFETCH_HEADER)).toBe("1");
+    prefetch("taco");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("runs the human check for a pick made while a prefetch misses", async () => {
+    let release = () => {};
+    fetchMock
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            release = () => resolve(new Response(null, { status: 204 }));
+          }),
+      )
+      .mockResolvedValueOnce(challenge())
+      .mockResolvedValueOnce(sessionOk())
+      .mockResolvedValueOnce(ruling("taco"));
+
+    prefetch("taco");
+    const picked = classify("taco");
+    release();
+    expect((await picked).response.model).toBe("mock");
+    expect(solve).toHaveBeenCalledTimes(1);
+    expect(urls()).toEqual([
+      `GET ${classifyUrl("taco")}`,
+      `GET ${classifyUrl("taco")}`,
+      `POST ${SESSION_URL}`,
+      `GET ${classifyUrl("taco")}`,
+    ]);
+    const headers = fetchMock.mock.calls.map(([, init]) =>
+      new Headers(init?.headers).get(PREFETCH_HEADER),
+    );
+    expect(headers).toEqual(["1", null, null, null]);
   });
 
   it("keeps the reset time from a daily_limit refusal", async () => {

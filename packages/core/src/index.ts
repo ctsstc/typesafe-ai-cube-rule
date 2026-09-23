@@ -70,4 +70,5 @@ export {
   type ClassifyResponse,
   isClassifyErrorBody,
   isClassifyErrorCode,
+  PREFETCH_HEADER,
 } from "./wire";

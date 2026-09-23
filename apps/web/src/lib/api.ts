@@ -3,6 +3,7 @@ import {
   type ClassifyResponse,
   classifyUrl,
   isClassifyErrorBody,
+  PREFETCH_HEADER,
 } from "@cube/core";
 
 export const CLIENT_TIMEOUT_MS = 10_000;
@@ -90,16 +91,25 @@ function failure(res: Response, body: unknown): RulingError {
   return new RulingError(code, parseRetryAfter(res.headers.get("retry-after")));
 }
 
-async function request(item: string): Promise<Classified> {
+async function request(item: string, prefetch = false): Promise<Classified | null> {
   const url = classifyUrl(item);
   const started = performance.now();
-  const res = await send(url, { headers: { accept: "application/json" } });
+  const headers: Record<string, string> = { accept: "application/json" };
+  if (prefetch) headers[PREFETCH_HEADER] = "1";
+  const res = await send(url, { headers });
+  if (prefetch && res.status === 204) return null;
   const body: unknown = await res.json().catch(() => null);
   const latencyMs = Math.round(performance.now() - started);
   if (!res.ok) throw failure(res, body);
   if (!isClassifyResponse(body)) throw new RulingError("internal");
   const cache = CACHE_HEADERS.map((name) => res.headers.get(name)).find(Boolean) ?? null;
   return { response: body, latencyMs, cache, fromBrowserCache: servedFromBrowserCache(url) };
+}
+
+async function load(item: string): Promise<Classified> {
+  const result = await request(item);
+  if (!result) throw new RulingError("internal");
+  return result;
 }
 
 async function startSession(): Promise<void> {
@@ -132,28 +142,47 @@ function ensureSession(): Promise<void> {
 
 async function requestWithSession(item: string): Promise<Classified> {
   try {
-    return await request(item);
+    return await load(item);
   } catch (error) {
     if (!(error instanceof RulingError) || error.code !== "challenge_required") throw error;
   }
   await ensureSession();
   // One retry only: a second challenge_required surfaces as an error instead of looping.
-  return request(item);
+  return load(item);
 }
 
 const inflight = new Map<string, Promise<Classified>>();
 const settled = new Map<string, Classified>();
+const prefetching = new Map<string, Promise<Classified | null>>();
 
 export function classify(item: string): Promise<Classified> {
   const cached = inflight.get(item);
   if (cached) return cached;
-  const pending = requestWithSession(item);
+  const early = prefetching.get(item);
+  const pending = early
+    ? early.then((hit) => hit ?? requestWithSession(item))
+    : requestWithSession(item);
   inflight.set(item, pending);
   pending.then(
     (value) => settled.set(item, value),
     () => inflight.delete(item),
   );
   return pending;
+}
+
+/** Warms the cache from stored rulings only. It never starts a human check or a Jev call. */
+export function prefetch(item: string): void {
+  if (settled.has(item) || inflight.has(item) || prefetching.has(item)) return;
+  const pending = request(item, true)
+    .then(
+      (hit) => {
+        if (hit) settled.set(item, hit);
+        return hit;
+      },
+      () => null,
+    )
+    .finally(() => prefetching.delete(item));
+  prefetching.set(item, pending);
 }
 
 export function cachedClassified(item: string): Classified | undefined {
@@ -163,4 +192,5 @@ export function cachedClassified(item: string): Classified | undefined {
 export function clearClassifyCache(): void {
   inflight.clear();
   settled.clear();
+  prefetching.clear();
 }
