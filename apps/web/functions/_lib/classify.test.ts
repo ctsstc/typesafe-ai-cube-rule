@@ -443,7 +443,10 @@ describe("challenge and spend caps", () => {
   it("rejects an expired or tampered cookie", async () => {
     const { env } = guardedEnv();
     const stale = await cookie(Date.now() - 3601 * 1000);
-    const tampered = (await cookie()).replace(/.$/, (c) => (c === "A" ? "B" : "A"));
+    const valid = await cookie();
+    // The signature's last base64url character carries padding bits, so tamper with the payload.
+    const at = valid.indexOf("=") + 1;
+    const tampered = `${valid.slice(0, at)}${valid[at] === "e" ? "f" : "e"}${valid.slice(at + 1)}`;
     for (const value of [stale, tampered, `${SESSION_COOKIE}=junk`]) {
       expect((await ask("taco", env, value)).status).toBe(401);
     }
