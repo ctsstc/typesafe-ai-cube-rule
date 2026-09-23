@@ -21,6 +21,10 @@ export type ClassifyResponse = CubeResponse & { readonly mock?: true };
 // miss with 204, so a prefetch never starts a human check or spends a Jev call.
 export const PREFETCH_HEADER = "X-Cube-Prefetch";
 
+// The SPA aborts any API request after this long. Every server-side deadline must stay under it,
+// or the browser shows its own timeout instead of the Function's error.
+export const CLIENT_TIMEOUT_MS = 10_000;
+
 export interface ClassifyErrorBody {
   readonly error: { readonly code: ClassifyErrorCode; readonly message: string };
 }

@@ -1,5 +1,6 @@
 // @vitest-environment node
 import {
+  CLIENT_TIMEOUT_MS,
   type ClassifyErrorBody,
   type ClassifyResponse,
   classifyUrl,
@@ -10,7 +11,7 @@ import {
 } from "@cube/core";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { onRequest as apiFallback } from "../api/[[path]]";
-import { createClassifyHandler, type Env } from "./classify";
+import { createClassifyHandler, type Env, JEV_DEADLINE_MS } from "./classify";
 import { fakeD1 } from "./fake-d1";
 import { createRateLimiter } from "./rate-limit";
 import { issueSession, SESSION_COOKIE } from "./session";
@@ -102,6 +103,10 @@ function expectNothingLeaked(...texts: string[]) {
     expect(text).not.toContain("UPSTREAM-SECRET-DETAIL");
   }
 }
+
+it("gives up on Jev before the SPA gives up on us", () => {
+  expect(JEV_DEADLINE_MS).toBeLessThan(CLIENT_TIMEOUT_MS);
+});
 
 describe("request validation", () => {
   it("rejects anything but GET with 405", async () => {

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { createHmac } from "node:crypto";
-import { type ClassifyErrorBody, isClassifyErrorBody } from "@cube/core";
+import { CLIENT_TIMEOUT_MS, type ClassifyErrorBody, isClassifyErrorBody } from "@cube/core";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import type { Env } from "./env";
 import { fakeD1 } from "./fake-d1";
@@ -11,6 +11,7 @@ import {
   readSession,
   SESSION_COOKIE,
   SESSION_TTL_S,
+  SITEVERIFY_DEADLINE_MS,
   SITEVERIFY_URL,
 } from "./session";
 
@@ -221,6 +222,31 @@ describe("POST /api/session", () => {
     expect(response.status).toBe(502);
     expect((await errorBody(response)).error.code).toBe("upstream_error");
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives up on siteverify with time to answer before the SPA's own timeout", () => {
+    expect(SITEVERIFY_DEADLINE_MS).toBeLessThanOrEqual(CLIENT_TIMEOUT_MS - 2_000);
+  });
+
+  it("stops retrying once the overall siteverify deadline passes", async () => {
+    const timers = new Map<number, AbortController[]>();
+    vi.spyOn(AbortSignal, "timeout").mockImplementation((ms) => {
+      const controller = new AbortController();
+      timers.set(ms, [...(timers.get(ms) ?? []), controller]);
+      return controller.signal;
+    });
+    fetchMock.mockImplementation(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          const abort = () => reject(new DOMException("timed out", "TimeoutError"));
+          init?.signal?.addEventListener("abort", abort, { once: true });
+        }),
+    );
+    const response = call(post({ token: TOKEN }));
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    timers.get(SITEVERIFY_DEADLINE_MS)?.[0]?.abort();
+    expect((await response).status).toBe(502);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("answers 502 when siteverify stays down", async () => {

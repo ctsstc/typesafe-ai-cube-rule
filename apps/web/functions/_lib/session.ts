@@ -13,7 +13,8 @@ const MAX_TOKEN_LENGTH = 2048;
 const MAX_BODY_BYTES = 4096;
 const MAX_COOKIE_LENGTH = 512;
 const CLOCK_SKEW_S = 60;
-const SITEVERIFY_TIMEOUT_MS = 5_000;
+const SITEVERIFY_ATTEMPT_MS = 4_000;
+export const SITEVERIFY_DEADLINE_MS = 8_000;
 const SESSIONS_PER_MINUTE = 10;
 
 // Cloudflare's documented test secrets answer with hostname "example.com" and no action.
@@ -204,14 +205,15 @@ async function verifyTurnstile(
     idempotency_key: idempotencyKey,
     ...(remoteip === "unknown" ? {} : { remoteip }),
   });
-  for (let attempt = 0; attempt < 2; attempt++) {
+  const deadline = AbortSignal.timeout(SITEVERIFY_DEADLINE_MS);
+  for (let attempt = 0; attempt < 2 && !deadline.aborted; attempt++) {
     let response: Response;
     try {
       response = await fetch(SITEVERIFY_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body,
-        signal: AbortSignal.timeout(SITEVERIFY_TIMEOUT_MS),
+        signal: AbortSignal.any([AbortSignal.timeout(SITEVERIFY_ATTEMPT_MS), deadline]),
       });
     } catch (error) {
       console.warn("session: siteverify unreachable", { attempt, error: nameOf(error) });

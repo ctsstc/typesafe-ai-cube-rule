@@ -1,4 +1,5 @@
 import {
+  CLIENT_TIMEOUT_MS,
   type ClassifyErrorCode,
   type ClassifyResponse,
   classifyUrl,
@@ -6,7 +7,6 @@ import {
   PREFETCH_HEADER,
 } from "@cube/core";
 
-export const CLIENT_TIMEOUT_MS = 10_000;
 export const SESSION_URL = "/api/session";
 
 export type RulingErrorCode = ClassifyErrorCode | "offline" | "network";

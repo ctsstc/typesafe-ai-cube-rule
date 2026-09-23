@@ -28,8 +28,7 @@ export type { Env } from "./env";
 // Pinned so a stray TYPESAFE_BASE_URL can never send the key elsewhere.
 const TYPESAFE_BASE_URL = "https://api.typesafe.ai";
 const JEV_ATTEMPT_TIMEOUT_MS = 8_000;
-// Must stay under the SPA's CLIENT_TIMEOUT_MS (10s) so the browser sees our 504, not its own abort.
-const JEV_DEADLINE_MS = 9_000;
+export const JEV_DEADLINE_MS = 9_000;
 const DEFAULT_RETRY_AFTER_S = 10;
 const LIVE_CALLS_PER_MINUTE = 20;
 

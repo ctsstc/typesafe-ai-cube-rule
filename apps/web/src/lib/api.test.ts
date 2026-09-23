@@ -1,7 +1,6 @@
-import { classifyUrl, mockCubeResponse, PREFETCH_HEADER } from "@cube/core";
+import { CLIENT_TIMEOUT_MS, classifyUrl, mockCubeResponse, PREFETCH_HEADER } from "@cube/core";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import {
-  CLIENT_TIMEOUT_MS,
   cachedClassified,
   classify,
   clearClassifyCache,

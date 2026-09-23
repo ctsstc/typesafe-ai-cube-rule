@@ -64,6 +64,7 @@ export {
 } from "./result";
 export {
   CLASSIFY_ERROR_CODES,
+  CLIENT_TIMEOUT_MS,
   type ClassifyErrorBody,
   type ClassifyErrorCode,
   type ClassifyErrorStatus,
