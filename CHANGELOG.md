@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+v1.3: "Honorary court". One ask is enough to list a food, so the docket fills up at the site's real traffic.
+
+> [!IMPORTANT]
+> Run `pnpm migrate:remote`, then `pnpm deploy:pages`, then `pnpm seed:docket` (a dry run) and `pnpm seed:docket --apply`. Migration `0008_one_ask_honorary_court.sql` adds the one-ask list indexes beside v1.2's, so the deployment live now keeps reading its lists until the deploy, and a rollback to v1.2 still works. Rows v1.2 recorded after a single ask go public with this deploy, so read `pnpm recent` first and block anything that should stay private.
+
+### Added
+
+- **Honorary court.** A docket card for honorary rulings on things that are not food, Jev's most confident first. Each line reads as the verdict's adverb and the honorary cube ("definitely honorary salad", or "officially honorary calzone" for a canon ruling), without the Honorary marker the other lists show. `/api/lists` sends it as `honoraryCourt`, read through the new `rulings_honorary` index.
+- **`pnpm seed:docket`.** Owner-only, and a dry run until `--apply`. It records the 188 question set 7 eval rulings that pass `publicListing` (of 251, 29 of them honorary) through the Function's own `recordRuling`, first seen at their eval fetch time, and stores each in KV, so clicking one needs no human check or Jev call. Encoded abusive probes and anything the gates hide are never written. `--backfill` re-asks Jev with the current questions about foods stored under earlier question sets in KV, about $0.0004 each and capped by `--max-usd` (default $0.05). Each answer is recorded the way the Function records a Jev call, listed or not, first seen at 00:00 UTC that day, and added to the day's `usage` row. It refuses when its KV writes would pass 900 minus today's Jev calls, when a ruling would count as new in the last hour, or over `--max-usd`, and warns when a full day of Jev calls at `DAILY_CALL_LIMIT` could still take KV past its 1,000 writes. `--local` and `--persist-to` run it against a local D1 and KV.
+- **Migration 0008** adds `rulings_latest1`, `rulings_debated1` and `rulings_heat1` (listed, one ask or more) and `rulings_honorary`. It keeps v1.2's four list indexes, which rows with one ask never enter, so it costs no extra writes. Drop them in a later migration only once v1.2 is no longer a rollback target.
+
+### Changed
+
+- **One ask lists a ruling.** `MIN_ASKS` drops from 2 to 1, so the Jev call that first rules on a food lists it if it passes the screens. Hits on a recorded food now write nothing.
+- **Every list shows from one entry,** and the docket hides only when every list is empty, off or failing.
+- **Jev vs the canon is gone.** Honorary court takes its place.
+- **About** says a food can show up the first time anyone asks about it if it passes the checks, and that the lists started with foods from our own testing and foods people had already asked about, some from before the lists existed. The lists still never show who asked or when.
+- **`pnpm recent`** drops the Asks column, which only ever read 1, and its footer says a public ruling was asked at least once. A prune batch is budgeted at up to 11 row writes a deleted row, about 22,000 a run, because a v1.2 row with two asks also sits in v1.2's indexes.
+- `dev:mock` gains honorary entries, and `CUBE_MOCK_LISTS` takes `full|busy|one|empty|disabled|error`: `busy` shows the capped activity line and `one` a single ruling, in place of `dissent` and `partial`.
+- The eval report counts what each list could hold from one ask, Honorary court included, and the question set 7 report and summary are rescored from the cache with no new inference.
+- The README, design doc, eval notes, UX spec and deploy runbook describe one ask and Honorary court. The runbook adds seeding and backfill, a D1 budget remeasured for one ask, the KV headroom on seed day, and what a tab still running v1.2 does with the renamed lists.
+
+### Fixed
+
+- **The docket shows at the site's real traffic.** v1.2 listed a food only after two browsers asked for it and showed a list only from three entries, so with a few visitors nothing ever appeared. Jev vs the canon could never fill at all, because Jev agrees with all 45 canon rulings in the question set 7 eval: most canon names are worked examples in its questions.
+
+### Security
+
+- **No second ask stands behind the screens.** The person, abuse and personal info gates decide what is listed and are rechecked on every read. The blocklist and the kill switch (`pnpm recent --block` and `pnpm recent --lists off`) are the backstops, and the README and design doc now say so instead of promising two asks.
+- The seed writes only rulings the gates list, to D1 and KV alike, and never an encoded abusive probe. Backfilled foods pass through the same gates as a live ruling, so the hidden ones show only in `pnpm recent --flagged`, in the owner's terminal.
+
 ## [1.2.0] - 2026-09-23
 
 v1.2: "The docket", public lists that make the site feel lived in without showing who asked.
