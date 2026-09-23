@@ -265,3 +265,20 @@ Other levers:
 1. **Kill switch.** Set `DAILY_CALL_LIMIT` to `"0"` in `wrangler.jsonc` and deploy. Every cached ruling keeps working.
 2. **Provider budget.** Use any spend cap or alert the TypeSafe console offers for the key. Revoking the key there is the fastest stop that needs no deploy: the Function then returns `502 upstream_error` for new items while cached rulings keep working.
 3. **Not available on this setup.** The Workers Rate Limiting binding (`ratelimits`) is rejected in a Pages config, and WAF rate limiting rules need the zone on Cloudflare.
+
+## Web Analytics
+
+Cloudflare Web Analytics counts page views, visits, referrers, countries and Core Web Vitals without cookies or local storage. It is free and uses no Functions quota, because the beacon never touches `/api`.
+
+To turn it on:
+
+1. In the dashboard, open **Workers & Pages > cube-rule-oracle > Metrics > Web Analytics** and choose **Enable**.
+2. Redeploy with `pnpm deploy:pages`. Pages injects the beacon into `index.html` only on the next deployment.
+3. Check it in a real browser: DevTools should show `beacon.min.js` loading from `static.cloudflareinsights.com` and a request to `cloudflareinsights.com/cdn-cgi/rum`. `curl` and `wrangler pages dev` never see the injected tag.
+
+The CSP in `public/_headers` already allows exactly those two hosts: `https://static.cloudflareinsights.com` in `script-src` and `https://cloudflareinsights.com` in `connect-src`. It names the host rather than the script's URL because the injected path is versioned (`/beacon.min.js/v...`), and `functions/static-headers.test.ts` pins both.
+
+> [!NOTE]
+> Pages injects the beacon on every host it serves, so previews (`<hash>.cube-rule-oracle.pages.dev`) are counted too. Filter by **Host** in the dashboard to see production only.
+
+Web Analytics never logs query strings, so the foods people look up (`/?food=...`) never reach it, and every lookup counts under the path `/`. Ad blockers block the beacon, so it undercounts.

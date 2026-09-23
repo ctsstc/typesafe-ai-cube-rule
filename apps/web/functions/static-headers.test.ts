@@ -27,7 +27,14 @@ function csp(): Map<string, string[]> {
 }
 
 const TURNSTILE = "https://challenges.cloudflare.com";
-const TURNSTILE_DIRECTIVES = ["script-src", "frame-src"];
+// Cloudflare Web Analytics. Its injected beacon path is versioned, so script-src needs the host.
+const BEACON = "https://static.cloudflareinsights.com";
+const RUM = "https://cloudflareinsights.com";
+const REMOTE_SOURCES: Record<string, string[]> = {
+  "script-src": [TURNSTILE, BEACON],
+  "frame-src": [TURNSTILE],
+  "connect-src": [RUM],
+};
 
 describe("public/_headers", () => {
   it("keeps the CSP free of unsafe sources", () => {
@@ -39,9 +46,7 @@ describe("public/_headers", () => {
       expect(sources, directive).not.toContain("'unsafe-eval'");
       expect(sources, directive).not.toContain("*");
       const remote = sources.filter((s) => /^(https?:|wss?:|\*\.|[\w-]+\.[\w.-]+)/.test(s));
-      expect(remote, directive).toEqual(
-        TURNSTILE_DIRECTIVES.includes(directive) ? [TURNSTILE] : [],
-      );
+      expect(remote, directive).toEqual(REMOTE_SOURCES[directive] ?? []);
     }
   });
 
@@ -49,8 +54,13 @@ describe("public/_headers", () => {
     const policy = csp();
     expect(policy.get("script-src")).toContain(TURNSTILE);
     expect(policy.get("frame-src")).toEqual([TURNSTILE]);
-    expect(policy.get("connect-src")).toEqual(["'self'"]);
     expect(policy.get("object-src")).toEqual(["'none'"]);
+  });
+
+  it("lets Web Analytics load its beacon and send its reports", () => {
+    const policy = csp();
+    expect(policy.get("script-src")).toContain(BEACON);
+    expect(policy.get("connect-src")).toEqual(["'self'", RUM]);
   });
 
   it("allows every inline script in index.html by hash", () => {
