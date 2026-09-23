@@ -177,7 +177,9 @@ export function extraNotes(result: FoodResult): string[] {
     notes.push("The starch moves depending on how it's served. This ruling is for the usual form.");
   }
   if (result.muffinClause) {
-    notes.push("One solid block of starch counts as toast. That's the muffin clause.");
+    notes.push(
+      "A solid block of starch, raw and unsliced, counts as toast. That's the muffin clause.",
+    );
   }
   if (result.riceClause) notes.push(`Rice clause, straight from cuberule.com: "${RICE_CLAUSE}"`);
   return notes;

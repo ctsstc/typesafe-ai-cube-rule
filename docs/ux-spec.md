@@ -162,7 +162,7 @@ Shown as small chips under the confidence line, with a note when a chip needs ex
 | `wet` | "Served wet" (the title already says "Wet Nachos") | none |
 | `dependsOnServing` | "Depends how it's served" | "The starch moves depending on how it's served. This ruling is for the usual form." |
 | `riceClause` | "Rice clause" | quotes cuberule.com's rice clause |
-| `muffinClause` | "Muffin clause" | "One solid block of starch counts as toast." |
+| `muffinClause` | "Muffin clause" | "A solid block of starch, raw and unsliced, counts as toast." (cuberule.com: "in raw, unsliced form") |
 | `nameTraps` | "Name trap: cake" | "The name says cake. The starch says quiche." |
 | `debate` | "Debate: Spicy" | none |
 
