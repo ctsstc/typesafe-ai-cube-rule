@@ -5,7 +5,7 @@ export type AnswerType = (typeof CUBE_ANSWER_TYPES)[QuestionId];
 
 const ASKS: Readonly<Record<QuestionId, string>> = {
   is_abusive: "is it abusive",
-  input_kind: "is it food, not food or nonsense",
+  input_kind: "what kind of thing it is (food, not food or nonsense)",
   category: "which of the nine cubes",
   honorary_category: "which cube it would be if it were food",
   starch: "what the starch is made of",
@@ -44,7 +44,7 @@ export function questionGroups(): QuestionGroup[] {
     if (ids.length === 0) return [];
     const times = new Map<string, number>();
     for (const id of ids) times.set(ASKS[id], (times.get(ASKS[id]) ?? 0) + 1);
-    const asks = [...times].map(([ask, n]) => (n > 1 ? `${ask}, asked ${n} ways` : ask));
+    const asks = [...times].map(([ask, n]) => (n > 1 ? `${ask} (asked ${n} ways)` : ask));
     return [{ type, count: ids.length, asks }];
   });
 }
