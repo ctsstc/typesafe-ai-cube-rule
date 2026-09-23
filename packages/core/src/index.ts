@@ -33,6 +33,15 @@ export {
 export { MOCK_DECLINE_TRIGGER, MOCK_PRIVATE_PERSON_TRIGGER, mockCubeResponse } from "./mock";
 export { findOfficialRuling, OFFICIAL_RULINGS, type OfficialRuling } from "./official";
 export {
+  hasPersonalInfo,
+  type PublicListing,
+  type PublicListingOptions,
+  type PublicListingReason,
+  parseBlocklist,
+  publicListing,
+  toListEntry,
+} from "./public";
+export {
   buildCubeQuestions,
   buildCubeRequest,
   buildCubeState,
@@ -75,8 +84,18 @@ export {
   type ClassifyErrorCode,
   type ClassifyErrorStatus,
   type ClassifyResponse,
+  disabledListsResponse,
   isClassifyErrorBody,
   isClassifyErrorCode,
   isClassifyResponse,
+  isListEntry,
+  isListsQuery,
+  isListsResponse,
+  LIST_NAMES,
+  LISTS_PATH,
+  type ListEntry,
+  type ListName,
+  type ListsResponse,
+  listsUrl,
   PREFETCH_HEADER,
 } from "./wire";

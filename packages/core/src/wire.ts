@@ -1,4 +1,6 @@
-import { CUBE_ANSWER_TYPES, type CubeResponse } from "./questions";
+import { CATEGORY_IDS, type CategoryId } from "./categories";
+import { CUBE_ANSWER_TYPES, type CubeResponse, QUESTION_SET_VERSION } from "./questions";
+import type { DebateLevel } from "./result";
 
 export const CLASSIFY_ERROR_CODES = {
   bad_request: 400,
@@ -67,5 +69,91 @@ export function isClassifyErrorBody(value: unknown): value is ClassifyErrorBody 
     isClassifyErrorCode(error.code) &&
     "message" in error &&
     typeof error.message === "string"
+  );
+}
+
+export const LISTS_PATH = "/api/lists";
+
+const listsQuery = (): string => new URLSearchParams({ v: QUESTION_SET_VERSION }).toString();
+
+export function listsUrl(): string {
+  return `${LISTS_PATH}?${listsQuery()}`;
+}
+
+/** True only for the exact query `listsUrl()` sends, so the edge cache holds one copy. */
+export function isListsQuery(rawSearch: string): boolean {
+  return rawSearch.replace(/^\?/, "") === listsQuery();
+}
+
+export const LIST_NAMES = ["latest", "mostDebated", "jevDissents", "friendshipEnding"] as const;
+export type ListName = (typeof LIST_NAMES)[number];
+
+export interface ListEntry {
+  readonly item: string;
+  readonly kind: "food" | "honorary";
+  /** Jev's own pick. The ruling a card shows is `official ?? category`. */
+  readonly category: CategoryId;
+  readonly wet: boolean;
+  readonly confidence: number;
+  readonly runnerUp: CategoryId | null;
+  readonly official: CategoryId | null;
+  readonly debateLevel: DebateLevel;
+}
+
+export interface ListsResponse {
+  readonly enabled: boolean;
+  readonly questionSetVersion: string;
+  readonly activity: { readonly newFoodsLastHour: number } | null;
+  readonly lists: Readonly<Record<ListName, readonly ListEntry[]>>;
+}
+
+export function disabledListsResponse(): ListsResponse {
+  return {
+    enabled: false,
+    questionSetVersion: QUESTION_SET_VERSION,
+    activity: null,
+    lists: { latest: [], mostDebated: [], jevDissents: [], friendshipEnding: [] },
+  };
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const isCategoryId = (value: unknown): value is CategoryId =>
+  typeof value === "string" && (CATEGORY_IDS as readonly string[]).includes(value);
+
+export function isListEntry(value: unknown): value is ListEntry {
+  if (!isRecord(value)) return false;
+  const { item, kind, category, wet, confidence, runnerUp, official, debateLevel } = value;
+  return (
+    typeof item === "string" &&
+    item.length > 0 &&
+    (kind === "food" || kind === "honorary") &&
+    isCategoryId(category) &&
+    typeof wet === "boolean" &&
+    typeof confidence === "number" &&
+    confidence >= 0 &&
+    confidence <= 1 &&
+    (runnerUp === null || isCategoryId(runnerUp)) &&
+    (official === null || isCategoryId(official)) &&
+    (debateLevel === 0 || debateLevel === 1 || debateLevel === 2 || debateLevel === 3)
+  );
+}
+
+export function isListsResponse(value: unknown): value is ListsResponse {
+  if (!isRecord(value)) return false;
+  const { enabled, questionSetVersion, activity, lists } = value;
+  if (typeof enabled !== "boolean" || typeof questionSetVersion !== "string") return false;
+  if (activity !== null) {
+    if (!isRecord(activity)) return false;
+    const { newFoodsLastHour } = activity;
+    if (!Number.isSafeInteger(newFoodsLastHour) || (newFoodsLastHour as number) < 0) return false;
+  }
+  return (
+    isRecord(lists) &&
+    LIST_NAMES.every((name) => {
+      const entries = lists[name];
+      return Array.isArray(entries) && entries.every(isListEntry);
+    })
   );
 }

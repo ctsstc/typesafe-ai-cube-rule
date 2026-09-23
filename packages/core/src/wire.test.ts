@@ -1,15 +1,24 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { mockCubeResponse } from "./mock";
-import type { CubeResponse } from "./questions";
+import { type CubeResponse, QUESTION_SET_VERSION } from "./questions";
 import {
   CLASSIFY_ERROR_CODES,
   type ClassifyErrorBody,
   type ClassifyErrorCode,
   type ClassifyErrorStatus,
   type ClassifyResponse,
+  disabledListsResponse,
   isClassifyErrorBody,
   isClassifyErrorCode,
   isClassifyResponse,
+  isListEntry,
+  isListsQuery,
+  isListsResponse,
+  LIST_NAMES,
+  type ListEntry,
+  type ListName,
+  type ListsResponse,
+  listsUrl,
 } from "./wire";
 
 describe("CLASSIFY_ERROR_CODES", () => {
@@ -82,6 +91,7 @@ describe("isClassifyResponse", () => {
       "a non-finite score",
       (a: Record<string, unknown>) => (a.debate_heat = { type: "score", score: Number.NaN }),
     ],
+    ["a missing person answer", (a: Record<string, unknown>) => delete a.person_kind],
   ])("rejects %s", (_label, damage) => {
     const response = structuredClone(mockCubeResponse("taco"));
     damage(response.answers as unknown as Record<string, unknown>);
@@ -128,5 +138,94 @@ describe("isClassifyErrorBody", () => {
     }
     expect(isClassifyErrorCode("internal")).toBe(true);
     expect(isClassifyErrorCode(500)).toBe(false);
+  });
+});
+
+describe("lists URL", () => {
+  it("asks for the current question set", () => {
+    expect(listsUrl()).toBe(`/api/lists?v=${QUESTION_SET_VERSION}`);
+    expect(isListsQuery(listsUrl().slice("/api/lists".length))).toBe(true);
+    expect(isListsQuery(`v=${QUESTION_SET_VERSION}`)).toBe(true);
+  });
+
+  it.each([
+    ["no query", ""],
+    ["another question set", "?v=0"],
+    ["an extra parameter", `?v=${QUESTION_SET_VERSION}&x=1`],
+    ["a food", `?food=taco&v=${QUESTION_SET_VERSION}`],
+  ])("rejects %s", (_label, search) => {
+    expect(isListsQuery(search)).toBe(false);
+  });
+});
+
+const entry: ListEntry = {
+  item: "hot dog",
+  kind: "food",
+  category: "sandwich",
+  wet: false,
+  confidence: 0.55,
+  runnerUp: "taco",
+  official: "taco",
+  debateLevel: 3,
+};
+
+const lists = (patch: Partial<ListsResponse> = {}): ListsResponse => ({
+  enabled: true,
+  questionSetVersion: QUESTION_SET_VERSION,
+  activity: { newFoodsLastHour: 12 },
+  lists: { latest: [entry], mostDebated: [entry], jevDissents: [entry], friendshipEnding: [] },
+  ...patch,
+});
+
+describe("isListsResponse", () => {
+  it("accepts a full response, an empty one and the kill switch response", () => {
+    expect(isListsResponse(lists())).toBe(true);
+    expect(isListsResponse(lists({ activity: null }))).toBe(true);
+    expect(isListsResponse(disabledListsResponse())).toBe(true);
+    expect(disabledListsResponse()).toMatchObject({ enabled: false, activity: null });
+    expect(Object.values(disabledListsResponse().lists).every((l) => l.length === 0)).toBe(true);
+  });
+
+  it("names the four lists", () => {
+    expectTypeOf<ListName>().toEqualTypeOf<
+      "latest" | "mostDebated" | "jevDissents" | "friendshipEnding"
+    >();
+    expect(Object.keys(lists().lists)).toEqual([...LIST_NAMES]);
+  });
+
+  it.each([
+    ["null", null],
+    ["an array", []],
+    ["a missing list", { ...lists(), lists: { latest: [], mostDebated: [], jevDissents: [] } }],
+    ["a list that is not an array", { ...lists(), lists: { ...lists().lists, latest: {} } }],
+    ["no enabled flag", { ...lists(), enabled: "yes" }],
+    ["no version", { ...lists(), questionSetVersion: 7 }],
+    ["negative activity", lists({ activity: { newFoodsLastHour: -1 } })],
+    ["fractional activity", lists({ activity: { newFoodsLastHour: 1.5 } })],
+    ["activity without a count", { ...lists(), activity: {} }],
+  ])("rejects %s", (_label, value) => {
+    expect(isListsResponse(value)).toBe(false);
+  });
+
+  it.each([
+    ["an empty item", { item: "" }],
+    ["a declined kind", { kind: "declined" }],
+    ["an unknown category", { category: "burrito" }],
+    ["a prototype key as category", { category: "toString" }],
+    ["a string wet flag", { wet: "no" }],
+    ["confidence above 1", { confidence: 1.2 }],
+    ["confidence that is not a number", { confidence: Number.NaN }],
+    ["an unknown runner-up", { runnerUp: "pie" }],
+    ["an unknown official ruling", { official: "wrap" }],
+    ["debate level 4", { debateLevel: 4 }],
+    ["a fractional debate level", { debateLevel: 1.5 }],
+  ])("rejects an entry with %s", (_label, patch) => {
+    expect(isListEntry({ ...entry, ...patch })).toBe(false);
+    const bad = { ...entry, ...patch };
+    expect(isListsResponse({ ...lists(), lists: { ...lists().lists, latest: [bad] } })).toBe(false);
+  });
+
+  it("accepts null runner-up and official rulings", () => {
+    expect(isListEntry({ ...entry, runnerUp: null, official: null, kind: "honorary" })).toBe(true);
   });
 });
