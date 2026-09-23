@@ -9,6 +9,8 @@ const RESERVE_SESSION_CALL = `INSERT INTO sessions (sid, calls, exp) VALUES (?1,
 ON CONFLICT (sid) DO UPDATE SET calls = calls + 1 WHERE calls < ?2
 RETURNING calls`;
 
+const REFUND_SESSION_CALL = "UPDATE sessions SET calls = calls - 1 WHERE sid = ?1 AND calls > 0";
+
 // SQLite requires a WHERE on INSERT ... SELECT before ON CONFLICT. This one also makes a limit of 0
 // refuse the day's first call.
 const RESERVE_DAILY_CALL = `INSERT INTO usage (day, calls) SELECT ?1, 1 WHERE ?2 > 0
@@ -61,6 +63,8 @@ export async function reserveJevCall(
     const limit = dailyCallLimit(env);
     const charged = await db.prepare(RESERVE_DAILY_CALL).bind(day, limit).first();
     if (!charged) {
+      // Jev was never asked, so the refusal must not use up the session as well.
+      if (session) await db.prepare(REFUND_SESSION_CALL).bind(session.sid).run();
       console.warn("classify: daily Jev call limit reached", { day, limit });
       return errorResponse("daily_limit", {
         headers: { "Retry-After": String(secondsUntilUtcMidnight(now)) },

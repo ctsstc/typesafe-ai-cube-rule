@@ -501,6 +501,7 @@ describe("challenge and spend caps", () => {
     expect((await errorBody(refused)).error.code).toBe("daily_limit");
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(usage(d1)).toEqual([{ day: "2026-09-22", calls: 2 }]);
+    expect(d1.sqlite.prepare("SELECT calls FROM sessions").all()).toEqual([{ calls: 2 }]);
 
     await Promise.all(pending);
     expect(cache.store.size).toBe(2);
@@ -525,6 +526,17 @@ describe("challenge and spend caps", () => {
       new Response(JSON.stringify(mockCubeResponse("taco"))),
     );
     expect((await ask("taco", env, undefined, prefetch)).status).toBe(200);
+  });
+
+  it("does not spend the session on refusals once the day is spent", async () => {
+    const { d1, env } = guardedEnv({ DAILY_CALL_LIMIT: "0" });
+    const session = await cookie();
+    for (let i = 0; i <= SESSION_CALL_LIMIT; i++) {
+      const response = await ask(`food ${i}`, env, session);
+      expect((await errorBody(response)).error.code).toBe("daily_limit");
+    }
+    expect(d1.sqlite.prepare("SELECT calls FROM sessions").all()).toEqual([{ calls: 0 }]);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("treats DAILY_CALL_LIMIT=0 as a kill switch", async () => {
