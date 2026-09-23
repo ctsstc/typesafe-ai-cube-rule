@@ -1,6 +1,8 @@
 # Cube Rule Oracle
 
-A fun web app built on [cuberule.com](https://cuberule.com/): type any food and TypeSafe's Jev model classifies it by where its structural starch sits (toast, sandwich, taco, sushi, quiche, calzone, salad, cake, nachos). Hosted on Cloudflare Pages (static SPA plus a Pages Function for `/api`) so it can be shared with friends.
+A fun web app built on [cuberule.com](https://cuberule.com/): type any food and TypeSafe's Jev model classifies it by where its structural starch sits (toast, sandwich, taco, sushi, quiche, calzone, salad, cake, nachos). Hosted on Cloudflare Pages (static SPA plus a Pages Function for `/api`) and live at https://cube-rule-oracle.pages.dev.
+
+The repo is public at https://github.com/ctsstc/typesafe-ai-cube-rule under the MIT license. Everything committed, commit messages included, is public: no secrets, local paths or machine details.
 
 ## TypeSafe / Jev
 
@@ -11,8 +13,8 @@ A fun web app built on [cuberule.com](https://cuberule.com/): type any food and 
 
 ## Hosting
 
-- Cloudflare, not AWS. Wrangler is logged in to the owner's personal account. The AWS profiles on this machine belong to client work and must never be used for this project.
-- Pages, not Workers: the share URL is a subdomain of a domain whose DNS lives at DigitalOcean. Pages accepts an external CNAME (`sub.domain -> <project>.pages.dev`); Workers custom domains require the zone's nameservers to be on Cloudflare.
+- Deploy only to Cloudflare Pages; never AWS. `scripts/deploy.sh` pins the Cloudflare account.
+- Pages, not Workers: the custom domain is a subdomain of a domain whose DNS lives at DigitalOcean. Pages accepts an external CNAME (`sub.domain -> <project>.pages.dev`); Workers custom domains require the zone's nameservers to be on Cloudflare.
 - Add the custom domain in the Pages project before creating the DigitalOcean CNAME, or Cloudflare returns 522. See [docs/deploy.md](docs/deploy.md#custom-domain-dns-at-digitalocean).
 
 ## Commands
@@ -25,7 +27,7 @@ A fun web app built on [cuberule.com](https://cuberule.com/): type any food and 
 - Commit whenever a coherent unit of progress lands: a feature, a fix, a refactor, docs, infra. Do not batch a whole session into one commit, and do not commit broken builds.
 - Use [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`, `ci:`, `build:`. Optional scope, e.g. `feat(web): ...`.
 - Stage explicit paths, never `git add -A` blindly. Check `git status` for `.env`, `.dev.vars` or `.wrangler/` before every commit.
-- Run `pnpm check` (typecheck, lint, tests) before committing code.
+- Run `pnpm check` (typecheck, lint, tests) before committing code. CI (`.github/workflows/ci.yml`) runs it on every push to main and every pull request, with no secrets and no `.env`.
 
 ## Releases
 
